@@ -4,6 +4,7 @@ import { Link, NavLink } from 'react-router-dom';
 import type { Img, Money as M, ProductCard } from './lib/shopify';
 import { COLORS } from './lib/fixtures';
 import { useCart } from './cart';
+import { useInView } from './scroll';
 
 export const FREE_SHIPPING = 100;
 
@@ -26,13 +27,14 @@ export function colorsOf(p: ProductCard) {
   return [...seen.entries()];
 }
 
-function ProductTile({ p }: { p: ProductCard }) {
+function ProductTile({ p, i = 0 }: { p: ProductCard; i?: number }) {
   const colors = colorsOf(p);
+  const [ref, seen] = useInView<HTMLAnchorElement>();
   const [hoverColor, setHoverColor] = useState<string | null>(null);
   const second = p.images?.nodes[1];
   const colorImg = hoverColor ? colors.find(([c]) => c === hoverColor)?.[1] : null;
   return (
-    <Link to={`/products/${p.handle}`} className="tile">
+    <Link to={`/products/${p.handle}`} className={'tile rv' + (seen ? ' in' : '')} ref={ref} style={{ ['--d' as string]: `${(i % 4) * 90}ms` }}>
       <div className={'tile-img' + (second && !colorImg ? ' has-alt' : '')}>
         <Pic img={colorImg ?? p.featuredImage} sizes="(min-width: 900px) 25vw, 50vw" className="main" />
         {second && !colorImg && <Pic img={second} sizes="(min-width: 900px) 25vw, 50vw" className="alt" />}
@@ -52,7 +54,7 @@ function ProductTile({ p }: { p: ProductCard }) {
 }
 
 export function ProductGrid({ products }: { products: ProductCard[] }) {
-  return <div className="grid">{products.map(p => <ProductTile key={p.id} p={p} />)}</div>;
+  return <div className="grid">{products.map((p, i) => <ProductTile key={p.id} p={p} i={i} />)}</div>;
 }
 
 export function GridSkeleton({ n = 8 }: { n?: number }) {

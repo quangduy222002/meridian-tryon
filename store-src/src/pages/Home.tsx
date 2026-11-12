@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { getCollection, getCollections, getProducts, type Collection, type ProductCard } from '../lib/shopify';
 import { GridSkeleton, Pic, ProductGrid } from '../ui';
 import Hero3D from '../Hero3D';
+import Marquee from '../Marquee';
+import Story from '../Story';
+import Lookbook from '../Lookbook';
+import { colorsOf } from '../ui';
 
 type Tile = Collection & { cover?: ProductCard };
 
@@ -18,6 +22,9 @@ export default function Home() {
     });
   }, []);
 
+  // the story features the product with the most colours
+  const storyProduct = products?.slice().sort((a, b) => colorsOf(b).length - colorsOf(a).length)[0];
+
   return (
     <main>
       <section className="hero">
@@ -31,6 +38,8 @@ export default function Home() {
         {products && <Hero3D products={products} />}
       </section>
 
+      <Marquee />
+
       {tiles.length > 0 && (
         <section className="wrap cats">
           {tiles.map(t => (
@@ -41,6 +50,9 @@ export default function Home() {
           ))}
         </section>
       )}
+
+      {storyProduct && <Story product={storyProduct} />}
+      {products && products.length >= 3 && <Lookbook products={products} />}
 
       <section className="wrap">
         <div className="sec-head"><h2>New this week</h2><Link to="/collections/all" className="text-link">See everything</Link></div>

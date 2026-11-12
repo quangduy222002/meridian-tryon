@@ -2,7 +2,7 @@
 
 React + Shopify Hydrogen React + Storefront API (mock.shop demo data).
 
-- Home: 3D lookbook hero (Three.js — products hang like fabric on a ring you drag to spin, tap to open), category tiles, featured grid with colour swatches
+- Home: 3D lookbook hero (Three.js — products hang like fabric on a ring you drag to spin, tap to open), scroll-speed marquee, sticky scroll story (the garment hangs as fabric and is re-dyed as you scroll), scroll-driven horizontal lookbook, featured grid that unrolls into view
 - Collection: product grid, sort by price, collection filters
 - Product: tilting photo with light sweep, variant selector (updates price + image), add-to-cart fly animation
 - Cart drawer: change quantity, remove, subtotal, Shopify checkout
