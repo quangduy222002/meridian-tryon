@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>PAKKA · Custom Box Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: Inter, -apple-system, sans-serif; color: #1f1d1a; background: #efe9df; overflow: hidden; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; -webkit-tap-highlight-color: transparent; }
+.app { display: grid; grid-template-columns: 1fr 390px; height: 100dvh; }
+.viewer { position: relative; min-height: 0; touch-action: none; background: radial-gradient(120% 90% at 40% 35%, #f8f4ec 0%, #e8e0d2 70%); }
+.viewer canvas { display: block; width: 100%; height: 100%; }
+.brand { position: absolute; top: 20px; left: 24px; font-weight: 700; letter-spacing: .2em; font-size: 13px; }
+.brand span { font-weight: 500; letter-spacing: .02em; color: #8b8378; margin-left: 8px; }
+.actions { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(255,255,255,.75); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: 6px; border-radius: 14px; box-shadow: 0 6px 24px rgba(60,40,10,.12); }
+.actions button { min-height: 42px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 600; }
+.actions button.on { background: #1f1d1a; color: #fff; }
+.dims-badge { position: absolute; top: 18px; right: 20px; font-size: 13px; color: #6f675c; background: rgba(255,255,255,.7); padding: 8px 12px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+
+.panel { background: #fffdf9; border-left: 1px solid #e6ddcf; padding: 26px 24px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 22px; }
+.panel h1 { font-size: 22px; font-weight: 700; }
+.panel h2 { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: #8b8378; margin-bottom: 12px; display: flex; justify-content: space-between; }
+.panel h2 span { color: #1f1d1a; letter-spacing: 0; text-transform: none; font-size: 13px; }
+.slider { display: grid; grid-template-columns: 70px 1fr 56px; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 14px; }
+.slider output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: #e6ddcf; border-radius: 4px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #1f1d1a; border: 3px solid #fffdf9; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.mats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mat { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 1.5px solid #e6ddcf; border-radius: 12px; font-size: 12.5px; }
+.mat i { width: 30px; height: 30px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.mat.on { border-color: #1f1d1a; }
+.mat small { color: #8b8378; font-size: 11px; }
+.text-in { width: 100%; height: 44px; border: 1.5px solid #e6ddcf; border-radius: 12px; padding: 0 14px; background: #fff; outline: none; }
+.text-in:focus { border-color: #1f1d1a; }
+.upload { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.upload label { min-height: 42px; padding: 0 16px; border-radius: 12px; border: 1.5px dashed #c9bda9; display: inline-flex; align-items: center; font-size: 14px; cursor: pointer; }
+.upload input { display: none; }
+.upload small { color: #8b8378; font-size: 12px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); background: #f3ede3; border-radius: 12px; padding: 4px; }
+.seg button { min-height: 40px; border-radius: 9px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.seg button.on { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12); font-weight: 600; }
+footer { position: sticky; bottom: 0; margin-top: auto; background: #fffdf9; border-top: 1px solid #e6ddcf; padding: 16px 0 calc(20px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; }
+.price { flex: 1; }
+.price small { display: block; color: #8b8378; font-size: 12px; }
+.price strong { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.price em { font-style: normal; color: #8b8378; font-size: 13px; margin-left: 6px; }
+.primary { min-height: 46px; padding: 0 20px; border-radius: 12px; background: #1f1d1a; color: #fff; font-weight: 600; font-size: 14px; }
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1f1d1a; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; z-index: 10; max-width: 90vw; text-align: center; animation: pop .25s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -8px); } }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 50dvh 1fr; }
+  .panel { border-left: none; border-top: 1px solid #e6ddcf; padding-top: 18px; }
+  .panel h1 { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="viewer" id="viewer">
+    <div class="brand">PAKKA<span>Custom Box Studio</span></div>
+    <div class="dims-badge" id="dimsBadge"></div>
+    <div class="actions">
+      <button id="foldBtn" class="on">Folded</button>
+      <button id="flatBtn">Dieline</button>
+      <button id="lidBtn">Open lid</button>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <h1>Design your box</h1>
+
+    <section>
+      <h2>Size <span>cm</span></h2>
+      <div class="slider"><span>Width</span><input type="range" id="w" min="10" max="40" value="24" /><output id="wOut"></output></div>
+      <div class="slider"><span>Height</span><input type="range" id="h" min="4" max="30" value="10" /><output id="hOut"></output></div>
+      <div class="slider"><span>Depth</span><input type="range" id="d" min="10" max="40" value="18" /><output id="dOut"></output></div>
+    </section>
+
+    <section>
+      <h2>Material <span id="matLabel"></span></h2>
+      <div class="mats" id="mats"></div>
+    </section>
+
+    <section>
+      <h2>Print</h2>
+      <input class="text-in" id="brandIn" maxlength="18" value="AURORA" placeholder="Brand name" />
+      <div class="upload">
+        <label>Upload logo<input type="file" id="logoIn" accept="image/*" /></label>
+        <small id="logoName">PNG with transparent background works best</small>
+      </div>
+    </section>
+
+    <section>
+      <h2>Quantity <span id="unitLabel"></span></h2>
+      <div class="seg" id="qty"></div>
+    </section>
+
+    <footer>
+      <div class="price"><small>Total</small><strong id="total"></strong><em id="perUnit"></em></div>
+      <button class="primary" id="quote">Request quote</button>
+    </footer>
+  </aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ---------- Catalogue & pricing ---------- */
+const MATERIALS = {
+  kraft:  { label: 'Kraft',       out: '#c79b6a', in: '#d8b88f', rough: 0.95, ink: '#3b2a1a', add: 0 },
+  white:  { label: 'White',       out: '#f4f1ea', in: '#e9e4d9', rough: 0.8,  ink: '#1f1d1a', add: 0.05 },
+  black:  { label: 'Matte Black', out: '#232220', in: '#3a3835', rough: 0.85, ink: '#e8d3a8', add: 0.15 },
+  coral:  { label: 'Coral',       out: '#e0745a', in: '#f2e6da', rough: 0.6,  ink: '#ffffff', add: 0.25 },
+  teal:   { label: 'Teal',        out: '#2f7a78', in: '#e7efe9', rough: 0.6,  ink: '#ffffff', add: 0.25 },
+  lilac:  { label: 'Lilac',       out: '#b9a6d6', in: '#f1ecf6', rough: 0.6,  ink: '#2b2140', add: 0.25 },
+};
+const QTY = [100, 500, 1000, 2500];
+const DISCOUNT = { 100: 1, 500: 0.72, 1000: 0.6, 2500: 0.5 };
+const state = { w: 24, h: 10, d: 18, mat: 'kraft', brand: 'AURORA', logo: null, qty: 500, folded: true, lidOpen: false };
+const usd = (n, d = 0) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* ---------- Scene ---------- */
+const viewer = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({ antialias: window.__aa ?? true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.9;
+viewer.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.45;
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+camera.position.set(4.2, 3.6, 5.2);
+scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+const sun = new THREE.DirectionalLight(0xfff4e2, 2.2);
+sun.position.set(3, 7, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.radius = 5;
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 20 });
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.maxPolarAngle = Math.PI / 2.1;
+controls.minDistance = 2.5;
+controls.maxDistance = 14;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.addEventListener('start', () => { controls.autoRotate = false; });
+
+/* ---------- Materials & print textures ---------- */
+const outMat = new THREE.MeshStandardMaterial({ color: MATERIALS.kraft.out, roughness: 0.95 });
+const inMat = new THREE.MeshStandardMaterial({ color: MATERIALS.kraft.in, roughness: 0.95 });
+// BoxGeometry groups: +x, -x, +y, -y, +z, -z. Every panel's +y face is the inside of the box.
+const panelMats = [outMat, outMat, inMat, outMat, outMat, outMat];
+
+const lidCanvas = document.createElement('canvas');
+const frontCanvas = document.createElement('canvas');
+const lidTex = new THREE.CanvasTexture(lidCanvas);
+const frontTex = new THREE.CanvasTexture(frontCanvas);
+for (const t of [lidTex, frontTex]) { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; }
+const decalMat = (map) => new THREE.MeshStandardMaterial({ map, transparent: true, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -4 });
+const lidDecalMat = decalMat(lidTex);
+const frontDecalMat = decalMat(frontTex);
+
+function drawPrints() {
+  const m = MATERIALS[state.mat];
+  // Lid: logo + brand name
+  const lw = 1024, lh = Math.round(1024 * state.d / state.w);
+  lidCanvas.width = lw; lidCanvas.height = lh;
+  let c = lidCanvas.getContext('2d');
+  c.clearRect(0, 0, lw, lh);
+  c.fillStyle = m.ink; c.strokeStyle = m.ink;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  const brand = (state.brand || '').toUpperCase();
+  if (state.logo) {
+    const s = Math.min(lw * 0.42 / state.logo.width, lh * 0.42 / state.logo.height);
+    const iw = state.logo.width * s, ih = state.logo.height * s;
+    c.drawImage(state.logo, (lw - iw) / 2, lh * 0.44 - ih / 2, iw, ih);
+    c.font = `700 ${Math.round(lw * 0.06)}px Inter, sans-serif`;
+    c.letterSpacing = `${Math.round(lw * 0.018)}px`;
+    c.fillText(brand, lw / 2, lh * 0.44 + ih / 2 + lw * 0.07);
+  } else {
+    // Default mark: ring with initial
+    const r = Math.min(lw, lh) * 0.15;
+    c.lineWidth = lw * 0.008;
+    c.beginPath(); c.arc(lw / 2, lh * 0.4, r, 0, Math.PI * 2); c.stroke();
+    c.font = `600 ${Math.round(r * 1.1)}px Inter, sans-serif`;
+    c.fillText(brand.charAt(0) || '★', lw / 2, lh * 0.4 + r * 0.05);
+    c.font = `700 ${Math.round(lw * 0.075)}px Inter, sans-serif`;
+    c.letterSpacing = `${Math.round(lw * 0.02)}px`;
+    c.fillText(brand, lw / 2, lh * 0.4 + r + lw * 0.085);
+  }
+  lidTex.needsUpdate = true;
+
+  // Front: small brand line
+  const fw = 1024, fh = Math.round(1024 * state.h / state.w);
+  frontCanvas.width = fw; frontCanvas.height = fh;
+  c = frontCanvas.getContext('2d');
+  c.clearRect(0, 0, fw, fh);
+  c.fillStyle = m.ink; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `600 ${Math.round(Math.min(fw * 0.045, fh * 0.2))}px Inter, sans-serif`;
+  c.letterSpacing = `${Math.round(fw * 0.02)}px`;
+  c.fillText(brand, fw / 2, fh / 2);
+  frontTex.needsUpdate = true;
+}
+
+/* ---------- Box built as hinged panels so it can fold ---------- */
+const TH = 0.02; // board thickness (scene units; 1 unit = 10 cm)
+let box = null, hinges = null;
+
+function panel(w, l, parent, x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, TH, l), panelMats);
+  m.position.set(x, 0, z);
+  m.castShadow = true; m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function decal(parentMesh, w, l, mat) {
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mat);
+  p.rotation.x = Math.PI / 2;          // face the outside (-y)
+  p.position.y = -TH / 2 - 0.002;
+  parentMesh.add(p);
+}
+
+function buildBox() {
+  if (box) { box.traverse(o => o.geometry?.dispose()); scene.remove(box); }
+  const W = state.w / 10, H = state.h / 10, D = state.d / 10, tuck = Math.min(H * 0.6, 0.5);
+  box = new THREE.Group();
+  box.position.y = TH / 2;
+  scene.add(box);
+
+  panel(W, D, box, 0, 0); // bottom
+
+  const pFront = new THREE.Group(); pFront.position.z = D / 2; box.add(pFront);
+  const front = panel(W, H, pFront, 0, H / 2);
+  decal(front, W * 0.92, H * 0.9, frontDecalMat);
+
+  const pBack = new THREE.Group(); pBack.position.z = -D / 2; box.add(pBack);
+  panel(W, H, pBack, 0, -H / 2);
+
+  const pLeft = new THREE.Group(); pLeft.position.x = -W / 2; box.add(pLeft);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(H, TH, D - TH * 2), panelMats);
+  left.position.x = -H / 2; left.castShadow = true; pLeft.add(left);
+
+  const pRight = new THREE.Group(); pRight.position.x = W / 2; box.add(pRight);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(H, TH, D - TH * 2), panelMats);
+  right.position.x = H / 2; right.castShadow = true; pRight.add(right);
+
+  // Lid hinges on the top edge of the back panel, tuck flap on the lid's far edge
+  const pLid = new THREE.Group(); pLid.position.z = -H; pBack.add(pLid);
+  const lid = panel(W, D, pLid, 0, -D / 2);
+  decal(lid, W * 0.9, D * 0.9, lidDecalMat);
+  const pTuck = new THREE.Group(); pTuck.position.z = -D; pLid.add(pTuck);
+  panel(W - TH * 2, tuck, pTuck, 0, -tuck / 2);
+
+  hinges = { pFront, pBack, pLeft, pRight, pLid, pTuck };
+  drawPrints();
+  document.getElementById('dimsBadge').textContent = `${state.w} × ${state.h} × ${state.d} cm`;
+}
+
+/* ---------- Fold animation ---------- */
+let fold = 0, open = 0;            // current values
+const smooth = (x) => { x = Math.min(Math.max(x, 0), 1); return x * x * (3 - 2 * x); };
+const stage = (f, a, b) => smooth((f - a) / (b - a));
+function applyFold() {
+  const sides = stage(fold, 0, 0.5) * Math.PI / 2;
+  hinges.pFront.rotation.x = -sides;
+  hinges.pBack.rotation.x = sides;
+  hinges.pLeft.rotation.z = -stage(fold, 0.1, 0.55) * Math.PI / 2;
+  hinges.pRight.rotation.z = stage(fold, 0.1, 0.55) * Math.PI / 2;
+  const lidClose = stage(fold, 0.55, 0.85) * (1 - 0.6 * open);
+  hinges.pLid.rotation.x = lidClose * Math.PI / 2;
+  hinges.pTuck.rotation.x = stage(fold, 0.8, 1) * (1 - open) * Math.PI / 2;
+}
+
+/* ---------- Loop ---------- */
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const targetFold = state.folded ? 1 : 0;
+  fold += Math.sign(targetFold - fold) * Math.min(Math.abs(targetFold - fold), dt * 0.55);
+  const targetOpen = state.lidOpen && state.folded ? 1 : 0;
+  open += Math.sign(targetOpen - open) * Math.min(Math.abs(targetOpen - open), dt * 1.4);
+  applyFold();
+
+  // Keep the box nicely framed whatever its size
+  const H = state.h / 10, R = Math.hypot(state.w, state.d, state.h) / 10;
+  controls.target.lerp(new THREE.Vector3(0, fold * H * 0.45, 0), 1 - Math.exp(-dt * 4));
+  const want = Math.max(R * 1.9, 3.2), cur = camera.position.distanceTo(controls.target);
+  if (Math.abs(want - cur) > 0.01 && !controls.__userZoom) {
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    camera.position.copy(controls.target).addScaledVector(dir, cur + (want - cur) * (1 - Math.exp(-dt * 3)));
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+renderer.domElement.addEventListener('wheel', () => { controls.__userZoom = true; }, { passive: true });
+
+function resize() {
+  const { clientWidth: w, clientHeight: h } = viewer;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(viewer);
+
+/* ---------- UI ---------- */
+const $ = (id) => document.getElementById(id);
+for (const k of ['w', 'h', 'd']) {
+  const input = $(k), out = $(k + 'Out');
+  out.textContent = input.value;
+  input.addEventListener('input', () => { state[k] = +input.value; out.textContent = input.value; buildBox(); applyFold(); updatePrice(); });
+}
+for (const [key, m] of Object.entries(MATERIALS)) {
+  const b = document.createElement('button');
+  b.className = 'mat'; b.dataset.value = key;
+  b.innerHTML = `<i style="background:${m.out}"></i>${m.label}<small>${m.add ? '+' + usd(m.add, 2) + '/pc' : 'Included'}</small>`;
+  b.addEventListener('click', () => { state.mat = key; applyMaterial(); updatePrice(); });
+  $('mats').appendChild(b);
+}
+function applyMaterial() {
+  const m = MATERIALS[state.mat];
+  outMat.color.set(m.out); outMat.roughness = m.rough;
+  inMat.color.set(m.in); inMat.roughness = m.rough;
+  for (const b of $('mats').children) b.classList.toggle('on', b.dataset.value === state.mat);
+  $('matLabel').textContent = m.label;
+  drawPrints();
+}
+for (const q of QTY) {
+  const b = document.createElement('button');
+  b.textContent = q.toLocaleString('en-US'); b.dataset.value = q;
+  b.addEventListener('click', () => { state.qty = q; updatePrice(); });
+  $('qty').appendChild(b);
+}
+$('brandIn').addEventListener('input', (e) => { state.brand = e.target.value; drawPrints(); updatePrice(); });
+$('logoIn').addEventListener('change', (e) => {
+  const f = e.target.files?.[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => { state.logo = img; $('logoName').textContent = f.name; drawPrints(); updatePrice(); };
+  img.src = URL.createObjectURL(f);
+});
+
+function unitPrice() {
+  const area = 2 * (state.w * state.h + state.w * state.d + state.h * state.d); // cm²
+  const base = 0.55 + area * 0.00042 + MATERIALS[state.mat].add + (state.logo ? 0.1 : 0);
+  return base * DISCOUNT[state.qty];
+}
+function updatePrice() {
+  const u = unitPrice();
+  $('total').textContent = usd(u * state.qty);
+  $('perUnit').textContent = `${usd(u, 2)} / box`;
+  $('unitLabel').textContent = `${Math.round((1 - DISCOUNT[state.qty]) * 100)}% off`;
+  for (const b of $('qty').children) b.classList.toggle('on', +b.dataset.value === state.qty);
+}
+
+function setMode(folded) {
+  state.folded = folded;
+  if (!folded) state.lidOpen = false;
+  $('foldBtn').classList.toggle('on', folded);
+  $('flatBtn').classList.toggle('on', !folded);
+  $('lidBtn').classList.toggle('on', state.lidOpen);
+  $('lidBtn').textContent = state.lidOpen ? 'Close lid' : 'Open lid';
+}
+$('foldBtn').addEventListener('click', () => setMode(true));
+$('flatBtn').addEventListener('click', () => setMode(false));
+$('lidBtn').addEventListener('click', () => { if (!state.folded) setMode(true); state.lidOpen = !state.lidOpen; setMode(true); });
+
+let toastTimer;
+$('quote').addEventListener('click', () => {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast';
+  t.textContent = `Quote requested: ${state.qty.toLocaleString('en-US')} × ${state.w}×${state.h}×${state.d} cm ${MATERIALS[state.mat].label} boxes`;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), 2600);
+});
+
+/* ---------- Start: show the flat dieline, then fold it up ---------- */
+buildBox();
+applyMaterial();
+updatePrice();
+resize();
+document.fonts?.ready.then(drawPrints);
+state.folded = false;
+setTimeout(() => setMode(true), 900);
+frame();
+</script>
+</body>
+</html>
