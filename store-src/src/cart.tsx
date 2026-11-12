@@ -38,7 +38,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       else lines.push({ id: 'local-' + v.id, quantity: qty, merchandise: { id: v.id, title: v.title, price: v.price, image: v.image, product } } as CartLine);
       update({ id: null, checkoutUrl: null, lines });
     }
-    setBusy(false); setOpen(true);
+    setBusy(false); setTimeout(() => setOpen(true), 820); // let the fly-to-cart animation land first
   }, [cart]);
 
   const setQty = useCallback<Ctx['setQty']>(async (lineId, qty) => {

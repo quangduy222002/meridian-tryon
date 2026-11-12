@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCollection, getCollections, getProducts, type Collection, type ProductCard } from '../lib/shopify';
 import { GridSkeleton, Pic, ProductGrid } from '../ui';
+import Hero3D from '../Hero3D';
 
 type Tile = Collection & { cover?: ProductCard };
 
@@ -16,24 +17,18 @@ export default function Home() {
       setTiles(withCovers);
     });
   }, []);
-  const hero = products?.[0];
 
   return (
     <main>
       <section className="hero">
         <div className="hero-inner">
-          <h1 className="hero-type">Layers for cold mornings</h1>
+          <h1 className="hero-type" aria-label="Layers for cold mornings">{['Layers', 'for cold', 'mornings'].map((w, i) => <span key={w} className="ht-line"><span style={{ animationDelay: `${0.15 + i * 0.12}s` }}>{w}</span></span>)}</h1>
           <div className="hero-foot">
             <p>Heavyweight basics cut for walking, working and waiting for the kettle. Small runs, honest fabric, built to last more than one winter.</p>
             <Link to="/collections/all" className="btn light">Shop the collection</Link>
           </div>
         </div>
-        {hero && (
-          <Link to={`/products/${hero.handle}`} className="hero-product">
-            <Pic img={hero.featuredImage} sizes="(min-width: 900px) 34vw, 70vw" />
-            <span className="hero-tag"><b>{hero.title}</b><span>View product</span></span>
-          </Link>
-        )}
+        {products && <Hero3D products={products} />}
       </section>
 
       {tiles.length > 0 && (

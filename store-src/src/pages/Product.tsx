@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getProduct, type Product as P, type Variant } from '../lib/shopify';
-import { FREE_SHIPPING, Pic, Price, swatch } from '../ui';
+import { FREE_SHIPPING, Pic, Price, flyToCart, swatch } from '../ui';
 import { useCart } from '../cart';
 
 const COLOR_OPT = /^(colou?r)$/i;
@@ -13,6 +13,15 @@ export default function Product() {
   const [qty, setQty] = useState(1);
   const [imgIdx, setImgIdx] = useState(0);
   const { add, busy } = useCart();
+  const mainRef = useRef<HTMLDivElement>(null);
+  // Photo tilts toward the pointer with a soft light sweep
+  const tilt = (e: RPE<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return;
+    const r = e.currentTarget.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    e.currentTarget.style.setProperty('--rx', `${(0.5 - y) * 7}deg`); e.currentTarget.style.setProperty('--ry', `${(x - 0.5) * 9}deg`);
+    e.currentTarget.style.setProperty('--gx', `${x * 100}%`); e.currentTarget.style.setProperty('--gy', `${y * 100}%`);
+  };
+  const untilt = (e: RPE<HTMLDivElement>) => { e.currentTarget.style.setProperty('--rx', '0deg'); e.currentTarget.style.setProperty('--ry', '0deg'); };
 
   useEffect(() => {
     setProduct(undefined); setQty(1); setImgIdx(0);
@@ -52,7 +61,7 @@ export default function Product() {
   return (
     <main className="wrap page pdp">
       <div className="pdp-gallery">
-        <div className="pdp-main"><Pic img={main} sizes="(min-width: 900px) 55vw, 100vw" /></div>
+        <div className="pdp-stage" onPointerMove={tilt} onPointerLeave={untilt}><div className="pdp-main" ref={mainRef}><Pic img={main} sizes="(min-width: 900px) 55vw, 100vw" key={main?.url} className="swap" /><span className="sheen" /></div></div>
         {images.length > 1 && (
           <div className="thumbs">
             {images.map((im, i) => <button key={im.url + i} className={'thumb' + (i === imgIdx ? ' on' : '')} onClick={() => setImgIdx(i)} aria-label={`Show image ${i + 1}`}><Pic img={im} sizes="90px" /></button>)}
@@ -86,7 +95,7 @@ export default function Product() {
             <button onClick={() => setQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button><span>{qty}</span><button onClick={() => setQty(q => q + 1)} aria-label="Increase quantity">+</button>
           </div>
           <button className="btn full" disabled={!variant?.availableForSale || busy}
-            onClick={() => variant && add(variant, { title: product.title, handle: product.handle }, qty)}>{label}</button>
+            onClick={() => { if (!variant) return; flyToCart(mainRef.current); add(variant, { title: product.title, handle: product.handle }, qty); }}>{label}</button>
         </div>
         <p className="ship-note small">Free shipping over ${FREE_SHIPPING}. Ships in 2 working days.</p>
 

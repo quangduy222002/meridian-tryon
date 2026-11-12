@@ -127,3 +127,24 @@ export function CartDrawer() {
     </>
   );
 }
+
+// Add-to-cart flourish: a copy of the product photo arcs into the cart counter, which then pops.
+export function flyToCart(from: HTMLElement | null) {
+  const to = document.querySelector('.cart-count') as HTMLElement | null;
+  const img = from?.querySelector('img') as HTMLImageElement | null;
+  if (!from || !to || !img || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const ghost = img.cloneNode() as HTMLImageElement;
+  Object.assign(ghost.style, { position: 'fixed', left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`, objectFit: 'cover', borderRadius: '6px', zIndex: '60', pointerEvents: 'none', boxShadow: '0 20px 50px rgba(10,25,20,.25)' });
+  document.body.appendChild(ghost);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  const s = 26 / a.width;
+  ghost.animate([
+    { transform: 'translate(0,0) scale(1)', opacity: 1, borderRadius: '6px' },
+    { transform: `translate(${dx * 0.55}px, ${dy * 0.35 - 80}px) scale(${0.45}) rotate(-8deg)`, opacity: 1, offset: 0.55 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${s}) rotate(-14deg)`, opacity: 0.6, borderRadius: '50%' },
+  ], { duration: 750, easing: 'cubic-bezier(.5,0,.3,1)' }).onfinish = () => {
+    ghost.remove();
+    to.classList.remove('bump'); void to.offsetWidth; to.classList.add('bump');
+  };
+}

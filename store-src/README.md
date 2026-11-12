@@ -2,9 +2,9 @@
 
 React + Shopify Hydrogen React + Storefront API (mock.shop demo data).
 
-- Home: header with cart count, hero, featured grid
+- Home: 3D lookbook hero (Three.js — products hang like fabric on a ring you drag to spin, tap to open), category tiles, featured grid with colour swatches
 - Collection: product grid, sort by price, collection filters
-- Product: image gallery, variant selector (updates price + image), add to cart
+- Product: tilting photo with light sweep, variant selector (updates price + image), add-to-cart fly animation
 - Cart drawer: change quantity, remove, subtotal, Shopify checkout
 
 Falls back to bundled sample data if the Storefront API is unreachable (add `?sample=1` to force it).
