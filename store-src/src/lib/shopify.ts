@@ -11,8 +11,9 @@ export type Variant = {
   id: string; title: string; availableForSale: boolean; price: Money; image?: Img | null;
   selectedOptions: { name: string; value: string }[];
 };
-export type ProductCard = { id: string; handle: string; title: string; featuredImage?: Img | null; priceRange: { minVariantPrice: Money } };
-export type Product = ProductCard & { description: string; images: { nodes: Img[] }; variants: { nodes: Variant[] } };
+export type ProductCard = { id: string; handle: string; title: string; featuredImage?: Img | null; priceRange: { minVariantPrice: Money };
+  images?: { nodes: Img[] }; variants?: { nodes: Pick<Variant, 'selectedOptions' | 'image'>[] } };
+export type Product = Omit<ProductCard, 'variants' | 'images'> & { description: string; images: { nodes: Img[] }; variants: { nodes: Variant[] } };
 export type Collection = { id: string; handle: string; title: string };
 
 export let usingSampleData = false;
@@ -31,7 +32,8 @@ export async function gql<T>(query: string, variables: Record<string, unknown> =
   return json.data as T;
 }
 
-const CARD = `id handle title featuredImage { url altText width height } priceRange { minVariantPrice { amount currencyCode } }`;
+const CARD = `id handle title featuredImage { url altText width height } priceRange { minVariantPrice { amount currencyCode } }
+  images(first:2){ nodes { url altText width height } } variants(first:30){ nodes { selectedOptions { name value } image { url altText width height } } }`;
 
 export async function getProducts(first = 24): Promise<ProductCard[]> {
   try {
@@ -61,7 +63,7 @@ export async function getCollection(handle: string): Promise<{ title: string; pr
 
 export async function getProduct(handle: string): Promise<Product | null> {
   try {
-    const d = await gql<{ product: Product | null }>(`query($h:String!){ product(handle:$h){ ${CARD} description
+    const d = await gql<{ product: Product | null }>(`query($h:String!){ product(handle:$h){ id handle title featuredImage { url altText width height } priceRange { minVariantPrice { amount currencyCode } } description
       images(first:10){ nodes { url altText width height } }
       variants(first:50){ nodes { id title availableForSale price { amount currencyCode } image { url altText width height } selectedOptions { name value } } } } }`, { h: handle });
     return d.product;

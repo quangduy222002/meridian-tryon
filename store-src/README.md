@@ -1,4 +1,4 @@
-# North & Co. — headless Shopify storefront
+# Halde — headless Shopify storefront
 
 React + Shopify Hydrogen React + Storefront API (mock.shop demo data).
 

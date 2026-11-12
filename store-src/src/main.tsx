@@ -18,8 +18,9 @@ function Footer() {
   return (
     <footer className="footer">
       <div className="wrap foot">
-        <span>North &amp; Co. is a fictional brand — a headless Shopify storefront demo.</span>
-        <span className="muted">React · Shopify Hydrogen React · Storefront API {sample ? '(sample data)' : '(mock.shop)'}</span>
+        <span className="logo small-logo">HALDE</span>
+        <span>A fictional brand. Headless Shopify storefront built with React, Hydrogen React and the Storefront API.</span>
+        <span className="muted">Data: {sample ? 'bundled sample catalogue' : 'mock.shop (live Storefront API)'}</span>
       </div>
     </footer>
   );

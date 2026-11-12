@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getCollection, getCollections, getProducts, type Collection as C, type ProductCard } from '../lib/shopify';
-import { ProductGrid } from '../ui';
+import { GridSkeleton, ProductGrid } from '../ui';
 
 const price = (p: ProductCard) => parseFloat(p.priceRange.minVariantPrice.amount);
 
@@ -26,14 +26,14 @@ export default function Collection() {
     return list;
   }, [data, sort]);
 
-  if (data === null) return <main className="wrap page"><h1>Collection not found</h1><Link to="/collections/all" className="btn">Shop all</Link></main>;
+  if (data === null) return <main className="wrap page"><h1 className="page-title">We couldn't find that collection</h1><Link to="/collections/all" className="btn">Shop all</Link></main>;
 
   return (
     <main className="wrap page">
       <div className="coll-head">
-        <div><span className="eyebrow">Collection</span><h1>{data?.title ?? ' '}</h1></div>
+        <div><h1 className="page-title">{data?.title ?? ' '}</h1>{data && <p className="muted small">{sorted.length} products</p>}</div>
         <label className="sort">
-          <span className="muted small">Sort by</span>
+          <span className="small">Sort by</span>
           <select value={sort} onChange={e => setParams(e.target.value === 'featured' ? {} : { sort: e.target.value })}>
             <option value="featured">Featured</option>
             <option value="price-asc">Price: low to high</option>
@@ -45,8 +45,7 @@ export default function Collection() {
         <Link to="/collections/all" className={'chip' + (handle === 'all' ? ' on' : '')}>All</Link>
         {collections.slice(0, 8).map(c => <Link key={c.id} to={`/collections/${c.handle}`} className={'chip' + (c.handle === handle ? ' on' : '')}>{c.title}</Link>)}
       </div>
-      {data ? <><p className="muted small count">{sorted.length} products</p><ProductGrid products={sorted} /></>
-        : <div className="grid">{Array.from({ length: 8 }, (_, i) => <div key={i} className="card skeleton" />)}</div>}
+      {data ? <ProductGrid products={sorted} /> : <GridSkeleton />}
     </main>
   );
 }

@@ -1,38 +1,63 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCollections, getProducts, type Collection, type ProductCard } from '../lib/shopify';
-import { Pic, ProductGrid } from '../ui';
+import { getCollection, getCollections, getProducts, type Collection, type ProductCard } from '../lib/shopify';
+import { GridSkeleton, Pic, ProductGrid } from '../ui';
+
+type Tile = Collection & { cover?: ProductCard };
 
 export default function Home() {
   const [products, setProducts] = useState<ProductCard[] | null>(null);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  useEffect(() => { getProducts(8).then(setProducts); getCollections().then(setCollections); }, []);
+  const [tiles, setTiles] = useState<Tile[]>([]);
+  useEffect(() => {
+    getProducts(8).then(setProducts);
+    getCollections().then(async cs => {
+      const picked = cs.filter(c => !/^(all|frontpage|home)/i.test(c.handle)).slice(0, 3);
+      const withCovers = await Promise.all(picked.map(async c => ({ ...c, cover: (await getCollection(c.handle))?.products[0] })));
+      setTiles(withCovers);
+    });
+  }, []);
   const hero = products?.[0];
 
   return (
     <main>
       <section className="hero">
-        <div className="hero-copy">
-          <span className="eyebrow">Autumn / Winter</span>
-          <h1>Made to be <em>worn in.</em></h1>
-          <p>Heavyweight basics in honest fabrics — built for every day, not one season.</p>
-          <div className="hero-cta">
-            <Link to="/collections/all" className="btn">Shop the collection</Link>
-            {hero && <Link to={`/products/${hero.handle}`} className="btn ghost">View {hero.title}</Link>}
+        <div className="hero-inner">
+          <h1 className="hero-type">Layers for cold mornings</h1>
+          <div className="hero-foot">
+            <p>Heavyweight basics cut for walking, working and waiting for the kettle. Small runs, honest fabric, built to last more than one winter.</p>
+            <Link to="/collections/all" className="btn light">Shop the collection</Link>
           </div>
         </div>
-        <div className="hero-img">{hero ? <Pic img={hero.featuredImage} sizes="(min-width: 900px) 50vw, 100vw" /> : <div className="pic-empty" />}</div>
+        {hero && (
+          <Link to={`/products/${hero.handle}`} className="hero-product">
+            <Pic img={hero.featuredImage} sizes="(min-width: 900px) 34vw, 70vw" />
+            <span className="hero-tag"><b>{hero.title}</b><span>View product</span></span>
+          </Link>
+        )}
       </section>
 
-      {collections.length > 0 && (
-        <section className="wrap chips-row">
-          {collections.slice(0, 6).map(c => <Link key={c.id} to={`/collections/${c.handle}`} className="chip">{c.title}</Link>)}
+      {tiles.length > 0 && (
+        <section className="wrap cats">
+          {tiles.map(t => (
+            <Link key={t.id} to={`/collections/${t.handle}`} className="cat">
+              <Pic img={t.cover?.featuredImage} sizes="(min-width: 900px) 33vw, 100vw" />
+              <span className="cat-name">{t.title}</span>
+            </Link>
+          ))}
         </section>
       )}
 
       <section className="wrap">
-        <div className="sec-head"><h2>Featured</h2><Link to="/collections/all" className="link">View all →</Link></div>
-        {products ? <ProductGrid products={products} /> : <div className="grid">{Array.from({ length: 8 }, (_, i) => <div key={i} className="card skeleton" />)}</div>}
+        <div className="sec-head"><h2>New this week</h2><Link to="/collections/all" className="text-link">See everything</Link></div>
+        {products ? <ProductGrid products={products} /> : <GridSkeleton />}
+      </section>
+
+      <section className="promise">
+        <div className="wrap promise-row">
+          <div><h3>Free shipping over $100</h3><p>Orders leave our studio within two working days.</p></div>
+          <div><h3>30 days to change your mind</h3><p>Return anything unworn, we cover the label.</p></div>
+          <div><h3>Repairs for life</h3><p>Broken zip or worn cuff? Send it back and we fix it.</p></div>
+        </div>
       </section>
     </main>
   );
