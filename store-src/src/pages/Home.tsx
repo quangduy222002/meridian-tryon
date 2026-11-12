@@ -54,6 +54,14 @@ export default function Home() {
       {storyProduct && <Story product={storyProduct} />}
       {products && products.length >= 3 && <Lookbook products={products} />}
 
+      <section className="teaser">
+        <div className="wrap teaser-in">
+          <h2>Build your own cap</h2>
+          <p>Choose every panel, the brim and the stitching, add your initials in embroidery, and turn it in 3D before you buy.</p>
+          <Link to="/customize" className="btn light">Open the cap studio</Link>
+        </div>
+      </section>
+
       <section className="wrap">
         <div className="sec-head"><h2>New this week</h2><Link to="/collections/all" className="text-link">See everything</Link></div>
         {products ? <ProductGrid products={products} /> : <GridSkeleton />}

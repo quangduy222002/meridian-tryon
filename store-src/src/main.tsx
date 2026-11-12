@@ -8,6 +8,7 @@ import { usingSampleData } from './lib/shopify';
 import Home from './pages/Home';
 import Collection from './pages/Collection';
 import Product from './pages/Product';
+import Customize from './pages/Customize';
 import './styles.css';
 
 function ScrollTop() { const { pathname } = useLocation(); useEffect(() => { window.scrollTo(0, 0); }, [pathname]); return null; }
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/" element={<Home />} />
             <Route path="/collections/:handle" element={<Collection />} />
             <Route path="/products/:handle" element={<Product />} />
+            <Route path="/customize" element={<Customize />} />
             <Route path="*" element={<Home />} />
           </Routes>
           <CartDrawer />

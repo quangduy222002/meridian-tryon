@@ -70,7 +70,7 @@ export function Header() {
         <Link to="/" className="logo" aria-label="Halde home">HALDE</Link>
         <nav className="nav">
           <NavLink to="/collections/all" end>Shop all</NavLink>
-          <NavLink to="/collections/all?sort=price-asc" className="hide-sm">Under $50</NavLink>
+          <NavLink to="/customize">Build a cap</NavLink>
         </nav>
         <button className="cart-btn" onClick={() => setOpen(true)} aria-label={`Open cart, ${count} items`}>
           <span className="hide-sm">Cart</span>
@@ -104,6 +104,7 @@ export function CartDrawer() {
                   <div className="line-info">
                     <div className="line-top"><b>{l.merchandise.product.title}</b><Price m={{ amount: (l.quantity * parseFloat(l.merchandise.price.amount)).toFixed(2), currencyCode: l.merchandise.price.currencyCode }} /></div>
                     {l.merchandise.title !== 'Default Title' && <span className="muted small">{l.merchandise.title}</span>}
+                    {l.attributes?.map(a => <span key={a.key} className="muted small attr">{a.key}: {a.value}</span>)}
                     <div className="line-actions">
                       <div className="qty">
                         <button onClick={() => setQty(l.id, l.quantity - 1)} disabled={busy} aria-label="Decrease quantity">−</button>
@@ -133,10 +134,12 @@ export function CartDrawer() {
 // Add-to-cart flourish: a copy of the product photo arcs into the cart counter, which then pops.
 export function flyToCart(from: HTMLElement | null) {
   const to = document.querySelector('.cart-count') as HTMLElement | null;
-  const img = from?.querySelector('img') as HTMLImageElement | null;
-  if (!from || !to || !img || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-  const ghost = img.cloneNode() as HTMLImageElement;
+  const src = from?.querySelector('img, canvas') as HTMLImageElement | HTMLCanvasElement | null;
+  if (!from || !to || !src || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const a = (src instanceof HTMLCanvasElement ? src : from).getBoundingClientRect(), b = to.getBoundingClientRect();
+  let ghost: HTMLImageElement;
+  if (src instanceof HTMLCanvasElement) { ghost = document.createElement('img'); try { ghost.src = src.toDataURL('image/png'); } catch { return; } }
+  else ghost = src.cloneNode() as HTMLImageElement;
   Object.assign(ghost.style, { position: 'fixed', left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`, objectFit: 'cover', borderRadius: '6px', zIndex: '60', pointerEvents: 'none', boxShadow: '0 20px 50px rgba(10,25,20,.25)' });
   document.body.appendChild(ghost);
   const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);

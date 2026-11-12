@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { cartAdd, cartCreate, cartGet, cartRemove, cartUpdate, type Cart, type CartLine, type Variant } from './lib/shopify';
+import { cartAdd, cartCreate, cartGet, cartRemove, cartUpdate, type Attr, type Cart, type CartLine, type Money, type Variant } from './lib/shopify';
 
 type Ctx = {
   cart: Cart; count: number; subtotal: number; currency: string; busy: boolean;
   open: boolean; setOpen: (v: boolean) => void;
-  add: (v: Variant, product: { title: string; handle: string }, qty: number) => Promise<void>;
+  add: (v: Variant, product: { title: string; handle: string }, qty: number, opts?: { attributes?: Attr[]; price?: Money }) => Promise<void>;
   setQty: (lineId: string, qty: number) => Promise<void>;
   remove: (lineId: string) => Promise<void>;
   checkoutUrl: string | null;
@@ -23,20 +23,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const update = (c: Cart) => { setCart(c); save(c); };
 
   // Refresh a saved remote cart on load (it may have expired)
-  useEffect(() => { if (cart.id) cartGet(cart.id).then(c => c ? update(c) : update({ id: null, checkoutUrl: null, lines: [] })).catch(() => {}); }, []); // eslint-disable-line
+  useEffect(() => {
+    const locals = cart.lines.filter(l => l.id.startsWith('local-'));
+    if (cart.id) cartGet(cart.id).then(c => update(c ? { ...c, lines: [...c.lines, ...locals] } : { id: null, checkoutUrl: null, lines: locals })).catch(() => {});
+  }, []); // eslint-disable-line
 
   const local = cart.id === null; // no remote cart (API unreachable) → manage lines locally
 
-  const add = useCallback<Ctx['add']>(async (v, product, qty) => {
+  const add = useCallback<Ctx['add']>(async (v, product, qty, opts = {}) => {
     setBusy(true);
+    const attrs = opts.attributes ?? [];
     try {
-      update(cart.id ? await cartAdd(cart.id, v.id, qty) : await cartCreate(v.id, qty));
+      // a custom price (configured product) can't be set from the storefront, so keep that line local
+      if (opts.price) throw new Error('custom price');
+      update(cart.id ? await cartAdd(cart.id, v.id, qty, attrs) : await cartCreate(v.id, qty, attrs));
     } catch {
       const lines = [...cart.lines];
-      const hit = lines.find(l => l.merchandise.id === v.id);
+      const key = v.id + JSON.stringify(attrs);
+      const hit = lines.find(l => l.merchandise.id + JSON.stringify(l.attributes ?? []) === key);
       if (hit) hit.quantity += qty;
-      else lines.push({ id: 'local-' + v.id, quantity: qty, merchandise: { id: v.id, title: v.title, price: v.price, image: v.image, product } } as CartLine);
-      update({ id: null, checkoutUrl: null, lines });
+      else lines.push({ id: 'local-' + key + Date.now(), quantity: qty, attributes: attrs, merchandise: { id: v.id, title: v.title, price: opts.price ?? v.price, image: v.image, product } } as CartLine);
+      update({ ...cart, lines });
     }
     setBusy(false); setTimeout(() => setOpen(true), 820); // let the fly-to-cart animation land first
   }, [cart]);
@@ -44,14 +51,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setQty = useCallback<Ctx['setQty']>(async (lineId, qty) => {
     if (qty < 1) return remove(lineId);
     setBusy(true);
-    try { if (local) throw 0; update(await cartUpdate(cart.id!, lineId, qty)); }
+    try { if (local || lineId.startsWith('local-')) throw 0; update(await cartUpdate(cart.id!, lineId, qty)); }
     catch { update({ ...cart, lines: cart.lines.map(l => l.id === lineId ? { ...l, quantity: qty } : l) }); }
     setBusy(false);
   }, [cart, local]); // eslint-disable-line
 
   const remove = useCallback<Ctx['remove']>(async (lineId) => {
     setBusy(true);
-    try { if (local) throw 0; update(await cartRemove(cart.id!, lineId)); }
+    try { if (local || lineId.startsWith('local-')) throw 0; update(await cartRemove(cart.id!, lineId)); }
     catch { update({ ...cart, lines: cart.lines.filter(l => l.id !== lineId) }); }
     setBusy(false);
   }, [cart, local]);

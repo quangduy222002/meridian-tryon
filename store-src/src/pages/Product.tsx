@@ -97,6 +97,7 @@ export default function Product() {
           <button className="btn full" disabled={!variant?.availableForSale || busy}
             onClick={() => { if (!variant) return; flyToCart(mainRef.current); add(variant, { title: product.title, handle: product.handle }, qty); }}>{label}</button>
         </div>
+        {/cap/i.test(product.handle) && <Link to="/customize" className="custom-cta"><b>Make it yours</b><span>Pick every panel colour and add embroidery in 3D</span></Link>}
         <p className="ship-note small">Free shipping over ${FREE_SHIPPING}. Ships in 2 working days.</p>
 
         <div className="acc">

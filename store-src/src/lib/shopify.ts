@@ -71,19 +71,20 @@ export async function getProduct(handle: string): Promise<Product | null> {
 }
 
 /* ---------------- Cart (Storefront API cart, with a local fallback) ---------------- */
-export type CartLine = { id: string; quantity: number; merchandise: { id: string; title: string; price: Money; image?: Img | null; product: { title: string; handle: string } } };
+export type Attr = { key: string; value: string };
+export type CartLine = { id: string; quantity: number; attributes?: Attr[]; merchandise: { id: string; title: string; price: Money; image?: Img | null; product: { title: string; handle: string } } };
 export type Cart = { id: string | null; checkoutUrl: string | null; lines: CartLine[] };
 
-const CART = `id checkoutUrl lines(first:50){ nodes { id quantity merchandise { ... on ProductVariant { id title price { amount currencyCode } image { url altText width height } product { title handle } } } } }`;
+const CART = `id checkoutUrl lines(first:50){ nodes { id quantity attributes { key value } merchandise { ... on ProductVariant { id title price { amount currencyCode } image { url altText width height } product { title handle } } } } }`;
 type CartRes = { id: string; checkoutUrl: string; lines: { nodes: CartLine[] } };
 const norm = (c: CartRes): Cart => ({ id: c.id, checkoutUrl: c.checkoutUrl, lines: c.lines.nodes });
 
-export async function cartCreate(merchandiseId: string, quantity: number): Promise<Cart> {
-  const d = await gql<{ cartCreate: { cart: CartRes } }>(`mutation($l:[CartLineInput!]){ cartCreate(input:{ lines:$l }){ cart { ${CART} } } }`, { l: [{ merchandiseId, quantity }] });
+export async function cartCreate(merchandiseId: string, quantity: number, attributes: Attr[] = []): Promise<Cart> {
+  const d = await gql<{ cartCreate: { cart: CartRes } }>(`mutation($l:[CartLineInput!]){ cartCreate(input:{ lines:$l }){ cart { ${CART} } } }`, { l: [{ merchandiseId, quantity, attributes }] });
   return norm(d.cartCreate.cart);
 }
-export async function cartAdd(cartId: string, merchandiseId: string, quantity: number): Promise<Cart> {
-  const d = await gql<{ cartLinesAdd: { cart: CartRes } }>(`mutation($c:ID!,$l:[CartLineInput!]!){ cartLinesAdd(cartId:$c, lines:$l){ cart { ${CART} } } }`, { c: cartId, l: [{ merchandiseId, quantity }] });
+export async function cartAdd(cartId: string, merchandiseId: string, quantity: number, attributes: Attr[] = []): Promise<Cart> {
+  const d = await gql<{ cartLinesAdd: { cart: CartRes } }>(`mutation($c:ID!,$l:[CartLineInput!]!){ cartLinesAdd(cartId:$c, lines:$l){ cart { ${CART} } } }`, { c: cartId, l: [{ merchandiseId, quantity, attributes }] });
   return norm(d.cartLinesAdd.cart);
 }
 export async function cartUpdate(cartId: string, lineId: string, quantity: number): Promise<Cart> {
