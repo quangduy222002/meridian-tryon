@@ -29,6 +29,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: none; backgroun
 .btn.gold { background: #d6aa62; color: #111; }
 .btn.line { border: 1.5px solid rgba(242,239,233,.3); }
 .tips { font-size: 12px; color: #8d877d; }
+.flip { position: absolute; right: 18px; bottom: 18px; z-index: 6; min-height: 44px; padding: 0 16px; border-radius: 999px; background: rgba(20,20,23,.8); border: 1px solid rgba(242,239,233,.25); font-size: 14px; font-weight: 600; display: none; }
 .hint { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #b9b3a8; background: rgba(20,20,23,.7); padding: 8px 14px; border-radius: 999px; white-space: nowrap; z-index: 5; }
 input[type=file] { display: none; }
 
@@ -80,6 +81,7 @@ footer { position: sticky; bottom: 0; margin-top: auto; background: #141417; bor
       <div class="tips">Tip: good light, plain background, whole hand in frame.</div>
       <input type="file" id="fileIn" accept="image/*" />
     </div>
+    <button class="flip" id="flipBtn">⇄ Flip camera</button>
     <div class="hint" id="hint" style="display:none">Drag to move · Use the sliders to fine-tune</div>
   </div>
 
@@ -252,6 +254,8 @@ let fit = { x: 0, y: 0, s: 1, w: 1, h: 1 };
 const base = { x: 0, y: 0, r: 0, size: 100 };   // where tracking (or the default) puts the watch, in stage pixels
 const adj = { dx: 0, dy: 0, dr: 0, ds: 1 };       // the user's fine-tuning on top
 let lastSeen = 0;
+let facing = 'environment';   // rear camera by default: easier to aim at your own wrist
+let mirror = false;
 
 function srcSize(s) { return s instanceof HTMLVideoElement ? [s.videoWidth, s.videoHeight] : [s.naturalWidth, s.naturalHeight]; }
 function layout() {
@@ -271,7 +275,7 @@ function drawSource() {
   pctx.clearRect(0, 0, stage.clientWidth, stage.clientHeight);
   if (!source) return;
   pctx.save();
-  if (source instanceof HTMLVideoElement) { pctx.translate(fit.x * 2 + fit.w, 0); pctx.scale(-1, 1); } // mirror selfie view
+  if (source instanceof HTMLVideoElement && mirror) { pctx.translate(fit.x * 2 + fit.w, 0); pctx.scale(-1, 1); } // mirror the selfie view only
   pctx.drawImage(source, fit.x, fit.y, fit.w, fit.h);
   pctx.restore();
 }
@@ -295,7 +299,6 @@ async function initHands() {
 function onResults(res) {
   const lm = res.multiHandLandmarks?.[0];
   if (!lm) { if (!(source instanceof HTMLVideoElement)) { setStatus('No hand found: place the watch by dragging'); placeManual(); } return; }
-  const mirror = source instanceof HTMLVideoElement;
   const P = (i) => ({ x: fit.x + (mirror ? 1 - lm[i].x : lm[i].x) * fit.w, y: fit.y + lm[i].y * fit.h });
   const wrist = P(0), mid = P(9), idx = P(5), pinky = P(17);
   const fx = mid.x - wrist.x, fy = mid.y - wrist.y, flen = Math.hypot(fx, fy) || 1;
@@ -345,7 +348,7 @@ overlay.addEventListener('pointermove', (e) => { if (drag) { adj.dx = e.clientX 
 overlay.addEventListener('pointerup', () => { drag = null; });
 overlay.addEventListener('wheel', (e) => { e.preventDefault(); adj.ds *= e.deltaY < 0 ? 1.05 : 0.95; $('sizeIn').value = Math.round(adj.ds * 100); }, { passive: false });
 
-function stopCamera() { if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; } }
+function stopCamera() { if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; } $('flipBtn').style.display = 'none'; mirror = false; }
 $('fileIn').addEventListener('change', (e) => {
   const f = e.target.files?.[0]; if (!f) return;
   stopCamera();
@@ -358,10 +361,22 @@ $('fileIn').addEventListener('change', (e) => {
   img.src = URL.createObjectURL(f);
   e.target.value = '';
 });
+async function startCamera() {
+  stopCamera();
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+  video.srcObject = stream; await video.play();
+  const actual = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+  mirror = (actual || facing) === 'user';
+  $('flipBtn').style.display = 'inline-flex'; $('flipBtn').style.alignItems = 'center';
+}
+$('flipBtn').addEventListener('click', async () => {
+  facing = facing === 'user' ? 'environment' : 'user';
+  try { watch.visible = false; await startCamera(); layout(); }
+  catch (e) { toast('Could not switch camera on this device'); facing = facing === 'user' ? 'environment' : 'user'; try { await startCamera(); } catch {} }
+});
 $('camBtn').addEventListener('click', async () => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 } });
-    video.srcObject = stream; await video.play();
+    await startCamera();
     source = video; watch.visible = false; resetAdj(); $('empty').style.display = 'none'; $('hint').style.display = '';
     layout(); setStatus('Show the back of your hand to the camera', true);
   } catch (e) {
