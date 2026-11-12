@@ -193,7 +193,7 @@ const disc = (r, h, seg = 96) => new THREE.CylinderGeometry(r, r, h, seg).rotate
 const shadowCv = document.createElement('canvas'); shadowCv.width = shadowCv.height = 256;
 { const c = shadowCv.getContext('2d'); const g = c.createRadialGradient(128, 128, 10, 128, 128, 128); g.addColorStop(0, 'rgba(0,0,0,.32)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, 256, 256); }
 const shadow = add(new THREE.PlaneGeometry(2.6, 4.4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCv), transparent: true, depthWrite: false }));
-shadow.position.set(0.12, -0.18, -0.6);
+shadow.position.set(0.1, -0.12, -0.2);
 
 add(disc(1, 0.34), caseMat);
 add(new THREE.TorusGeometry(1, 0.05, 20, 96), caseMat).position.z = 0.16;
@@ -222,17 +222,25 @@ const mkHand = (w, len, z, mat) => { const p = new THREE.Group(); p.position.z =
 const hourH = mkHand(0.06, 0.52, 0, indexMat), minH = mkHand(0.042, 0.78, 0.015, indexMat), secH = mkHand(0.014, 0.92, 0.03, accentMat);
 add(disc(0.045, 0.05, 32), accentMat, handsG).position.z = 0.03;
 add(disc(0.9, 0.03), glassMat).position.z = 0.275;
-// Strap: wraps around the wrist (curves away from the camera)
-for (const sy of [1, -1]) {
-  let y = sy * 1.0, z = -0.05;
-  for (const [len, ang] of [[0.75, 0.45], [0.8, 1.15], [0.6, 1.7]]) {
-    const m = add(new RoundedBoxGeometry(0.9, len, 0.09, 3, 0.04), strapMat);
-    m.rotation.x = -sy * ang;
-    m.position.set(0, y + sy * (len / 2) * Math.cos(ang), z - (len / 2) * Math.sin(ang));
-    y += sy * len * Math.cos(ang); z -= len * Math.sin(ang);
+// The wrist is modelled as a cylinder along the forearm (local x) under the case back.
+// The strap is built as short segments hugging that cylinder, and an invisible
+// depth-only copy of the cylinder hides whatever part of the strap goes behind the wrist.
+const WRIST_R = 1.36, CASE_BACK = 0.17;
+const wristZ = -(WRIST_R + CASE_BACK);
+const occluder = add(new THREE.CylinderGeometry(WRIST_R, WRIST_R, 9, 48).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ colorWrite: false }));
+occluder.position.z = wristZ; occluder.renderOrder = -1;
+{
+  const Rr = WRIST_R + 0.05, t0 = Math.asin(1.0 / Rr), steps = 9, t1 = Math.PI * 0.97, dt = (t1 - t0) / steps;
+  for (const sy of [1, -1]) {
+    for (let i = 0; i < steps; i++) {
+      const a = t0 + dt * i, b = a + dt, m = (a + b) / 2;
+      const len = 2 * Rr * Math.sin(dt / 2) + 0.02;
+      const seg = add(new RoundedBoxGeometry(0.9, len, 0.09, 2, 0.04), strapMat);
+      seg.position.set(0, sy * Rr * Math.sin(m), wristZ + Rr * Math.cos(m));
+      seg.rotation.x = -sy * m;
+    }
   }
 }
-model.rotation.x = 0.12; // a touch of perspective
 
 function applyStyle() {
   caseMat.color.set(CASES[state.case].color); caseMat.metalness = CASES[state.case].metal; caseMat.roughness = CASES[state.case].rough;
@@ -251,7 +259,7 @@ function applyStyle() {
 /* ---------------- Source image layout ---------------- */
 let source = null;          // HTMLImageElement or HTMLVideoElement
 let fit = { x: 0, y: 0, s: 1, w: 1, h: 1 };
-const base = { x: 0, y: 0, r: 0, size: 100 };   // where tracking (or the default) puts the watch, in stage pixels
+const base = { x: 0, y: 0, r: 0, size: 100, roll: 0, pitch: 0 };   // where tracking (or the default) puts the watch, in stage pixels
 const adj = { dx: 0, dy: 0, dr: 0, ds: 1 };       // the user's fine-tuning on top
 let lastSeen = 0;
 let facing = 'environment';   // rear camera by default: easier to aim at your own wrist
@@ -301,14 +309,23 @@ function onResults(res) {
   if (!lm) { if (!(source instanceof HTMLVideoElement)) { setStatus('No hand found: place the watch by dragging'); placeManual(); } return; }
   const P = (i) => ({ x: fit.x + (mirror ? 1 - lm[i].x : lm[i].x) * fit.w, y: fit.y + lm[i].y * fit.h });
   const wrist = P(0), mid = P(9), idx = P(5), pinky = P(17);
+  const Z = (i) => lm[i].z * fit.w;          // MediaPipe depth, roughly in the same scale as x; smaller = closer
   const fx = mid.x - wrist.x, fy = mid.y - wrist.y, flen = Math.hypot(fx, fy) || 1;
-  const handWidth = Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
-  // Sit the watch a little up the forearm from the wrist joint
+  // 12 o'clock axis on screen (90° from the finger direction), in screen coords (y down)
+  const ux = fy / flen, uy = -fx / flen;
+  const wx = idx.x - pinky.x, wy = idx.y - pinky.y, w2d = Math.hypot(wx, wy);
+  const idxOnTop = (wx * ux + wy * uy) > 0;  // is the index knuckle on the 12 o'clock side?
+  const dz = Z(17) - Z(5);                   // > 0 when the index side is closer to the camera
+  const handWidth = Math.hypot(w2d, dz);      // true knuckle width, even when the wrist is turned
+  const roll = Math.atan2(idxOnTop ? dz : -dz, w2d);           // wrist turning (pronation / supination)
+  const pitch = -Math.atan2(Z(0) - Z(9), flen);                // hand tilting toward / away from camera
   const target = {
-    x: wrist.x - fx * 0.28,
-    y: wrist.y - fy * 0.28,
-    r: Math.atan2(-fy, fx),                 // crown (3 o'clock) points toward the fingers
-    size: handWidth * 0.78,
+    x: wrist.x - fx * 0.16,                  // just up the forearm from the wrist crease
+    y: wrist.y - fy * 0.16,
+    r: Math.atan2(-fy, fx),                  // crown (3 o'clock) points toward the fingers
+    size: handWidth * 0.56,
+    roll: Math.max(-1.3, Math.min(1.3, roll)),
+    pitch: Math.max(-0.8, Math.min(0.8, pitch)),
   };
   const live = source instanceof HTMLVideoElement;
   if (live && watch.visible) {
@@ -316,6 +333,7 @@ function onResults(res) {
     const k = 0.45;
     base.x += (target.x - base.x) * k; base.y += (target.y - base.y) * k; base.size += (target.size - base.size) * k;
     let dr = target.r - base.r; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); base.r += dr * k;
+    base.roll += (target.roll - base.roll) * k; base.pitch += (target.pitch - base.pitch) * k;
   } else {
     Object.assign(base, target);
     if (!live) resetAdj();
@@ -325,7 +343,7 @@ function onResults(res) {
   setStatus(live ? 'Tracking your wrist' : 'Wrist found', true);
 }
 function placeManual() {
-  Object.assign(base, { x: fit.x + fit.w / 2, y: fit.y + fit.h / 2, r: 0, size: Math.min(fit.w, fit.h) * 0.22 });
+  Object.assign(base, { x: fit.x + fit.w / 2, y: fit.y + fit.h / 2, r: 0, size: Math.min(fit.w, fit.h) * 0.22, roll: 0, pitch: 0 });
   resetAdj(); watch.visible = true;
 }
 async function detect() {
@@ -412,6 +430,8 @@ function toast(msg) {
 }
 
 /* ---------------- Loop ---------------- */
+const qZ = new THREE.Quaternion(), qX = new THREE.Quaternion(), qY = new THREE.Quaternion();
+const AX_X = new THREE.Vector3(1, 0, 0), AX_Y = new THREE.Vector3(0, 1, 0), AX_Z = new THREE.Vector3(0, 0, 1);
 function frame() {
   if (source instanceof HTMLVideoElement && video.readyState >= 2) {
     drawSource();
@@ -422,7 +442,9 @@ function frame() {
   secH.rotation.z = -(sec / 60) * Math.PI * 2; minH.rotation.z = -(min / 60) * Math.PI * 2; hourH.rotation.z = -(hr / 12) * Math.PI * 2;
   if (source instanceof HTMLVideoElement && watch.visible && performance.now() - lastSeen > 600) { watch.visible = false; setStatus('Show the back of your hand to the camera'); }
   watch.position.set(base.x + adj.dx, -(base.y + adj.dy), 0);
-  watch.rotation.z = base.r + adj.dr;
+  // In-plane angle first, then turn about the forearm (roll) and tilt the hand (pitch)
+  qZ.setFromAxisAngle(AX_Z, base.r + adj.dr); qX.setFromAxisAngle(AX_X, base.roll); qY.setFromAxisAngle(AX_Y, base.pitch);
+  watch.quaternion.copy(qZ).multiply(qX).multiply(qY);
   const s = base.size * adj.ds / 2; watch.scale.set(s, s, s);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
