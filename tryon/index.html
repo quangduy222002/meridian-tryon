@@ -226,7 +226,7 @@ add(disc(0.9, 0.03), glassMat).position.z = 0.275;
 // The strap is ONE continuous leather band bent around that cylinder (from one lug, round the back, to the other).
 // An invisible depth-only copy of the cylinder hides the part of the strap behind the wrist, and any band surface
 // turning away from the camera is dropped in the shader, so the strap disappears exactly at the wrist's edge.
-const WRIST_R = 1.18, CASE_BACK = 0.17;   // wrist ≈ 2.3× the case width, like a real 40 mm watch
+const WRIST_R = 1.45, CASE_BACK = 0.17;   // wrist ≈ 1.45× the case width — measured on real wrist photos
 const wristZ = -(WRIST_R + CASE_BACK);
 const occluder = add(new THREE.CylinderGeometry(WRIST_R, WRIST_R, 9, 64).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ colorWrite: false }));
 occluder.position.z = wristZ; occluder.renderOrder = -1;
@@ -267,8 +267,10 @@ const strapLen = Rr * (Math.PI * 2 - 2 * t0);
 const leatherMap = leatherTextures(); leatherMap.repeat.set(1, strapLen / 1.6);
 strapMat.map = leatherMap; strapMat.bumpMap = leatherMap; strapMat.bumpScale = 0.6; cullBackFacing(strapMat);
 const strap = add(bendAroundWrist(new THREE.BoxGeometry(STRAP_W, strapLen, STRAP_T, 6, 160, 1), Rr, t0), strapMat);
-// Keeper loop + buckle sitting under the wrist (mostly hidden, shows when the wrist turns)
-const keeper = add(bendAroundWrist(new THREE.BoxGeometry(STRAP_W + 0.06, 0.12, STRAP_T + 0.04, 2, 4, 1), Rr + 0.02, Math.PI * 0.82), strapMat);
+// Keeper loop + metal buckle under the wrist — what you see when the palm faces the camera
+const keeper = add(bendAroundWrist(new THREE.BoxGeometry(STRAP_W + 0.06, 0.16, STRAP_T + 0.04, 2, 4, 1), Rr + 0.02, Math.PI - 0.5 / Rr), strapMat);
+const buckle = add(bendAroundWrist(new THREE.BoxGeometry(STRAP_W + 0.1, 0.07, 0.06, 2, 4, 1), Rr + 0.06, Math.PI + 0.12 / Rr), caseMat);
+for (const sx of [-1, 1]) add(bendAroundWrist(new THREE.BoxGeometry(0.07, 0.42, 0.06, 1, 8, 1), Rr + 0.06, Math.PI + 0.12 / Rr), caseMat).position.x = sx * (STRAP_W / 2 + 0.03);
 // Soft contact shadow where the strap presses on the skin
 const contactMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
@@ -346,6 +348,11 @@ function onResults(res) {
   const P = (i) => ({ x: fit.x + (mirror ? 1 - lm[i].x : lm[i].x) * fit.w, y: fit.y + lm[i].y * fit.h });
   const wrist = P(0), mid = P(9), idx = P(5), pinky = P(17);
   const Z = (i) => lm[i].z * fit.w;          // MediaPipe depth, roughly in the same scale as x; smaller = closer
+  // Palm or back of hand? Winding of wrist→index→pinky in the raw image, read against MediaPipe's handedness
+  // (MediaPipe labels assume a mirrored selfie, so a real left hand comes back as "Right").
+  const cross = (lm[5].x - lm[0].x) * (lm[17].y - lm[0].y) - (lm[5].y - lm[0].y) * (lm[17].x - lm[0].x);
+  const label = res.multiHandedness?.[0]?.label || 'Right';
+  const palmUp = label === "Right" ? cross > 0 : cross < 0;
   const fx = mid.x - wrist.x, fy = mid.y - wrist.y, flen = Math.hypot(fx, fy) || 1;
   // 12 o'clock axis on screen (90° from the finger direction), in screen coords (y down)
   const ux = fy / flen, uy = -fx / flen;
@@ -356,11 +363,12 @@ function onResults(res) {
   const roll = Math.atan2(idxOnTop ? dz : -dz, w2d);           // wrist turning (pronation / supination)
   const pitch = -Math.atan2(Z(0) - Z(9), flen);                // hand tilting toward / away from camera
   const target = {
-    x: wrist.x - fx * 0.16,                  // just up the forearm from the wrist crease
-    y: wrist.y - fy * 0.16,
+    x: wrist.x - fx * 0.3,                   // a finger's width up the forearm from the wrist joint, where a watch sits
+    y: wrist.y - fy * 0.3,
     r: Math.atan2(-fy, fx),                  // crown (3 o'clock) points toward the fingers
-    size: handWidth * 0.56,
-    roll: Math.max(-1.2, Math.min(1.2, roll * 0.85)),   // MediaPipe depth is noisy: damp it a little
+    size: handWidth * 0.62,
+    // palm toward the camera → the wrist is turned ~180°, so the case goes underneath and the buckle shows
+    roll: palmUp ? Math.PI - Math.max(-1.2, Math.min(1.2, roll * 0.85)) : Math.max(-1.2, Math.min(1.2, roll * 0.85)),
     pitch: Math.max(-0.8, Math.min(0.8, pitch)),
   };
   const live = source instanceof HTMLVideoElement;
@@ -369,7 +377,7 @@ function onResults(res) {
     const k = 0.45;
     base.x += (target.x - base.x) * k; base.y += (target.y - base.y) * k; base.size += (target.size - base.size) * k;
     let dr = target.r - base.r; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); base.r += dr * k;
-    base.roll += (target.roll - base.roll) * k; base.pitch += (target.pitch - base.pitch) * k;
+    let dRoll = target.roll - base.roll; dRoll = Math.atan2(Math.sin(dRoll), Math.cos(dRoll)); base.roll += dRoll * k; base.pitch += (target.pitch - base.pitch) * k;
   } else {
     Object.assign(base, target);
     if (!live) resetAdj();
