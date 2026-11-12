@@ -225,10 +225,13 @@ add(disc(0.9, 0.03), glassMat).position.z = 0.275;
 // The wrist is modelled as a cylinder along the forearm (local x) under the case back.
 // The strap is built as short segments hugging that cylinder, and an invisible
 // depth-only copy of the cylinder hides whatever part of the strap goes behind the wrist.
-const WRIST_R = 1.36, CASE_BACK = 0.17;
+const WRIST_R = 1.18, CASE_BACK = 0.17;   // wrist ≈ 2.3× the case width, like a real 40 mm watch
 const wristZ = -(WRIST_R + CASE_BACK);
 const occluder = add(new THREE.CylinderGeometry(WRIST_R, WRIST_R, 9, 48).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ colorWrite: false }));
 occluder.position.z = wristZ; occluder.renderOrder = -1;
+// Rotate around the wrist's own axis (not the watch face), so a turned wrist carries the watch round with it
+model.position.z = -wristZ;
+const strapSegs = [];   // [mesh, outward normal] — segments facing away from the camera get hidden each frame
 {
   const Rr = WRIST_R + 0.05, t0 = Math.asin(1.0 / Rr), steps = 9, t1 = Math.PI * 0.97, dt = (t1 - t0) / steps;
   for (const sy of [1, -1]) {
@@ -238,6 +241,7 @@ occluder.position.z = wristZ; occluder.renderOrder = -1;
       const seg = add(new RoundedBoxGeometry(0.9, len, 0.09, 2, 0.04), strapMat);
       seg.position.set(0, sy * Rr * Math.sin(m), wristZ + Rr * Math.cos(m));
       seg.rotation.x = -sy * m;
+      if (i >= 2) strapSegs.push([seg, new THREE.Vector3(0, sy * Math.sin(m), Math.cos(m))]);   // pieces next to the lugs always stay
     }
   }
 }
@@ -324,7 +328,7 @@ function onResults(res) {
     y: wrist.y - fy * 0.16,
     r: Math.atan2(-fy, fx),                  // crown (3 o'clock) points toward the fingers
     size: handWidth * 0.56,
-    roll: Math.max(-1.3, Math.min(1.3, roll)),
+    roll: Math.max(-1.2, Math.min(1.2, roll * 0.85)),   // MediaPipe depth is noisy: damp it a little
     pitch: Math.max(-0.8, Math.min(0.8, pitch)),
   };
   const live = source instanceof HTMLVideoElement;
@@ -430,6 +434,7 @@ function toast(msg) {
 }
 
 /* ---------------- Loop ---------------- */
+const tmpN = new THREE.Vector3();
 const qZ = new THREE.Quaternion(), qX = new THREE.Quaternion(), qY = new THREE.Quaternion();
 const AX_X = new THREE.Vector3(1, 0, 0), AX_Y = new THREE.Vector3(0, 1, 0), AX_Z = new THREE.Vector3(0, 0, 1);
 function frame() {
@@ -445,6 +450,8 @@ function frame() {
   // In-plane angle first, then turn about the forearm (roll) and tilt the hand (pitch)
   qZ.setFromAxisAngle(AX_Z, base.r + adj.dr); qX.setFromAxisAngle(AX_X, base.roll); qY.setFromAxisAngle(AX_Y, base.pitch);
   watch.quaternion.copy(qZ).multiply(qX).multiply(qY);
+  // Hide strap pieces that wrap round the far side (or sit edge-on) — they'd show as a thin rim
+  for (const [seg, n] of strapSegs) seg.visible = tmpN.copy(n).applyQuaternion(watch.quaternion).z > 0.04;
   const s = base.size * adj.ds / 2; watch.scale.set(s, s, s);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
