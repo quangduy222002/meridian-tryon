@@ -5,308 +5,458 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Duy Q. — 3D & AR experiences for the web</title>
 <meta name="description" content="Duy Q. builds interactive 3D and AR experiences that run in the browser: product configurators, virtual try-on, scroll-driven 3D stories and engineering model viewers." />
+<meta name="theme-color" content="#0b0a09" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://quangduy222002.github.io/meridian-tryon/" />
 <meta property="og:title" content="Duy Q. — 3D & AR experiences for the web" />
 <meta property="og:description" content="Product configurators, AR try-on, 3D product stories and model viewers — built with Three.js, running on any phone." />
-<meta property="og:image" content="assets/watch.jpg" />
+<meta property="og:image" content="https://quangduy222002.github.io/meridian-tryon/assets/watch.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0a09'/%3E%3Cpath d='M32 12 50 22v20L32 52 14 42V22Z' fill='none' stroke='%23e3a95c' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M14 22l18 10 18-10M32 32v20' fill='none' stroke='%23e3a95c' stroke-width='4' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0f0e0c; --bg2: #171512; --line: #2a2622; --text: #f2ede5; --muted: #a39b8f;
-    --amber: #e3a95c; --teal: #66d3c5;
+    --bg: #0b0a09; --bg2: #151310; --line: rgba(255,240,220,.09); --line2: rgba(255,240,220,.16);
+    --text: #f3eee6; --muted: #a59d91; --dim: #6f685f;
+    --amber: #e3a95c; --amber2: #f3c587; --teal: #66d3c5;
     --serif: 'Instrument Serif', Georgia, serif; --sans: 'Inter', system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    --ease: cubic-bezier(.65,0,.35,1); --ease-out: cubic-bezier(.16,1,.3,1);
+    --pad: clamp(18px, 4vw, 56px);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   a { color: inherit; text-decoration: none; }
-  .wrap { width: min(1160px, 100% - 40px); margin: 0 auto; }
+  img { display: block; max-width: 100%; }
+  ::selection { background: var(--amber); color: #1b140b; }
 
-  /* ---------- Nav ---------- */
-  nav { position: fixed; inset: 0 0 auto 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; background: linear-gradient(var(--bg) 30%, transparent); }
-  .logo { font-family: var(--serif); font-size: 24px; letter-spacing: .01em; }
+  /* ================= layers (canvas → page → vignette → grain → cursor) ================= */
+  #void { position: fixed; inset: 0; z-index: 0; background:
+    radial-gradient(60% 55% at 62% 52%, rgba(227,169,92,.10), transparent 70%),
+    radial-gradient(40% 40% at 20% 90%, rgba(102,211,197,.05), transparent 70%), var(--bg); }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; display: block; opacity: 0; transition: opacity 1.4s var(--ease-out); }
+  body.gl-ready #gl { opacity: 1; }
+  #dim { position: fixed; inset: 0; z-index: 2; pointer-events: none; background: var(--bg); opacity: 0; }
+  #vignette { position: fixed; inset: 0; z-index: 55; pointer-events: none; background: radial-gradient(120% 95% at 50% 45%, transparent 45%, rgba(4,3,2,.6) 100%); }
+  #grain { position: fixed; inset: -1px; z-index: 60; pointer-events: none; opacity: .06; mix-blend-mode: overlay; background-size: 160px 160px; }
+  #cursor { position: fixed; left: 0; top: 0; z-index: 80; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 1px solid rgba(243,197,135,.55); pointer-events: none; opacity: 0; transition: opacity .4s, width .35s var(--ease-out), height .35s var(--ease-out), margin .35s var(--ease-out), background .35s, border-color .35s; }
+  #cursor.on { opacity: 1; }
+  #cursor.act { width: 64px; height: 64px; margin: -32px 0 0 -32px; background: rgba(227,169,92,.08); border-color: var(--amber); }
+  @media (hover: none) { #cursor { display: none; } }
+  .page { position: relative; z-index: 10; }
+
+  /* ================= type ================= */
+  .eyebrow { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--teal); display: flex; align-items: center; gap: 10px; }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); animation: pulse 2.4s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .display { font-family: var(--serif); font-weight: 400; letter-spacing: -.012em; line-height: .98; text-wrap: balance; }
+  .display em { color: var(--amber); }
+  .mask-line { display: block; overflow: hidden; padding-bottom: .06em; margin-bottom: -.06em; }
+  .mask-line > span { display: block; transform: translate3d(0,110%,0); transition: transform 1.25s var(--ease-out); }
+  .rv-in .mask-line > span, .mask-line.rv-in > span { transform: none; }
+  .mask-line:nth-child(2) > span { transition-delay: .08s; } .mask-line:nth-child(3) > span { transition-delay: .16s; }
+  [data-rv] { opacity: 0; }
+  [data-rv="up"] { transform: translate3d(0,26px,0); }
+  [data-rv].rv-in { opacity: 1; transform: none; transition: opacity .9s var(--ease-out), transform 1.05s var(--ease-out); }
+
+  /* ================= nav ================= */
+  .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px var(--pad); }
+  .nav::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(11,10,9,.62); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border-bottom: 1px solid var(--line); opacity: 0; transition: opacity .5s; }
+  .nav.stuck::before { opacity: 1; }
+  .logo { font-family: var(--serif); font-size: 24px; letter-spacing: .01em; display: flex; align-items: center; gap: 10px; }
   .logo i { color: var(--amber); }
-  .nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); align-items: center; }
-  .nav-links a:hover { color: var(--text); }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 999px; font-weight: 600; font-size: 14px; transition: transform .2s, background .2s; }
+  .logo svg { width: 22px; height: 22px; }
+  .nav-links { display: flex; gap: 28px; align-items: center; font-size: 14px; color: var(--muted); }
+  .nav-links a:not(.btn) { position: relative; transition: color .3s; }
+  .nav-links a:not(.btn):hover { color: var(--text); }
+
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 22px; border-radius: 999px; font-weight: 600; font-size: 14px; white-space: nowrap; transition: transform .3s var(--ease-out), background .3s, box-shadow .3s, border-color .3s; }
   .btn:hover { transform: translateY(-1px); }
-  .btn-primary { background: var(--amber); color: #1b140b; }
-  .btn-ghost { border: 1px solid var(--line); color: var(--text); }
-  .btn-ghost:hover { background: var(--bg2); }
+  .btn-primary { color: #1b140b; background: linear-gradient(100deg, #c98a3e 0%, #e3a95c 45%, #f6d29c 100%); box-shadow: 0 6px 26px rgba(227,169,92,.28), inset 0 1px 0 rgba(255,255,255,.35); }
+  .btn-primary:hover { box-shadow: 0 10px 34px rgba(227,169,92,.42), inset 0 1px 0 rgba(255,255,255,.35); }
+  .btn-ghost { color: var(--text); background: rgba(255,255,255,.03); border: 1px solid var(--line2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .btn-ghost:hover { background: rgba(255,255,255,.08); }
+  .btn .ring { width: 7px; height: 7px; border-radius: 50%; border: 1.4px solid currentColor; }
+  .btn-sm { height: 38px; padding: 0 16px; font-size: 13px; }
 
-  /* ---------- Hero ---------- */
-  .hero { position: relative; min-height: 100svh; display: grid; grid-template-columns: minmax(320px, 0.85fr) 1.15fr; align-items: center; gap: 0; padding: 90px 0 40px 6vw; overflow: hidden; }
-  .hero-text { position: relative; z-index: 2; max-width: 520px; }
-  .eyebrow { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--teal); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
-  .eyebrow::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 12px var(--teal); }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 6vw, 82px); line-height: 1.0; letter-spacing: -.01em; }
-  h1 em { color: var(--amber); }
-  .ink { position: relative; white-space: nowrap; }
-  .ink svg { position: absolute; left: -2%; bottom: -10px; width: 104%; height: 18px; overflow: visible; }
-  .ink path { fill: none; stroke: var(--teal); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw 1.4s .6s ease forwards; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  .lede { margin: 26px 0 30px; color: var(--muted); font-size: 18px; max-width: 460px; }
-  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .hint { margin-top: 28px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .hint b { color: var(--text); font-weight: 500; }
+  /* ================= hero ================= */
+  .hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: 110px var(--pad) 90px; }
+  .hero-copy { max-width: 660px; }
+  .hero h1 { font-size: clamp(50px, 6.3vw, 96px); margin: 22px 0 26px; }
+  .lede { color: var(--muted); font-size: 18px; max-width: 470px; text-wrap: pretty; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+  .facts { display: flex; gap: 34px; margin-top: 54px; padding-top: 22px; border-top: 1px solid var(--line); max-width: 520px; }
+  .facts b { display: block; font-family: var(--serif); font-weight: 400; font-size: 34px; line-height: 1; color: var(--text); }
+  .facts span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .scroll-cue { position: absolute; left: var(--pad); bottom: 28px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 12px; }
+  .scroll-cue i { width: 1px; height: 34px; background: linear-gradient(var(--amber), transparent); position: relative; overflow: hidden; }
+  .scroll-cue i::after { content: ''; position: absolute; left: 0; top: -40%; width: 1px; height: 40%; background: var(--text); animation: drip 2.2s var(--ease) infinite; }
+  @keyframes drip { to { top: 110%; } }
 
-  .stage { position: relative; height: min(88svh, 820px); min-height: 460px; }
-  .stage canvas { width: 100% !important; height: 100% !important; display: block; opacity: 0; transition: opacity 1s; touch-action: pan-y; }
-  .stage.ready canvas { opacity: 1; }
-  .stage .glow { position: absolute; inset: 10% 5%; background: radial-gradient(closest-side, rgba(227,169,92,.12), transparent 70%); pointer-events: none; }
-  .pin { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); z-index: 3; display: flex; align-items: center; gap: 7px; padding: 6px 11px 6px 7px; border-radius: 999px; background: rgba(15,14,12,.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.1); font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; color: var(--text); font-family: var(--sans); transition: border-color .2s, background .2s, opacity .3s; opacity: 0; }
-  .stage.ready .pin { opacity: 1; }
-  .pin .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); position: relative; }
+  /* 3D pins (hero only) */
+  #pins { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+  .pin { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 7px; padding: 6px 11px 6px 7px; border-radius: 999px; background: rgba(13,12,10,.78); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--line2); font: 500 12px var(--sans); white-space: nowrap; cursor: pointer; color: var(--text); transition: border-color .25s, background .25s; will-change: transform; }
+  .pin .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); position: relative; }
   .pin .dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--amber); animation: ping 2s infinite; }
   @keyframes ping { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
   .pin .short { display: none; }
-  .pin:hover, .pin.on { border-color: var(--amber); background: rgba(40,30,18,.9); }
+  .pin:hover, .pin.on { border-color: var(--amber); background: rgba(40,30,18,.92); }
 
-  /* ---------- Sections ---------- */
-  section { padding: 110px 0; border-top: 1px solid var(--line); }
-  .sec-head { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 46px; flex-wrap: wrap; }
-  h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 4.4vw, 56px); line-height: 1.05; }
-  h2 em { color: var(--amber); }
-  .sec-head p { color: var(--muted); max-width: 420px; }
-  .num { font-size: 12px; letter-spacing: .2em; color: var(--teal); text-transform: uppercase; margin-bottom: 14px; display: block; }
+  /* ================= section heads ================= */
+  .wrap { width: min(1240px, 100% - var(--pad) * 2); margin: 0 auto; }
+  .sec-head { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: end; margin-bottom: 56px; }
+  .sec-head h2 { font-size: clamp(42px, 5.4vw, 76px); margin-top: 18px; }
+  .sec-head p { color: var(--muted); max-width: 430px; justify-self: end; }
 
-  .work { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
-  .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .3s, transform .3s; scroll-margin-top: 100px; }
-  .card:hover { border-color: #4a4036; transform: translateY(-3px); }
-  .card.flash { animation: flash 1.6s ease; }
-  @keyframes flash { 0%, 60% { border-color: var(--amber); box-shadow: 0 0 0 4px rgba(227,169,92,.18); } }
-  .card .thumb { aspect-ratio: 16/10; overflow: hidden; background: #0b0a09; position: relative; }
-  .card .thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
-  .card:hover .thumb img { transform: scale(1.04); }
-  .card .tag { position: absolute; top: 14px; right: 14px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 5px 10px; border-radius: 999px; background: rgba(15,14,12,.8); border: 1px solid rgba(255,255,255,.1); }
-  .card .body { padding: 24px 24px 26px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-  .card h3 { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.1; }
-  .card p { color: var(--muted); font-size: 15px; }
-  .card .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-  .card .go { margin-top: auto; padding-top: 14px; font-weight: 600; font-size: 14px; color: var(--amber); display: inline-flex; gap: 6px; align-items: center; }
-  .card .go span { transition: transform .2s; }
-  .card:hover .go span { transform: translateX(4px); }
+  /* ================= work chapters ================= */
+  .intro { min-height: 100svh; display: flex; align-items: center; padding: 120px 0; }
+  .intro .sec-head { margin: 0; grid-template-columns: 1fr; max-width: 560px; gap: 26px; }
+  .intro .sec-head p { justify-self: start; }
+  .chap { min-height: 112svh; display: flex; align-items: center; padding: 90px 0; scroll-margin-top: 0; }
+  .chap .wrap { display: flex; }
+  .chap[data-side="right"] .wrap { justify-content: flex-end; }
+  .panel { width: min(440px, 100%); padding: 26px; border-radius: 22px; background: linear-gradient(160deg, rgba(24,21,18,.82), rgba(12,11,10,.74)); border: 1px solid var(--line); backdrop-filter: blur(16px) saturate(1.1); -webkit-backdrop-filter: blur(16px) saturate(1.1); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+  .panel-top { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .panel-top .idx { color: var(--amber); }
+  .panel h3 { font-family: var(--serif); font-weight: 400; font-size: clamp(38px, 3.6vw, 52px); line-height: 1; margin: 18px 0 6px; letter-spacing: -.01em; }
+  .panel .sub { font-family: var(--serif); font-style: italic; font-size: 22px; color: var(--amber2); margin-bottom: 14px; }
+  .panel p.desc { color: var(--muted); font-size: 15px; text-wrap: pretty; }
+  .shot { display: block; margin: 20px 0 16px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 16/9; background: #0b0a09; position: relative; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; transition: transform .9s var(--ease-out); }
+  .shot:hover img { transform: scale(1.04); }
+  .shot .live { position: absolute; left: 10px; top: 10px; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; background: rgba(11,10,9,.78); border: 1px solid var(--line2); display: flex; gap: 6px; align-items: center; }
+  .shot .live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #5ee08a; box-shadow: 0 0 8px #5ee08a; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 14px 0 20px; }
+  .chips li { font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line2); color: var(--muted); }
+  .panel .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .nda { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 8px; }
+  .nda::before { content: ''; width: 18px; height: 1px; background: var(--dim); }
+  .sub-proj { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .sub-proj h4 { font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.1; margin-bottom: 6px; }
 
-  .also { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; margin-top: 22px; }
-  .also .card .thumb { aspect-ratio: 16/8; display: grid; place-items: center; }
-  .also svg { width: 78%; height: auto; }
-
-  .services { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
-  .svc { background: var(--bg); padding: 30px 28px 34px; }
-  .svc .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--bg2); border: 1px solid var(--line); color: var(--amber); margin-bottom: 18px; font-size: 18px; }
-  .svc h4 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  /* ================= services / process / contact ================= */
+  .block { padding: 140px 0; }
+  .services { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line2); }
+  .svc { padding: 30px 28px 36px 0; border-bottom: 1px solid var(--line); position: relative; }
+  .svc + .svc { padding-left: 28px; }
+  .svc:nth-child(3n+1) { padding-left: 0; }
+  .svc:not(:nth-child(3n)) { border-right: 1px solid var(--line); }
+  .svc .n { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: .12em; }
+  .svc h4 { font-size: 18px; font-weight: 500; margin: 26px 0 8px; letter-spacing: -.01em; }
   .svc p { color: var(--muted); font-size: 15px; }
+  .svc::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--amber); transform: scaleX(0); transform-origin: left; transition: transform .7s var(--ease-out); }
+  .svc:hover::after { transform: scaleX(1); }
 
-  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; counter-reset: s; }
-  .step { border-top: 1px solid var(--line); padding-top: 20px; }
-  .step::before { counter-increment: s; content: '0' counter(s); font-family: var(--serif); font-size: 40px; color: var(--amber); display: block; line-height: 1; margin-bottom: 14px; }
-  .step h4 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .step { border-top: 1px solid var(--line2); padding-top: 22px; }
+  .step .n { font-family: var(--serif); font-size: 54px; line-height: 1; color: var(--amber); display: block; margin-bottom: 18px; }
+  .step h4 { font-size: 17px; font-weight: 500; margin-bottom: 6px; }
   .step p { color: var(--muted); font-size: 15px; }
+  .stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 56px; }
+  .stack span { font-family: var(--mono); font-size: 12px; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--line2); color: var(--text); background: rgba(255,255,255,.02); }
 
-  .stack { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 40px; }
-  .stack .chip { font-size: 14px; padding: 8px 14px; color: var(--text); background: var(--bg2); }
+  .contact { min-height: 100svh; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; text-align: center; padding: 18svh var(--pad) 0; }
+  .contact h2 { font-size: clamp(48px, 7vw, 108px); max-width: 1000px; margin: 22px auto 24px; }
+  .contact p { color: var(--muted); max-width: 520px; font-size: 18px; margin-bottom: 34px; }
+  footer { position: relative; z-index: 10; border-top: 1px solid var(--line); padding: 26px var(--pad) 34px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; background: linear-gradient(transparent, rgba(11,10,9,.9)); }
 
-  .cta { text-align: center; padding: 130px 0 120px; }
-  .cta h2 { font-size: clamp(40px, 6vw, 76px); max-width: 900px; margin: 0 auto 22px; }
-  .cta p { color: var(--muted); max-width: 520px; margin: 0 auto 34px; font-size: 18px; }
-  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 13px; }
-  footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  /* ================= HUD ================= */
+  .rail { position: fixed; right: var(--pad); top: 50%; transform: translateY(-50%); z-index: 40; display: flex; flex-direction: column; gap: 4px; }
+  .rail a { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 5px 0; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .rail a span { opacity: 0; transform: translateX(6px); transition: opacity .3s, transform .3s; }
+  .rail a i { width: 14px; height: 1px; background: currentColor; transition: width .4s var(--ease-out), background .3s; }
+  .rail a:hover span, .rail a.on span { opacity: 1; transform: none; }
+  .rail a.on { color: var(--amber); } .rail a.on i { width: 28px; }
+  .hud { position: fixed; right: var(--pad); bottom: 22px; z-index: 40; font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); display: flex; gap: 18px; opacity: 0; transition: opacity .6s; pointer-events: none; }
+  .hud.show { opacity: 1; }
+  .hud b { color: var(--muted); font-weight: 500; }
 
-  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s ease, transform .8s ease; }
-  .reveal.in { opacity: 1; transform: none; }
+  /* ================= fallbacks ================= */
+  .no-webgl #gl, .no-webgl #pins, .no-webgl .hud { display: none; }
+  .no-webgl #dim { opacity: 0 !important; }
 
   @media (max-width: 900px) {
     .nav-links a:not(.btn) { display: none; }
-    .hero { grid-template-columns: 1fr; padding: 92px 0 20px; min-height: auto; }
-    .hero-text { padding: 0 22px; }
-    .lede { font-size: 16px; margin: 20px 0 24px; }
-    .stage { height: 54svh; min-height: 360px; margin-top: 0; }
-    .hint { display: none; }
-    section { padding: 80px 0; }
-    .work, .also { grid-template-columns: 1fr; }
+    .hero { justify-content: flex-start; padding-top: 104px; padding-bottom: 46svh; }
+    .hero h1 { margin: 18px 0 18px; }
+    .lede { font-size: 16px; }
+    .cta-row { margin-top: 24px; }
+    .facts { display: none; }
+    .scroll-cue, .rail, .hud { display: none; }
+    .sec-head { grid-template-columns: 1fr; gap: 18px; }
+    .sec-head p { justify-self: start; }
+    .chap { min-height: 118svh; align-items: flex-end; padding: 46svh 0 40px; }
+    .chap[data-side] .wrap { justify-content: center; }
+    .panel { padding: 22px; }
     .services { grid-template-columns: 1fr; }
+    .svc, .svc + .svc { padding: 24px 0 28px; border-right: 0 !important; }
     .steps { grid-template-columns: 1fr 1fr; }
+    .block { padding: 100px 0; }
+    .contact { padding-top: 120px; }
     .pin { font-size: 11px; padding: 5px 9px 5px 6px; }
-    .pin .full { display: none; }
-    .pin .short { display: inline; }
+    .pin .full { display: none; } .pin .short { display: inline; }
   }
-  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .ink path { animation: none; stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    [data-rv], .mask-line > span { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .scroll-cue i::after, .pin .dot::after, .eyebrow .dot { animation: none; }
+    html { scroll-behavior: auto; }
+  }
 </style>
 </head>
 <body>
+<div id="void" aria-hidden="true"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="dim" aria-hidden="true"></div>
+<div id="pins"></div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="cursor" aria-hidden="true"></div>
 
-<nav>
-  <a href="#" class="logo">Duy <i>Q.</i></a>
-  <div class="nav-links">
-    <a href="#work">Work</a>
-    <a href="#services">Services</a>
-    <a href="#process">Process</a>
-    <a class="btn btn-primary" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener">Hire me</a>
-  </div>
-</nav>
-
-<header class="hero">
-  <div class="hero-text">
-    <div class="eyebrow">3D Web Developer · Available</div>
-    <h1>I build <em>3D</em> &amp; AR experiences for the <span class="ink">web.<svg viewBox="0 0 200 18" preserveAspectRatio="none"><path d="M2 12 C 40 2, 80 18, 120 8 S 180 4, 198 10" /></svg></span></h1>
-    <p class="lede">Product configurators, virtual try-on and scroll-driven 3D stories that let customers explore what they're buying — right in the browser, smooth on any phone.</p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="#work">See live demos ↓</a>
-      <a class="btn btn-ghost" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener">Hire me on Upwork</a>
-    </div>
-    <p class="hint">↳ <b>This room is my portfolio.</b> Tap an object to open its project.</p>
-  </div>
-  <div class="stage" id="stage"><div class="glow"></div></div>
+<header class="nav" id="nav">
+  <a href="./" class="logo" data-cursor><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 54 20v24L32 56 10 44V20Z M10 20l22 12 22-12M32 32v24" fill="none" stroke="#e3a95c" stroke-width="3.5" stroke-linejoin="round"/></svg>Duy <i>Q.</i></a>
+  <nav class="nav-links">
+    <a href="#work" data-cursor>Work</a>
+    <a href="#services" data-cursor>Services</a>
+    <a href="#process" data-cursor>Process</a>
+    <a class="btn btn-primary btn-sm" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener" data-cursor>Hire me</a>
+  </nav>
 </header>
 
-<section id="work">
+<nav class="rail" id="rail" aria-label="Chapters">
+  <a href="#top" data-for="top"><span>Intro</span><i></i></a>
+  <a href="#work" data-for="work"><span>Work</span><i></i></a>
+  <a href="#work-watch" data-for="work-watch"><span>Meridian</span><i></i></a>
+  <a href="#work-tryon" data-for="work-tryon"><span>Try-on</span><i></i></a>
+  <a href="#work-chair" data-for="work-chair"><span>Norda</span><i></i></a>
+  <a href="#work-box" data-for="work-box"><span>Pakka</span><i></i></a>
+  <a href="#work-store" data-for="work-store"><span>Halde</span><i></i></a>
+  <a href="#work-client" data-for="work-client"><span>Client work</span><i></i></a>
+  <a href="#services" data-for="services"><span>Services</span><i></i></a>
+  <a href="#process" data-for="process"><span>Process</span><i></i></a>
+  <a href="#contact" data-for="contact"><span>Contact</span><i></i></a>
+</nav>
+<div class="hud" id="hud"><span>CAM <b id="hud-cam">00 · ROOM</b></span><span>FOV <b id="hud-fov">24°</b></span><span>SCROLL <b id="hud-fps">0%</b></span></div>
+
+<main class="page">
+
+<section class="hero" id="top" data-cam="hero">
+  <div class="hero-copy">
+    <div class="eyebrow" data-rv="fade"><span class="dot"></span>3D Web Developer · Available</div>
+    <h1 class="display">
+      <span class="mask-line"><span>I build <em>3D</em> &amp; AR</span></span>
+      <span class="mask-line"><span>experiences</span></span>
+      <span class="mask-line"><span>for the web.</span></span>
+    </h1>
+    <p class="lede" data-rv="up">Product configurators, virtual try-on and scroll-driven 3D stories that let customers explore what they're buying — right in the browser, smooth on any phone.</p>
+    <div class="cta-row" data-rv="up">
+      <a class="btn btn-primary" href="#work" data-cursor>Fly through the work <span>↓</span></a>
+      <a class="btn btn-ghost" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener" data-cursor><span class="ring"></span>Hire me on Upwork</a>
+    </div>
+    <div class="facts" data-rv="up">
+      <div><b>5</b><span>Live 3D demos</span></div>
+      <div><b>60<small style="font-size:.5em">fps</small></b><span>Mobile target</span></div>
+      <div><b>0</b><span>Apps to install</span></div>
+    </div>
+  </div>
+  <div class="scroll-cue"><i></i>Scroll — the camera flies to each project in this room</div>
+</section>
+
+<section class="intro" id="work" data-cam="overview">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div><span class="num">01 — Selected work</span><h2>Live demos you can<br><em>play with</em></h2></div>
-      <p>Every demo below is custom-coded with Three.js — no templates, no plugins. Open them on your phone: that's where most of your customers are.</p>
-    </div>
-
-    <div class="work">
-      <a class="card reveal" id="work-watch" href="watch/" target="_blank" rel="noopener">
-        <div class="thumb"><img src="assets/watch.jpg" alt="Scroll-driven 3D watch story" loading="lazy"><span class="tag">3D product story</span></div>
-        <div class="body">
-          <h3>Meridian Halo — scroll story</h3>
-          <p>A luxury watch that turns, explodes into its parts and ends in a live configurator as you scroll. Turns a product page into a reason to stay.</p>
-          <div class="meta"><span class="chip">Three.js</span><span class="chip">Scroll animation</span><span class="chip">Live pricing</span></div>
-          <span class="go">Open demo <span>→</span></span>
-        </div>
-      </a>
-      <a class="card reveal" id="work-tryon" href="tryon/" target="_blank" rel="noopener">
-        <div class="thumb"><img src="assets/tryon.jpg" alt="AR watch try-on" loading="lazy"><span class="tag">AR try-on</span></div>
-        <div class="body">
-          <h3>Virtual try-on — on your wrist</h3>
-          <p>Point your phone camera at your wrist: hand tracking places the 3D watch, the strap wraps around and follows as you turn. No app to install.</p>
-          <div class="meta"><span class="chip">MediaPipe</span><span class="chip">Camera AR</span><span class="chip">Three.js</span></div>
-          <span class="go">Try it on <span>→</span></span>
-        </div>
-      </a>
-      <a class="card reveal" id="work-chair" href="chair/" target="_blank" rel="noopener">
-        <div class="thumb"><img src="assets/chair.jpg" alt="3D chair configurator" loading="lazy"><span class="tag">Configurator</span></div>
-        <div class="body">
-          <h3>Norda — furniture configurator</h3>
-          <p>Swap wood, fabric and finish in real time with the price updating as you go. The kind of tool that cuts "will it match my room?" emails.</p>
-          <div class="meta"><span class="chip">PBR materials</span><span class="chip">Options & pricing</span><span class="chip">Mobile-first</span></div>
-          <span class="go">Open demo <span>→</span></span>
-        </div>
-      </a>
-      <a class="card reveal" id="work-box" href="box/" target="_blank" rel="noopener">
-        <div class="thumb"><img src="assets/box.jpg" alt="Custom packaging box studio" loading="lazy"><span class="tag">B2B tool</span></div>
-        <div class="body">
-          <h3>Pakka — custom box studio</h3>
-          <p>Set the size, upload a logo, watch the box fold itself, get an instant quote with volume discounts. Sales tool and order form in one.</p>
-          <div class="meta"><span class="chip">Folding animation</span><span class="chip">Logo upload</span><span class="chip">Quote engine</span></div>
-          <span class="go">Open demo <span>→</span></span>
-        </div>
-      </a>
-    </div>
-
-    <div class="also">
-      <a class="card reveal" id="work-store" href="store/" target="_blank" rel="noopener">
-        <div class="thumb"><img src="assets/store.jpg" alt="Headless Shopify storefront" loading="lazy"><span class="tag">Headless Shopify</span></div>
-        <div class="body">
-          <h3>Halde — headless Shopify storefront</h3>
-          <p>A custom React storefront on Shopify's Storefront API with scroll storytelling: a 3D fabric lookbook you can spin, a garment that re-dyes as you scroll, a sideways-scrolling edit and a 3D cap studio with custom embroidery, on top of a full cart and Shopify checkout.</p>
-          <div class="meta"><span class="chip">React</span><span class="chip">Hydrogen React</span><span class="chip">Three.js</span><span class="chip">Storefront API</span></div>
-          <span class="go">Open store <span>→</span></span>
-        </div>
-      </a>
-      <div class="card reveal" id="work-viewers">
-        <div class="thumb">
-          <svg viewBox="0 0 400 180" fill="none" stroke="#66d3c5" stroke-width="1.3" stroke-linejoin="round">
-            <path d="M20 112 L60 140 L340 140 L380 104 L20 104 Z" />
-            <path d="M60 140 L60 104 M120 140 L120 104 M180 140 L180 104 M240 140 L240 104 M300 140 L300 104" opacity=".45"/>
-            <path d="M250 104 L250 62 L320 62 L320 104 M262 62 L262 40 L300 40 L300 62 M276 40 L276 22" />
-            <path d="M80 104 L80 84 L130 84 L130 104 M140 104 L140 84 L190 84 L190 104 M200 104 L200 84 L240 84 L240 104" opacity=".7"/>
-            <path d="M20 150 L380 150" stroke="#e3a95c" stroke-dasharray="4 6"/>
-            <text x="200" y="168" fill="#a39b8f" stroke="none" font-size="11" font-family="Inter" text-anchor="middle">182.4 m</text>
-          </svg>
-          <span class="tag">Engineering</span>
-        </div>
-        <div class="body">
-          <h3>3D/2D engineering viewers</h3>
-          <p>Browser viewers for large ship and offshore models: heavy model streaming, measuring, section cuts, exploded views and linked 2D drawings — built for engineers, running in a web page.</p>
-          <div class="meta"><span class="chip">Three.js</span><span class="chip">CesiumJS</span><span class="chip">TypeScript</span></div>
-        </div>
+    <div class="sec-head">
+      <div>
+        <div class="eyebrow" data-rv="fade">01 — Selected work</div>
+        <h2 class="display"><span class="mask-line" data-rv-mask><span>Five live demos.</span></span><span class="mask-line" data-rv-mask><span><em>One room.</em></span></span></h2>
       </div>
-      <div class="card reveal" id="work-synode">
-        <div class="thumb">
-          <svg viewBox="0 0 400 180" fill="none" stroke-width="1.3">
-            <rect x="40" y="26" width="200" height="128" rx="10" stroke="#3a342e"/>
-            <path d="M140 60 L180 82 L180 124 L140 146 L100 124 L100 82 Z M100 82 L140 104 L180 82 M140 104 L140 146" stroke="#e3a95c"/>
-            <rect x="262" y="26" width="98" height="20" rx="6" stroke="#3a342e"/>
-            <rect x="262" y="56" width="98" height="20" rx="6" stroke="#3a342e"/>
-            <circle cx="276" cy="100" r="8" fill="#e3a95c" stroke="none"/><circle cx="300" cy="100" r="8" fill="#66d3c5" stroke="none"/><circle cx="324" cy="100" r="8" fill="#a39b8f" stroke="none"/>
-            <rect x="262" y="124" width="98" height="30" rx="15" fill="#e3a95c" stroke="none" opacity=".9"/>
-          </svg>
-          <span class="tag">SaaS</span>
-        </div>
-        <div class="body">
-          <h3>Synode.ai — 3D configurator SaaS</h3>
-          <p>A commercial Three.js product configurator merchants embed in their store, with Shopify, WooCommerce and Stripe integrations. Built full-stack and shipped to real customers.</p>
-          <div class="meta"><span class="chip">Nuxt.js</span><span class="chip">NestJS</span><span class="chip">Shopify</span><span class="chip">Stripe</span></div>
-        </div>
+      <p data-rv="up">Every object in this room is a project. Keep scrolling and the camera flies to each one — then open the real, custom-coded demo on your phone. No templates, no plugins.</p>
+    </div>
+  </div>
+</section>
+
+<section class="chap" id="work-watch" data-cam="watch" data-side="left">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">01 / 06</span><span>3D product story</span></div>
+      <h3>Meridian Halo</h3>
+      <p class="sub">A watch that tells its own story</p>
+      <p class="desc">The watch turns, explodes into its parts and ends in a live configurator as you scroll. Turns a product page into a reason to stay.</p>
+      <a class="shot" href="watch/" target="_blank" rel="noopener" data-cursor><img src="assets/watch.jpg" alt="Meridian Halo scroll-driven 3D watch story" loading="lazy"><span class="live">Live demo</span></a>
+      <ul class="chips"><li>Three.js</li><li>Scroll animation</li><li>Live pricing</li></ul>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="watch/" target="_blank" rel="noopener" data-cursor>Open demo →</a></div>
+    </article>
+  </div>
+</section>
+
+<section class="chap" id="work-tryon" data-cam="tryon" data-side="right">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">02 / 06</span><span>AR try-on</span></div>
+      <h3>On your wrist</h3>
+      <p class="sub">Virtual try-on, no app</p>
+      <p class="desc">Point your phone camera at your wrist: hand tracking places the 3D watch, the strap wraps around and follows as you turn.</p>
+      <a class="shot" href="tryon/" target="_blank" rel="noopener" data-cursor><img src="assets/tryon.jpg" alt="AR watch try-on demo" loading="lazy"><span class="live">Live demo</span></a>
+      <ul class="chips"><li>MediaPipe</li><li>Camera AR</li><li>Three.js</li></ul>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="tryon/" target="_blank" rel="noopener" data-cursor>Try it on →</a></div>
+    </article>
+  </div>
+</section>
+
+<section class="chap" id="work-chair" data-cam="chair" data-side="left">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">03 / 06</span><span>Configurator</span></div>
+      <h3>Norda</h3>
+      <p class="sub">Furniture, configured live</p>
+      <p class="desc">Swap wood, fabric and finish in real time with the price updating as you go. The kind of tool that cuts "will it match my room?" emails.</p>
+      <a class="shot" href="chair/" target="_blank" rel="noopener" data-cursor><img src="assets/chair.jpg" alt="Norda 3D chair configurator" loading="lazy"><span class="live">Live demo</span></a>
+      <ul class="chips"><li>PBR materials</li><li>Options &amp; pricing</li><li>Mobile-first</li></ul>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="chair/" target="_blank" rel="noopener" data-cursor>Open demo →</a></div>
+    </article>
+  </div>
+</section>
+
+<section class="chap" id="work-box" data-cam="box" data-side="right">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">04 / 06</span><span>B2B tool</span></div>
+      <h3>Pakka</h3>
+      <p class="sub">Custom box studio</p>
+      <p class="desc">Set the size, upload a logo, watch the box fold itself and get an instant quote with volume discounts. Sales tool and order form in one.</p>
+      <a class="shot" href="box/" target="_blank" rel="noopener" data-cursor><img src="assets/box.jpg" alt="Pakka custom packaging box studio" loading="lazy"><span class="live">Live demo</span></a>
+      <ul class="chips"><li>Folding animation</li><li>Logo upload</li><li>Quote engine</li></ul>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="box/" target="_blank" rel="noopener" data-cursor>Open demo →</a></div>
+    </article>
+  </div>
+</section>
+
+<section class="chap" id="work-store" data-cam="store" data-side="left">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">05 / 06</span><span>Headless Shopify</span></div>
+      <h3>Halde</h3>
+      <p class="sub">A storefront you can spin</p>
+      <p class="desc">A custom React storefront on Shopify's Storefront API: a 3D fabric lookbook, a garment that re-dyes as you scroll and a 3D cap studio with embroidery — on top of a full cart and Shopify checkout.</p>
+      <a class="shot" href="store/" target="_blank" rel="noopener" data-cursor><img src="assets/store.jpg" alt="Halde headless Shopify storefront" loading="lazy"><span class="live">Live store</span></a>
+      <ul class="chips"><li>React</li><li>Hydrogen React</li><li>Three.js</li><li>Storefront API</li></ul>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="store/" target="_blank" rel="noopener" data-cursor>Open store →</a></div>
+    </article>
+  </div>
+</section>
+
+<section class="chap" id="work-client" data-cam="client" data-side="right">
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top"><span class="idx">06 / 06</span><span>Client work</span></div>
+      <h3>Engineering viewers</h3>
+      <p class="sub">Ships &amp; offshore, in a browser tab</p>
+      <p class="desc">3D/2D viewers for large ship and offshore models: heavy model streaming, measuring, section cuts, exploded views and linked 2D drawings — built for engineers.</p>
+      <ul class="chips"><li>Three.js</li><li>CesiumJS</li><li>TypeScript</li></ul>
+      <div class="sub-proj">
+        <h4>Synode.ai — 3D configurator SaaS</h4>
+        <p class="desc">A commercial Three.js configurator merchants embed in their store, with Shopify, WooCommerce and Stripe integrations. Built full-stack and shipped to real customers.</p>
+        <ul class="chips"><li>Nuxt.js</li><li>NestJS</li><li>Shopify</li><li>Stripe</li></ul>
       </div>
-    </div>
+      <span class="nda">Private client work — walkthrough on request</span>
+    </article>
   </div>
 </section>
 
-<section id="services">
+<section class="block" id="services" data-cam="services">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div><span class="num">02 — What I build</span><h2>3D that <em>sells</em>, explains<br>or gets work done</h2></div>
-      <p>From a single 3D hero section to a full configurator with checkout — front end, back end and the 3D in between.</p>
+    <div class="sec-head">
+      <div>
+        <div class="eyebrow" data-rv="fade">02 — What I build</div>
+        <h2 class="display"><span class="mask-line" data-rv-mask><span>3D that <em>sells</em>, explains</span></span><span class="mask-line" data-rv-mask><span>or gets work done.</span></span></h2>
+      </div>
+      <p data-rv="up">From a single 3D hero section to a full configurator with checkout — front end, back end and the 3D in between.</p>
     </div>
-    <div class="services reveal">
-      <div class="svc"><div class="ic">◐</div><h4>Product configurators</h4><p>Colors, materials, sizes and add-ons with live price — connected to Shopify, WooCommerce or your own cart.</p></div>
-      <div class="svc"><div class="ic">◎</div><h4>AR & virtual try-on</h4><p>Camera-based try-on for watches, jewelry and accessories, plus "view in your room" — straight from the browser.</p></div>
-      <div class="svc"><div class="ic">↯</div><h4>3D landing pages</h4><p>Scroll-driven product stories and interactive hero sections that stay smooth on mid-range phones.</p></div>
-      <div class="svc"><div class="ic">⌗</div><h4>Model viewers</h4><p>Load GLB/GLTF, CAD exports or point data; measure, section, annotate and share — for products or engineering.</p></div>
-      <div class="svc"><div class="ic">⧉</div><h4>Full-stack around 3D</h4><p>React or Vue front ends, Node.js/NestJS APIs, PostgreSQL, auth, admin panels and deployment with Docker.</p></div>
-      <div class="svc"><div class="ic">✦</div><h4>Optimization & rescue</h4><p>Slow or broken Three.js scene? I compress models, cut draw calls and fix the bugs so it runs everywhere.</p></div>
+    <div class="services">
+      <div class="svc" data-rv="up"><span class="n">/01</span><h4>Product configurators</h4><p>Colors, materials, sizes and add-ons with live price — connected to Shopify, WooCommerce or your own cart.</p></div>
+      <div class="svc" data-rv="up"><span class="n">/02</span><h4>AR &amp; virtual try-on</h4><p>Camera-based try-on for watches, jewelry and accessories, plus "view in your room" — straight from the browser.</p></div>
+      <div class="svc" data-rv="up"><span class="n">/03</span><h4>3D landing pages</h4><p>Scroll-driven product stories and interactive hero sections — like this one — that stay smooth on mid-range phones.</p></div>
+      <div class="svc" data-rv="up"><span class="n">/04</span><h4>Model viewers</h4><p>Load GLB/GLTF, CAD exports or point data; measure, section, annotate and share — for products or engineering.</p></div>
+      <div class="svc" data-rv="up"><span class="n">/05</span><h4>Full-stack around 3D</h4><p>React or Vue front ends, Node.js/NestJS APIs, PostgreSQL, auth, admin panels and deployment with Docker.</p></div>
+      <div class="svc" data-rv="up"><span class="n">/06</span><h4>Optimization &amp; rescue</h4><p>Slow or broken Three.js scene? I compress models, cut draw calls and fix the bugs so it runs everywhere.</p></div>
     </div>
   </div>
 </section>
 
-<section id="process">
+<section class="block" id="process" data-cam="process">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div><span class="num">03 — How we work</span><h2>Simple, visible,<br><em>no surprises</em></h2></div>
-      <p>You see working builds early and often. Clear English updates, every step of the way.</p>
+    <div class="sec-head">
+      <div>
+        <div class="eyebrow" data-rv="fade">03 — How we work</div>
+        <h2 class="display"><span class="mask-line" data-rv-mask><span>Simple, visible,</span></span><span class="mask-line" data-rv-mask><span><em>no surprises.</em></span></span></h2>
+      </div>
+      <p data-rv="up">You see working builds early and often. Clear English updates, every step of the way.</p>
     </div>
-    <div class="steps reveal">
-      <div class="step"><h4>Share what you have</h4><p>Photos, 3D files, a competitor link or just an idea. I suggest the simplest path.</p></div>
-      <div class="step"><h4>Quick prototype</h4><p>A clickable first version in days, so you can feel it before committing to everything.</p></div>
-      <div class="step"><h4>Build & iterate</h4><p>Regular demo links to test on your own devices. Feedback goes straight in.</p></div>
-      <div class="step"><h4>Launch & hand over</h4><p>Optimized, documented, deployed — and easy for your team to update.</p></div>
+    <div class="steps">
+      <div class="step" data-rv="up"><span class="n">01</span><h4>Share what you have</h4><p>Photos, 3D files, a competitor link or just an idea. I suggest the simplest path.</p></div>
+      <div class="step" data-rv="up"><span class="n">02</span><h4>Quick prototype</h4><p>A clickable first version in days, so you can feel it before committing to everything.</p></div>
+      <div class="step" data-rv="up"><span class="n">03</span><h4>Build &amp; iterate</h4><p>Regular demo links to test on your own devices. Feedback goes straight in.</p></div>
+      <div class="step" data-rv="up"><span class="n">04</span><h4>Launch &amp; hand over</h4><p>Optimized, documented, deployed — and easy for your team to update.</p></div>
     </div>
-    <div class="stack reveal">
-      <span class="chip">Three.js</span><span class="chip">React Three Fiber</span><span class="chip">WebGL</span><span class="chip">CesiumJS</span><span class="chip">MediaPipe</span><span class="chip">TypeScript</span><span class="chip">React</span><span class="chip">Vue / Nuxt</span><span class="chip">Node.js</span><span class="chip">NestJS</span><span class="chip">PostgreSQL</span><span class="chip">Docker</span><span class="chip">Playwright</span>
+    <div class="stack" data-rv="up">
+      <span>Three.js</span><span>React Three Fiber</span><span>WebGL / GLSL</span><span>CesiumJS</span><span>MediaPipe</span><span>TypeScript</span><span>React</span><span>Vue / Nuxt</span><span>Node.js</span><span>NestJS</span><span>PostgreSQL</span><span>Docker</span><span>Playwright</span>
     </div>
   </div>
 </section>
 
-<section class="cta">
-  <div class="wrap reveal">
-    <span class="num">04 — Let's talk</span>
-    <h2>Have a product people should <em>explore in 3D?</em></h2>
-    <p>Send me what you have — photos, models or just an idea — and I'll reply with the simplest way to get there.</p>
-    <a class="btn btn-primary" style="padding:15px 26px;font-size:16px" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener">Hire me on Upwork →</a>
-  </div>
+<section class="contact" id="contact" data-cam="contact">
+  <div class="eyebrow" data-rv="fade">04 — Let's talk</div>
+  <h2 class="display"><span class="mask-line" data-rv-mask><span>Have a product people</span></span><span class="mask-line" data-rv-mask><span>should <em>explore in 3D?</em></span></span></h2>
+  <p data-rv="up">Send me what you have — photos, models or just an idea — and I'll reply with the simplest way to get there.</p>
+  <div data-rv="up"><a class="btn btn-primary" style="height:52px;padding:0 30px;font-size:15px" href="https://www.upwork.com/freelancers/~0199cc702afa884c91" target="_blank" rel="noopener" data-cursor>Hire me on Upwork →</a></div>
 </section>
+
+</main>
 
 <footer>
-  <div class="wrap">
-    <span>© 2026 Duy Q. · 3D Web Developer · Ho Chi Minh City (UTC+7)</span>
-    <span>Demo brands are fictional. This room is rendered live with Three.js.</span>
-  </div>
+  <span>© 2026 Duy Q. · 3D Web Developer · Ho Chi Minh City (UTC+7)</span>
+  <span>Demo brands are fictional. This room is rendered live with Three.js.</span>
 </footer>
+
+<script>
+/* Reveals + nav + rail run even if WebGL or the CDN fails. */
+(() => {
+  const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // film grain, generated once
+  const g = document.createElement('canvas'); g.width = g.height = 160; const x = g.getContext('2d'); const d = x.createImageData(160, 160);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  x.putImageData(d, 0, 0); document.getElementById('grain').style.backgroundImage = `url(${g.toDataURL()})`;
+  // staggered reveals
+  const items = [...document.querySelectorAll('[data-rv], [data-rv-mask], .hero h1')];
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return; io.unobserve(e.target);
+    const sibs = [...e.target.parentElement.children].filter(c => c.matches('[data-rv], [data-rv-mask]'));
+    const delay = REDUCE ? 0 : Math.max(0, sibs.indexOf(e.target)) * 85;
+    setTimeout(() => e.target.classList.add('rv-in'), delay);
+  }), { rootMargin: '0px 0px -8% 0px', threshold: .04 });
+  items.forEach(el => io.observe(el));
+  // sticky nav + chapter rail
+  const nav = document.getElementById('nav');
+  const rail = [...document.querySelectorAll('#rail a')];
+  const secs = rail.map(a => document.getElementById(a.dataset.for));
+  const onScroll = () => {
+    nav.classList.toggle('stuck', scrollY > 40);
+    const mid = innerHeight * .5; let on = 0;
+    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < mid) on = i; });
+    rail.forEach((a, i) => a.classList.toggle('on', i === on));
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  // cursor ring
+  const cur = document.getElementById('cursor');
+  if (!matchMedia('(hover: none)').matches) {
+    let tx = innerWidth / 2, ty = innerHeight / 2, cx = tx, cy = ty;
+    addEventListener('pointermove', e => { tx = e.clientX; ty = e.clientY; cur.classList.add('on'); }, { passive: true });
+    (function loop() { cx += (tx - cx) * .2; cy += (ty - cy) * .2; cur.style.transform = `translate(${cx}px,${cy}px)`; requestAnimationFrame(loop); })();
+    document.addEventListener('pointerover', e => cur.classList.toggle('act', !!e.target.closest('[data-cursor], .pin')));
+  }
+})();
+</script>
 
 <script type="importmap">
 { "imports": {
@@ -318,23 +468,22 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-/* ---------- Scroll reveal (works even if WebGL fails) ---------- */
-const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE = matchMedia('(hover: none)').matches;
+const canvas = document.getElementById('gl');
 
-/* ---------- Renderer / camera ---------- */
-const stage = document.getElementById('stage');
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+/* ---------- Renderer (falls back to a plain page if WebGL is unavailable) ---------- */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+} catch (e) { document.documentElement.classList.add('no-webgl'); throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio, COARSE ? 1.5 : 1.75));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-const CAM_DIR = new THREE.Vector3(1, 0.82, 1).normalize();
-const target = new THREE.Vector3(0, 1.3, 0);
+const camera = new THREE.PerspectiveCamera(24, 1, 0.05, 200);
 
 /* ---------- Helpers ---------- */
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...o });
@@ -342,7 +491,7 @@ function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene) {
   const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
 }
 const box = (w, h, d, r = 0.02) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2));
-const hotspots = []; // { id, group, anchor(Vector3 local), label, el }
+const hotspots = [];
 function hotspot(id, label, short, group, anchor) { hotspots.push({ id, label, short, group, anchor }); group.traverse(o => { if (o.isMesh) o.userData.hot = id; }); }
 
 /* ---------- Room shell ---------- */
@@ -558,108 +707,239 @@ for (let i = 0; i < 9; i++) {
   leaf.rotation.set(Math.sin(a) * 0.5, -a, Math.cos(a) * 0.5);
 }
 
+/* ---------- Garment rail (Halde storefront) ---------- */
+const rack = new THREE.Group(); rack.position.set(-S + 0.02, 0, 2.05); scene.add(rack);
+{
+  const steel = M('#2a2826', { metalness: 0.8, roughness: 0.35 });
+  const rail = mesh(new THREE.CylinderGeometry(0.014, 0.014, 1.05, 10), steel, 0.3, 1.78, 0, rack); rail.rotation.x = Math.PI / 2;
+  for (const z of [-0.5, 0.5]) { const b = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 8), steel, 0.15, 1.78, z, rack); b.rotation.z = Math.PI / 2; }
+  const tee = new THREE.Shape();
+  tee.moveTo(-0.12, 0.37); tee.lineTo(-0.35, 0.3); tee.lineTo(-0.5, 0.1); tee.lineTo(-0.4, 0.02); tee.lineTo(-0.27, 0.14); tee.lineTo(-0.27, -0.38);
+  tee.lineTo(0.27, -0.38); tee.lineTo(0.27, 0.14); tee.lineTo(0.4, 0.02); tee.lineTo(0.5, 0.1); tee.lineTo(0.35, 0.3); tee.lineTo(0.12, 0.37);
+  tee.quadraticCurveTo(0, 0.27, -0.12, 0.37);
+  const teeGeo = new THREE.ExtrudeGeometry(tee, { depth: 0.04, bevelEnabled: true, bevelSize: 0.015, bevelThickness: 0.015, bevelSegments: 2, curveSegments: 8 });
+  teeGeo.translate(0, 0, -0.02);
+  [['#1f4a3c', -0.24, 0.02], ['#d9cdb8', 0.06, -0.05], ['#3b3f4a', 0.34, 0.04]].forEach(([c, z, ry]) => {
+    const h = new THREE.Group(); h.position.set(0.3, 1.78, z); h.rotation.y = Math.PI / 2 + ry; rack.add(h);
+    const hook = mesh(new THREE.TorusGeometry(0.035, 0.006, 6, 16, Math.PI * 1.4), steel, 0, 0.02, 0, h); hook.rotation.z = -0.2;
+    const bar = mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.6, 6), M('#8a6a48'), 0, -0.1, 0, h); bar.rotation.z = Math.PI / 2;
+    const shirt = mesh(teeGeo, M(c, { roughness: 0.95 }), 0, -0.47, 0, h); shirt.scale.setScalar(0.9);
+  });
+}
+hotspot('store', 'Headless Shopify store', 'Store', rack, new THREE.Vector3(0.3, 2.05, 0));
+
+/* ---------- Atmosphere: floor shadow, window light shaft, dust ---------- */
+{
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  const rg = g.createRadialGradient(128, 128, 10, 128, 128, 128); rg.addColorStop(0, 'rgba(0,0,0,.55)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 256, 256);
+  const blob = new THREE.Mesh(new THREE.PlaneGeometry(13, 13), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  blob.rotation.x = -Math.PI / 2; blob.position.y = -0.26; scene.add(blob);
+}
+const shaftTex = (() => {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+  const lg = g.createLinearGradient(0, 0, 0, 256); lg.addColorStop(0, 'rgba(255,214,160,.55)'); lg.addColorStop(1, 'rgba(255,214,160,0)');
+  g.fillStyle = lg; g.fillRect(0, 0, 64, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const shaftMat = new THREE.MeshBasicMaterial({ map: shaftTex, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+for (const [x, w] of [[1.75, 0.55], [2.35, 0.55]]) {
+  const shaft = new THREE.Mesh(new THREE.PlaneGeometry(w, 3.4), shaftMat);
+  shaft.position.set(x - 0.35, 1.05, -S + 1.25); shaft.rotation.set(-0.62, 0.3, 0); scene.add(shaft);
+}
+const dust = (() => {
+  const N = COARSE ? 140 : 260, pos = new Float32Array(N * 3), seed = new Float32Array(N);
+  for (let i = 0; i < N; i++) { pos[i * 3] = 0.6 + Math.random() * 2.2; pos[i * 3 + 1] = Math.random() * 2.6; pos[i * 3 + 2] = -S + 0.2 + Math.random() * 2.6; seed[i] = Math.random() * 100; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
+  const rg = g.createRadialGradient(16, 16, 0, 16, 16, 16); rg.addColorStop(0, 'rgba(255,230,190,1)'); rg.addColorStop(1, 'rgba(255,230,190,0)'); g.fillStyle = rg; g.fillRect(0, 0, 32, 32);
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.035, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(pts); return { pts, pos, seed, N };
+})();
+
 /* ---------- Lights ---------- */
 scene.add(new THREE.HemisphereLight('#fff3e2', '#2a2420', 0.9));
 const sun = new THREE.DirectionalLight('#ffd7a8', 2.2);
 sun.position.set(4, 7, 3); sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+sun.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 20 });
 scene.add(sun);
 const fill = new THREE.DirectionalLight('#9fc7ff', 0.35); fill.position.set(-3, 4, 6); scene.add(fill);
+const bulbBase = bulb.intensity;
 
-/* ---------- Hotspot pins (HTML) ---------- */
-const pins = [];
-const seen = new Set();
-for (const h of hotspots) {
+/* ---------- Camera shots: one per section (data-cam), blended by scroll ---------- */
+// focus: what to frame; size: world size to fit; az/el: orbit angles (deg); fov; frac: share of screen it fills;
+// anchor: where on screen the subject sits [x, y] for desktop (d) and mobile (m); dim: page dimming for text-heavy parts.
+const ROOM = { center: new THREE.Vector3(0, 1.05, 0), size: 8.4 };
+const boxOf = (o) => { const b = new THREE.Box3().setFromObject(o); return { center: b.getCenter(new THREE.Vector3()), size: b.getSize(new THREE.Vector3()).length() }; };
+const watchFocus = (size) => () => { const v = new THREE.Vector3(); face.getWorldPosition(v); return { center: v, size }; };
+const SHOTS = {
+  hero:     { label: '00 · ROOM',      f: () => ROOM,               az: 45, el: 33, fov: 24, d: { frac: .8,  a: [.70, .56] }, m: { frac: .44, a: [.5, .76] }, dim: 0,   pins: 1, lamp: 1 },
+  overview: { label: '00 · OVERVIEW',  f: () => ROOM,               az: 28, el: 44, fov: 26, d: { frac: .74, a: [.72, .55] }, m: { frac: .34, a: [.5, .8] }, dim: .1,  pins: 0, lamp: 1 },
+  watch:    { label: '01 · MERIDIAN',  f: watchFocus(.7),           az: 12, el: 16, fov: 30, d: { frac: .62, a: [.68, .5] },  m: { frac: .5,  a: [.5, .24] }, dim: 0,   pins: 0, lamp: 1.3 },
+  tryon:    { label: '02 · TRY-ON',    f: watchFocus(.9),           az: -28, el: 34, fov: 34, d: { frac: .5, a: [.32, .5] },  m: { frac: .44, a: [.5, .24] }, dim: 0,   pins: 0, lamp: 1.3 },
+  chair:    { label: '03 · NORDA',     f: () => boxOf(chair),       az: 58, el: 22, fov: 30, d: { frac: .7,  a: [.68, .52] }, m: { frac: .5,  a: [.5, .25] }, dim: 0,   pins: 0, lamp: 1 },
+  box:      { label: '04 · PAKKA',     f: () => boxOf(boxes),       az: 30, el: 26, fov: 30, d: { frac: .66, a: [.32, .52] }, m: { frac: .5,  a: [.5, .25] }, dim: 0,   pins: 0, lamp: 1 },
+  store:    { label: '05 · HALDE',     f: () => boxOf(rack),        az: 72, el: 8,  fov: 32, d: { frac: .62, a: [.68, .5] },  m: { frac: .46, a: [.5, .24] }, dim: 0,   pins: 0, lamp: 1 },
+  client:   { label: '06 · VIEWERS',   f: () => boxOf(screens),     az: 14, el: 10, fov: 30, d: { frac: .62, a: [.34, .48] }, m: { frac: .5,  a: [.5, .24] }, dim: 0,   pins: 0, lamp: 1 },
+  services: { label: '07 · SERVICES',  f: () => ROOM,               az: 60, el: 64, fov: 22, d: { frac: .9,  a: [.5, .55] },  m: { frac: .7,  a: [.5, .5] },  dim: .82, pins: 0, lamp: 1 },
+  process:  { label: '08 · PROCESS',   f: () => ROOM,               az: 18, el: 24, fov: 22, d: { frac: .9,  a: [.5, .55] },  m: { frac: .7,  a: [.5, .5] },  dim: .84, pins: 0, lamp: 1 },
+  contact:  { label: '09 · CONTACT',   f: () => ROOM,               az: 45, el: 30, fov: 24, d: { frac: .62, a: [.5, .74] },  m: { frac: .5,  a: [.5, .78] }, dim: .25, pins: 0, lamp: 1.8 },
+};
+const sections = [...document.querySelectorAll('[data-cam]')].map(el => ({ el, key: el.dataset.cam }));
+const DEG = Math.PI / 180;
+let W = 1, H = 1, mobile = false, resolved = {};
+function resolveShots() {
+  scene.updateMatrixWorld(true);
+  const aspect = W / H;
+  for (const [k, s] of Object.entries(SHOTS)) {
+    const v = mobile ? s.m : s.d, { center, size } = s.f();
+    const t = 2 * Math.tan(s.fov * DEG / 2);
+    const fracW = mobile ? Math.min(.92, v.frac * 1.9) : Math.min(.58, v.frac * .9);
+    const dist = Math.max(size / (t * v.frac), size / (t * aspect * fracW));
+    resolved[k] = { center, logD: Math.log(dist), az: s.az, el: s.el, fov: s.fov, ax: v.a[0], ay: v.a[1], dim: s.dim, pins: s.pins, lamp: s.lamp, label: s.label };
+  }
+}
+const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+function targetShot() {
+  const probe = scrollY + innerHeight * 0.5;
+  const centers = sections.map(s => { const r = s.el.getBoundingClientRect(); return scrollY + r.top + r.height / 2; });
+  let i = 0; while (i < centers.length - 1 && probe > centers[i + 1]) i++;
+  if (probe <= centers[0]) return { a: resolved[sections[0].key], b: resolved[sections[0].key], t: 0, key: sections[0].key };
+  const j = Math.min(i + 1, centers.length - 1);
+  const t = j === i ? 0 : smooth(0.18, 0.82, (probe - centers[i]) / (centers[j] - centers[i]));
+  return { a: resolved[sections[i].key], b: resolved[sections[j].key], t, key: sections[t < .5 ? i : j].key };
+}
+const cur = { center: new THREE.Vector3(), logD: 0, az: 45, el: 33, fov: 24, ax: .7, ay: .55, dim: 0, pins: 1, lamp: 1 };
+const goal = { center: new THREE.Vector3(), logD: 0, az: 0, el: 0, fov: 0, ax: 0, ay: 0, dim: 0, pins: 0, lamp: 1 };
+let first = true, activeKey = 'hero';
+function computeGoal() {
+  const { a, b, t, key } = targetShot(); activeKey = key;
+  goal.center.lerpVectors(a.center, b.center, t);
+  for (const k of ['logD', 'az', 'el', 'fov', 'ax', 'ay', 'dim', 'pins', 'lamp']) goal[k] = lerp(a[k], b[k], t);
+}
+
+/* ---------- Hotspot pins (HTML, hero only) ---------- */
+const pinLayer = document.getElementById('pins');
+const pins = hotspots.map(h => {
   const el = document.createElement('button'); el.className = 'pin'; el.type = 'button';
   el.innerHTML = `<span class="dot"></span><span class="full">${h.label}</span><span class="short">${h.short}</span>`;
   el.addEventListener('click', () => go(h.id));
   el.addEventListener('pointerenter', () => setHover(h.id)); el.addEventListener('pointerleave', () => setHover(null));
-  stage.appendChild(el); pins.push({ ...h, el }); seen.add(h.id);
-}
-function go(id) {
-  const target = document.getElementById(id === 'watch' ? 'work-watch' : 'work-' + id);
-  if (!target) return;
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash');
-}
+  pinLayer.appendChild(el); return { ...h, el, w: 0, h: 0 };
+});
+const SECTION_OF = { watch: 'work-watch', chair: 'work-chair', box: 'work-box', viewers: 'work-client', store: 'work-store' };
+function go(id) { document.getElementById(SECTION_OF[id])?.scrollIntoView({ behavior: REDUCE ? 'auto' : 'smooth', block: 'start' }); }
 
-/* ---------- Hover highlight + picking ---------- */
+/* ---------- Hover highlight + picking (only while the room is the hero) ---------- */
 let hoverId = null;
 const tint = new THREE.Color('#e3a95c');
 function setHover(id) {
   if (hoverId === id) return; hoverId = id;
   scene.traverse(o => {
-    if (!o.isMesh || !o.material || !o.material.emissive) return;
-    if (!o.userData.baseEm) o.userData.baseEm = o.material.emissive.clone();
-  });
-  scene.traverse(o => {
-    if (!o.isMesh || !o.userData.hot) return;
+    if (!o.isMesh || !o.userData.hot || !o.material.emissive) return;
     const on = o.userData.hot === id;
-    if (o.material.emissive) { if (on && !o.userData.ownMat) { o.material = o.material.clone(); o.userData.ownMat = true; } if (o.userData.ownMat) o.material.emissive.copy(on ? tint : o.userData.baseEm).multiplyScalar(on ? 0.22 : 1); }
+    if (on && !o.userData.ownMat) { o.material = o.material.clone(); o.userData.ownMat = true; o.userData.baseEm = o.material.emissive.clone(); }
+    if (o.userData.ownMat) o.material.emissive.copy(on ? tint : o.userData.baseEm).multiplyScalar(on ? 0.22 : 1);
   });
   pins.forEach(p => p.el.classList.toggle('on', p.id === id));
-  renderer.domElement.style.cursor = id ? 'pointer' : '';
+  document.body.style.cursor = id ? 'pointer' : '';
 }
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function pick(e) {
-  const r = renderer.domElement.getBoundingClientRect();
-  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ndc.set((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   const hit = ray.intersectObjects(scene.children, true).find(i => i.object.userData.hot);
   return hit ? hit.object.userData.hot : null;
 }
+const overUI = (e) => e.target.closest && e.target.closest('a, button, .panel, .hero-copy, .nav, .rail');
 const pointer = { x: 0, y: 0 };
-renderer.domElement.addEventListener('pointermove', (e) => {
-  const r = stage.getBoundingClientRect();
-  pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1; pointer.y = ((e.clientY - r.top) / r.height) * 2 - 1;
-  if (e.pointerType === 'mouse') setHover(pick(e));
-});
-renderer.domElement.addEventListener('pointerleave', () => { pointer.x = pointer.y = 0; setHover(null); });
-renderer.domElement.addEventListener('click', (e) => { const id = pick(e); if (id) go(id); });
+addEventListener('pointermove', (e) => {
+  pointer.x = (e.clientX / W) * 2 - 1; pointer.y = (e.clientY / H) * 2 - 1;
+  if (e.pointerType === 'mouse' && cur.pins > 0.5) setHover(overUI(e) ? (e.target.closest('.pin') ? hoverId : null) : pick(e));
+  else if (hoverId && !e.target.closest('.pin')) setHover(null);
+}, { passive: true });
+addEventListener('click', (e) => { if (cur.pins > 0.5 && !overUI(e)) { const id = pick(e); if (id) go(id); } });
 
 /* ---------- Layout ---------- */
-let W = 1, H = 1, zoom = 1;
 function layout() {
-  W = stage.clientWidth; H = stage.clientHeight;
+  W = innerWidth; H = innerHeight; mobile = W < 900;
   renderer.setSize(W, H, false);
-  const aspect = W / H;
-  const half = aspect < 0.9 ? 4.95 / aspect : Math.max(3.9, 4.45 / aspect); // keep the whole room in frame, whatever the stage shape
-  camera.left = -half * aspect; camera.right = half * aspect; camera.top = half; camera.bottom = -half;
-  camera.updateProjectionMatrix();
+  camera.aspect = W / H;
+  resolveShots();
+  pins.forEach(p => { p.w = p.el.offsetWidth; p.h = p.el.offsetHeight; });
 }
-new ResizeObserver(layout).observe(stage); layout();
+addEventListener('resize', layout); layout();
 
-/* ---------- Loop (paused when the hero is off screen) ---------- */
-let visible = true, last = 0, lastCode = 0;
-new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) requestAnimationFrame(tick); }, { threshold: 0 }).observe(stage);
-const yaw = { cur: 0, pitch: 0 };
-const tmp = new THREE.Vector3();
+/* ---------- Loop ---------- */
+const damp = (c, t, rate, dt) => lerp(c, t, 1 - Math.exp(-rate * dt));
+const dimEl = document.getElementById('dim'), hud = document.getElementById('hud');
+const hudCam = document.getElementById('hud-cam'), hudFov = document.getElementById('hud-fov'), hudFps = document.getElementById('hud-fps');
+const tmp = new THREE.Vector3(), dir = new THREE.Vector3();
+let last = 0, lastCode = 0, running = true, fpsAcc = 0, fpsN = 0, lastHud = 0;
+document.addEventListener('visibilitychange', () => { running = !document.hidden; if (running) { last = performance.now(); requestAnimationFrame(tick); } });
+
 function tick(t) {
-  if (!visible) return;
+  if (!running) return;
   const dt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
-  // gentle parallax with the pointer + slow idle sway
-  const idle = Math.sin(t / 4000) * 0.06;
-  yaw.cur += ((pointer.x * 0.18 + idle) - yaw.cur) * Math.min(1, dt * 3);
-  yaw.pitch += ((pointer.y * 0.06) - yaw.pitch) * Math.min(1, dt * 3);
-  const dir = CAM_DIR.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw.cur);
-  dir.y += yaw.pitch;
-  camera.position.copy(target).addScaledVector(dir.normalize(), 20);
-  camera.lookAt(target);
+  computeGoal();
+  if (first || REDUCE) { Object.assign(cur, goal, { center: cur.center.copy(goal.center) }); first = false; }
+  else {
+    const r = 3.6;
+    cur.center.x = damp(cur.center.x, goal.center.x, r, dt); cur.center.y = damp(cur.center.y, goal.center.y, r, dt); cur.center.z = damp(cur.center.z, goal.center.z, r, dt);
+    for (const k of ['logD', 'az', 'el', 'fov', 'ax', 'ay', 'dim', 'pins', 'lamp']) cur[k] = damp(cur[k], goal[k], r, dt);
+  }
+  // pointer parallax + idle breathing (scaled down as we get close)
+  const idle = REDUCE ? 0 : Math.sin(t / 4200) * 1.6;
+  const az = (cur.az + idle + (REDUCE ? 0 : pointer.x * 4)) * DEG, el = (cur.el + (REDUCE ? 0 : -pointer.y * 2.5)) * DEG;
+  dir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  camera.position.copy(cur.center).addScaledVector(dir, Math.exp(cur.logD));
+  camera.lookAt(cur.center);
+  camera.fov = cur.fov;
+  camera.setViewOffset(W, H, (0.5 - cur.ax) * W, (0.5 - cur.ay) * H, W, H);
+  camera.updateProjectionMatrix();
+
+  dimEl.style.opacity = cur.dim.toFixed(3);
+  bulb.intensity = bulbBase * cur.lamp;
+
   // live watch hands
   const d = new Date(), s = d.getSeconds() + d.getMilliseconds() / 1000, m = d.getMinutes() + s / 60, hr = (d.getHours() % 12) + m / 60;
   secH.rotation.z = -s / 60 * Math.PI * 2; minH.rotation.z = -m / 60 * Math.PI * 2; hourH.rotation.z = -hr / 12 * Math.PI * 2;
   // typing code
   if (t - lastCode > 70) { lastCode = t; typed = (typed + 1) % 420; drawCode(); }
-  renderer.render(scene, camera);
-  // pins follow their objects
-  for (const p of pins) {
-    tmp.copy(p.anchor); p.group.localToWorld(tmp); tmp.project(camera);
-    p.el.style.transform = `translate(${(tmp.x * 0.5 + 0.5) * W}px, ${(-tmp.y * 0.5 + 0.5) * H}px) translate(-50%, -50%)`;
+  // dust drift
+  if (!REDUCE) {
+    const p = dust.pos;
+    for (let i = 0; i < dust.N; i++) { p[i * 3 + 1] += dt * 0.04; if (p[i * 3 + 1] > 2.7) p[i * 3 + 1] = 0; p[i * 3] += Math.sin(t / 1800 + dust.seed[i]) * dt * 0.02; }
+    dust.pts.geometry.attributes.position.needsUpdate = true;
   }
+
+  renderer.render(scene, camera);
+
+  // pins follow their objects, nudged apart so labels never overlap
+  const show = cur.pins > 0.02;
+  pinLayer.style.opacity = cur.pins.toFixed(3);
+  pinLayer.style.visibility = show ? 'visible' : 'hidden';
+  if (show) {
+    const placed = [];
+    pins.map(p => { tmp.copy(p.anchor); p.group.localToWorld(tmp); tmp.project(camera); return { p, x: (tmp.x * 0.5 + 0.5) * W, y: (-tmp.y * 0.5 + 0.5) * H }; })
+      .sort((a, b) => a.y - b.y)
+      .forEach(q => {
+        for (const o of placed) if (Math.abs(q.x - o.x) < (q.p.w + o.p.w) / 2 + 6 && Math.abs(q.y - o.y) < q.p.h + 6) q.y = o.y + q.p.h + 6;
+        placed.push(q);
+        q.p.el.style.transform = `translate(${q.x - q.p.w / 2}px, ${q.y - q.p.h / 2}px)`;
+        q.p.el.style.pointerEvents = cur.pins > 0.5 ? 'auto' : 'none';
+      });
+  }
+
+  // HUD
+  fpsAcc += dt; fpsN++;
+  if (t - lastHud > 500) { lastHud = t; hudFps.textContent = Math.round(100 * scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)) + '%'; fpsAcc = 0; fpsN = 0; hudCam.textContent = SHOTS[activeKey].label; hudFov.textContent = Math.round(cur.fov) + '°'; }
+
   requestAnimationFrame(tick);
 }
-requestAnimationFrame((t) => { stage.classList.add('ready'); tick(t); });
+requestAnimationFrame((t) => { last = t; layout(); document.body.classList.add('gl-ready'); hud.classList.add('show'); tick(t); });
 </script>
 </body>
 </html>
