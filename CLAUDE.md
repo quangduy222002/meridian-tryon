@@ -14,3 +14,11 @@ Notes:
 - Each page is standalone: same-named functions on different pages (e.g. `box()`) are
   not related, even if the graph infers a link.
 - `tryon/mp/`, `store/assets/` and `assets/` are vendored/built files and are skipped.
+
+## After finishing a change: ship it to `main`
+GitHub Pages builds the live site from `main`
+(https://quangduy222002.github.io/meridian-tryon/). The owner wants every finished
+change committed and pushed to `main` so it gets built:
+1. Re-run `./scripts/graphify.sh` and commit the refreshed `graphify-out/` with the change.
+2. Commit on the working branch, then fast-forward `main` to it and push both
+   (`git push origin HEAD:main`). Never force-push `main`.

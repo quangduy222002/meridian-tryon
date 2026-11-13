@@ -162,32 +162,32 @@
     "semantic_hash": ""
   },
   ".graphify-inline/box__index.js": {
-    "mtime": 1794580711.919786,
-    "seen": 1794580713.2022278,
+    "mtime": 1794580787.2219732,
+    "seen": 1794580788.0749595,
     "ast_hash": "9e0e413b2b9b0544436e7049bc668280",
     "semantic_hash": ""
   },
   ".graphify-inline/chair__index.js": {
-    "mtime": 1794580711.919446,
-    "seen": 1794580713.2022343,
+    "mtime": 1794580787.2217147,
+    "seen": 1794580788.0749671,
     "ast_hash": "10bebbeb70a901dce4ecb74cbec094f1",
     "semantic_hash": ""
   },
   ".graphify-inline/index.js": {
-    "mtime": 1794580711.9182954,
-    "seen": 1794580713.2022374,
+    "mtime": 1794580787.2206845,
+    "seen": 1794580788.0749712,
     "ast_hash": "66bb69a6dc77d41df4ca2e01590427eb",
     "semantic_hash": ""
   },
   ".graphify-inline/tryon__index.js": {
-    "mtime": 1794580711.9192057,
-    "seen": 1794580713.202239,
+    "mtime": 1794580787.2214828,
+    "seen": 1794580788.0749736,
     "ast_hash": "0044d53cdc06d1fd417edf51ebeb8008",
     "semantic_hash": ""
   },
   ".graphify-inline/watch__index.js": {
-    "mtime": 1794580711.9186828,
-    "seen": 1794580713.2022402,
+    "mtime": 1794580787.2210526,
+    "seen": 1794580788.0749757,
     "ast_hash": "327aa519fb0ab9ee07498a53a7aa7556",
     "semantic_hash": ""
   },
@@ -195,6 +195,12 @@
     "mtime": 1794580711.8823767,
     "seen": 1794580713.202242,
     "ast_hash": "795e339e9b7b632b0eb1e37971ee9278",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1794580729.3943777,
+    "seen": 1794580788.0750067,
+    "ast_hash": "a3eeec3a53a4db0ac2f6bf2e9ac086af",
     "semantic_hash": ""
   }
 }

@@ -1,17 +1,17 @@
 # Graph Report - meridian-tryon  (2026-11-13)
 
 ## Corpus Check
-- 26 files · ~43,054 words
+- 27 files · ~43,191 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 3, .woff2 1, .css 1)
 
 ## Summary
-- 439 nodes · 692 edges · 25 communities (15 shown, 10 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.85)
+- 442 nodes · 695 edges · 25 communities (15 shown, 10 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `586b9cb8`
+- Built from commit: `27c1c6c1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -49,21 +49,21 @@
 5. `three` - 10 edges
 6. `CartProvider()` - 9 edges
 7. `Customize()` - 9 edges
-8. `Pic()` - 9 edges
-9. `Story()` - 9 edges
+8. `Story()` - 9 edges
+9. `Pic()` - 9 edges
 10. `compilerOptions` - 9 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Before starting any task: build the graphify graph` --references--> `box()`  [INFERRED]
+  CLAUDE.md → .graphify-inline/index.js
 - `buildBox()` --indirect_call--> `box()`  [INFERRED]
   .graphify-inline/box__index.js → .graphify-inline/index.js
-- `Price()` --calls--> `Money`  [EXTRACTED]
-  store-src/src/ui.tsx → store-src/src/lib/shopify.ts
-- `CartProvider()` --calls--> `cartAdd()`  [EXTRACTED]
-  store-src/src/cart.tsx → store-src/src/lib/shopify.ts
-- `CartProvider()` --calls--> `cartCreate()`  [EXTRACTED]
-  store-src/src/cart.tsx → store-src/src/lib/shopify.ts
-- `CartProvider()` --calls--> `cartGet()`  [EXTRACTED]
-  store-src/src/cart.tsx → store-src/src/lib/shopify.ts
+- `Hero3D()` --calls--> `Price()`  [EXTRACTED]
+  store-src/src/Hero3D.tsx → store-src/src/ui.tsx
+- `Lookbook()` --calls--> `Price()`  [EXTRACTED]
+  store-src/src/Lookbook.tsx → store-src/src/ui.tsx
+- `Customize()` --calls--> `reducedMotion()`  [EXTRACTED]
+  store-src/src/pages/Customize.tsx → store-src/src/scroll.ts
 
 ## Import Cycles
 - None detected.
@@ -72,15 +72,15 @@
 
 ### Community 0 - "package.json"
 Cohesion: 0.09
-Nodes (27): react-dom, @shopify/hydrogen-react, @types/react, @types/react-dom, @types/three, typescript, vite, @vitejs/plugin-react (+19 more)
+Nodes (28): react-dom, @shopify/hydrogen-react, three, @types/react, @types/react-dom, @types/three, typescript, vite (+20 more)
 
 ### Community 1 - "shopify.ts"
-Cohesion: 0.16
-Nodes (21): CartCtx, CartProvider(), Ctx, load(), save(), FIXTURE_COLLECTIONS, FIXTURE_PRODUCTS, garment() (+13 more)
+Cohesion: 0.09
+Nodes (41): CartCtx, CartProvider(), Ctx, load(), save(), useCart(), COLORS, FIXTURE_COLLECTIONS (+33 more)
 
 ### Community 2 - "ui.tsx"
-Cohesion: 0.09
-Nodes (51): react, react-router-dom, three, useCart(), Hero3D(), sized(), COLORS, Collection (+43 more)
+Cohesion: 0.15
+Nodes (30): react, react-router-dom, Hero3D(), sized(), Collection, getCollection(), getCollections(), getProducts() (+22 more)
 
 ### Community 3 - "index.js"
 Cohesion: 0.03
@@ -119,8 +119,8 @@ Cohesion: 0.40
 Nodes (5): applyTargets(), buildSwatches(), drawLogo(), refresh(), usd()
 
 ### Community 15 - "box"
-Cohesion: 0.67
-Nodes (4): box(), carton(), mesh(), monitor()
+Cohesion: 0.33
+Nodes (6): Before starting any task: build the graphify graph, Project notes for Claude, box(), carton(), mesh(), monitor()
 
 ### Community 16 - "sampleKF"
 Cohesion: 0.50
@@ -136,17 +136,17 @@ Nodes (3): go(), pins, setHover()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `three` connect `ui.tsx` to `package.json`, `index.js`, `tryon__index.js`, `watch__index.js`, `box__index.js`, `chair__index.js`?**
-  _High betweenness centrality (0.739) - this node is a cross-community bridge._
+- **Why does `three` connect `package.json` to `shopify.ts`, `ui.tsx`, `index.js`, `tryon__index.js`, `watch__index.js`, `box__index.js`, `chair__index.js`?**
+  _High betweenness centrality (0.738) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.09113300492610837 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0896551724137931 - nodes in this community are weakly interconnected._
 - **Why does `react` connect `ui.tsx` to `package.json`, `shopify.ts`?**
   _High betweenness centrality (0.021) - this node is a cross-community bridge._
-- **Should `ui.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.09000452284034374 - nodes in this community are weakly interconnected._
+- **Should `shopify.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.08627450980392157 - nodes in this community are weakly interconnected._
+- **Why does `box()` connect `box` to `index.js`, `box__index.js`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
 - **Should `index.js` be split into smaller, more focused modules?**
   _Cohesion score 0.02531645569620253 - nodes in this community are weakly interconnected._
 - **Should `tryon__index.js` be split into smaller, more focused modules?**
   _Cohesion score 0.03571428571428571 - nodes in this community are weakly interconnected._
-- **Should `watch__index.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.041666666666666664 - nodes in this community are weakly interconnected._
