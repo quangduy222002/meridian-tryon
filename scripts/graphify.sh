@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 rm -rf .graphify-inline && mkdir -p .graphify-inline
 python3 - <<'PY'
 import re, pathlib
-for page in ["index.html", "watch/index.html", "tryon/index.html", "chair/index.html", "box/index.html"]:
+for page in ["index.html", "watch/index.html", "chair/index.html", "box/index.html"]:
     html = pathlib.Path(page).read_text(encoding="utf-8")
     blocks = [m.group(1) for m in re.finditer(r"<script(?![^>]*\b(?:src|type=\"importmap\"))[^>]*>(.*?)</script>", html, re.S)]
     out = pathlib.Path(".graphify-inline") / (page.replace("/", "__").replace(".html", ".js"))

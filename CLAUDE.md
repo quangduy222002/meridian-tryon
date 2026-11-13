@@ -8,12 +8,12 @@
    `graphify path "A" "B"` to navigate instead of reading whole files.
 
 Notes:
-- Most 3D code lives in inline `<script>` blocks of `index.html`, `watch/`, `tryon/`,
+- Most 3D code lives in inline `<script>` blocks of `index.html`, `watch/`,
   `chair/` and `box/`. The script copies them to `.graphify-inline/*.js` so graphify can
   parse them — edit the `.html` files, never the copies.
 - Each page is standalone: same-named functions on different pages (e.g. `box()`) are
   not related, even if the graph infers a link.
-- `tryon/mp/`, `store/assets/` and `assets/` are vendored/built files and are skipped.
+- `store/assets/` and `assets/` are built/image files and are skipped.
 
 ## After finishing a change: ship it to `main`
 GitHub Pages builds the live site from `main`

@@ -1,7 +1,6 @@
 # vendored / built / generated — not our source
 node_modules/
 graphify-out/
-tryon/mp/
 store/assets/
 assets/
 *.wasm
