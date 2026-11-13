@@ -23,7 +23,8 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: `npm run preview -- --port ${PORT}`,
+    command: `node scripts/serve-dist.mjs`,
+    env: { PORT: String(PORT) },
     url: `http://localhost:${PORT}/meridian-tryon/`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

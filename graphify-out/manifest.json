@@ -1,8 +1,8 @@
 {
   "README.md": {
-    "mtime": 1794582636.1355586,
-    "seen": 1794582741.8757684,
-    "ast_hash": "e2ac61f9d0113889f5dc0bc1b95e8d37",
+    "mtime": 1794591525.4441829,
+    "seen": 1794592314.287478,
+    "ast_hash": "0f43307d0e9385577ccee8e6f8d9d331",
     "semantic_hash": ""
   },
   "scripts/graphify.sh": {
@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794591235.5281656,
-    "seen": 1794591492.9877012,
-    "ast_hash": "c9811373e0ba8aef796b68c29c1309f8",
+    "mtime": 1794591519.9321826,
+    "seen": 1794592314.2874758,
+    "ast_hash": "e1485769583396ca613fc39e75d8be85",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1794591480.6346982,
-    "seen": 1794591492.987507,
-    "ast_hash": "303d45ea50580b1aa27424fd68a67909",
+    "mtime": 1794592163.560352,
+    "seen": 1794592314.2873223,
+    "ast_hash": "e21427ab6b7c61a5e00262215295b108",
     "semantic_hash": ""
   },
   ".prettierrc.json": {
@@ -360,9 +360,9 @@
     "semantic_hash": ""
   },
   "playwright.config.ts": {
-    "mtime": 1794591291.252169,
-    "seen": 1794591492.9876065,
-    "ast_hash": "d370624e8dc93c03214902d3414d3e7e",
+    "mtime": 1794592217.1190598,
+    "seen": 1794592314.2874632,
+    "ast_hash": "bb72c4299c625d7f76e3b3de3d8562c0",
     "semantic_hash": ""
   },
   "scripts/check-bundle.mjs": {
@@ -399,6 +399,12 @@
     "mtime": 1794589897.008086,
     "seen": 1794591492.9877183,
     "ast_hash": "89d7153020c17a104ca935c2c3b374ae",
+    "semantic_hash": ""
+  },
+  "scripts/serve-dist.mjs": {
+    "mtime": 1794592217.1168644,
+    "seen": 1794592314.2874708,
+    "ast_hash": "c237edc49820c48769f07b4c2233999a",
     "semantic_hash": ""
   },
   "package-lock.json": {
