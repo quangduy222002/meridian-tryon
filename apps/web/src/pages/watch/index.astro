@@ -1,0 +1,377 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { withBase } from '../../lib/paths';
+import watchImg from '../../assets/projects/watch.jpg';
+import '../../styles/watch.css';
+
+const chapters = [
+  { id: 'hero', label: 'Halo 01' },
+  { id: 'dial', label: 'Dial' },
+  { id: 'case', label: 'Case' },
+  { id: 'layers', label: 'Layers' },
+  { id: 'movement', label: 'Movement' },
+  { id: 'lume', label: 'After dark' },
+  { id: 'configure', label: 'Configure' },
+  { id: 'reserve', label: 'Reserve' },
+];
+const gauges = [
+  { v: 72, max: 80, unit: 'h', label: 'Power reserve' },
+  { v: 4, max: 5, unit: 'Hz', label: 'Frequency' },
+  { v: 26, max: 30, unit: '', label: 'Jewels' },
+];
+---
+
+<BaseLayout
+  title="Meridian Halo 01 — 3D product story"
+  description="A scroll-driven 3D product story: guilloché dial, brushed titanium, an exploded view, a live movement and a configurator — built with Three.js. Concept demo, fictional brand."
+  image={watchImg}
+  themeColor="#070708"
+  favicon="favicon-watch.svg"
+>
+  <div id="backdrop"></div>
+  <canvas id="stage" aria-label="Interactive 3D model of the Meridian Halo 01 watch"></canvas>
+  <div id="night"></div>
+  <svg id="lines" aria-hidden="true"></svg>
+  <div id="callouts" aria-hidden="true"></div>
+  <div class="fx-vignette" aria-hidden="true"></div>
+  <div class="fx-grain" aria-hidden="true"></div>
+
+  <div class="ld" id="ld" role="status" aria-live="polite">
+    <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
+      <circle class="ticks" cx="50" cy="50" r="47" stroke-width="2.4" stroke-dasharray=".35 4.57"></circle>
+      <circle class="trk" cx="50" cy="50" r="40" stroke-width="1"></circle>
+      <circle
+        class="arc"
+        id="ldArc"
+        cx="50"
+        cy="50"
+        r="40"
+        stroke-width="1.6"
+        stroke-dasharray="251.3"
+        stroke-dashoffset="251.3"
+      ></circle>
+    </svg>
+    <div class="st" id="ldSt">
+      Preparing studio
+    </div>
+  </div>
+
+  <nav class="top" id="nav">
+    <div class="brand">
+      <i></i>MERIDIAN
+    </div>
+    <div class="top-right">
+      <a class="back" href={withBase()}>
+        ← Portfolio
+      </a>
+      <a class="pill" href="#configure">
+        Configure
+      </a>
+    </div>
+  </nav>
+  <nav class="rail" id="rail" aria-label="Chapters">
+    {chapters.map((c) => (
+      <a href={`#${c.id}`}>
+        <span>{c.label}</span>
+        <i />
+      </a>
+    ))}
+  </nav>
+  <div class="hud" aria-hidden="true">
+    <span>
+      Local time <b id="hud-time">--:--:--</b>
+    </span>
+    <span>
+      Ch <b id="hud-ch">00</b>
+    </span>
+  </div>
+
+  <main>
+    <section id="hero" data-shot="hero">
+      <div class="copy">
+        <div class="eyebrow">Halo 01 · Automatic · 40 mm</div>
+        <h1>
+          <span class="mask-line" data-rv-mask>
+            <span>Time,</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em>refined.</em>
+            </span>
+          </span>
+        </h1>
+        <p class="body" data-rv="up">
+          A titanium automatic with an engraved dial and a movement you can watch breathing through the back. The hands
+          show your local time.
+        </p>
+        <div class="specs" data-rv="up">
+          <div>
+            <b>
+              40<small> mm</small>
+            </b>
+            <span>Case</span>
+          </div>
+          <div>
+            <b>
+              72<small> h</small>
+            </b>
+            <span>Reserve</span>
+          </div>
+          <div>
+            <b>
+              100<small> m</small>
+            </b>
+            <span>Water</span>
+          </div>
+        </div>
+        <div class="hint" data-rv="up">
+          <svg viewBox="0 0 30 14" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M2 7h26M6 3 2 7l4 4M24 3l4 4-4 4"></path>
+          </svg>
+          Drag to turn it in your hand
+        </div>
+      </div>
+    </section>
+
+    <section id="dial" data-shot="dial" class="long r">
+      <div class="copy">
+        <div class="eyebrow">01 — The dial</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span>Engraved,</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em>not printed.</em>
+            </span>
+          </span>
+        </h2>
+        <p class="body" data-rv="up">
+          A guilloché rosette cut the way rose-engine lathes have done it for centuries — 96 overlapping curves that
+          throw the light back differently every time your wrist turns.
+        </p>
+        <ul class="list" data-rv="up">
+          <li>
+            Pattern<b>Rosette · 24 lobes</b>
+          </li>
+          <li>
+            Indices<b>Applied, hand-set</b>
+          </li>
+          <li>
+            Hands<b>Faceted dauphine</b>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="case" data-shot="case" class="long">
+      <div class="copy">
+        <div class="eyebrow">02 — The case</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span>Grade 5 titanium,</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em>brushed in circles.</em>
+            </span>
+          </span>
+        </h2>
+        <p class="body" data-rv="up">
+          Concentric brushing on the flanks, a mirror-polished bevel on top. Watch the light travel around the case as
+          you scroll.
+        </p>
+        <ul class="list" data-rv="up">
+          <li>
+            Diameter<b>40.0 mm</b>
+          </li>
+          <li>
+            Thickness<b>11.2 mm</b>
+          </li>
+          <li>
+            Weight<b>62 g</b>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="layers" data-shot="layers" class="long r">
+      <div class="copy">
+        <div class="eyebrow">03 — Architecture</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span>Seven layers,</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em>one heartbeat.</em>
+            </span>
+          </span>
+        </h2>
+        <p class="body" data-rv="up">
+          From the domed sapphire to the exhibition caseback, every part is modelled and placed to scale — pulled apart
+          here so you can see how it fits together.
+        </p>
+      </div>
+    </section>
+
+    <section id="movement" data-shot="movement" class="long">
+      <div class="copy">
+        <div class="eyebrow">04 — Calibre M-01</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span>Beats eight times</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em>a second.</em>
+            </span>
+          </span>
+        </h2>
+        <p class="body" data-rv="up">
+          Perlage on the mainplate, Côtes de Genève on the rotor, a balance wheel swinging at 4 Hz. Turned around, the
+          back is as finished as the front.
+        </p>
+        <div class="gauges" id="gauges" data-rv="up">
+          {gauges.map((g) => (
+            <figure class="gauge" data-v={g.v} data-max={g.max}>
+              <div class="g-shell">
+                <div class="g-face">
+                  <i class="g-needle" />
+                  <i class="g-hub" />
+                  <div class="g-val">
+                    <span class="cnt">0</span>
+                    <small>{g.unit}</small>
+                  </div>
+                </div>
+              </div>
+              <figcaption>{g.label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="lume" data-shot="lume" class="long r">
+      <div class="copy">
+        <div class="eyebrow lume">05 — After dark</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span>It keeps the time</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              <em class="lume">with the lights off.</em>
+            </span>
+          </span>
+        </h2>
+        <p class="body" data-rv="up">
+          Hand-applied luminous paint on every index and hand. Charged by daylight, readable all night.
+        </p>
+      </div>
+    </section>
+
+    <section id="configure" data-shot="config">
+      <div class="config">
+        <div class="eyebrow">06 — Configure</div>
+        <h2>
+          Make it <em>yours.</em>
+        </h2>
+        <div class="row">
+          <div class="row-label">
+            Case <span id="caseLabel"></span>
+          </div>
+          <div class="opts" id="caseOpts" role="group" aria-label="Case"></div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            Dial <span id="dialLabel"></span>
+          </div>
+          <div class="opts" id="dialOpts" role="group" aria-label="Dial"></div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            Strap <span id="strapLabel"></span>
+          </div>
+          <div class="opts" id="strapOpts" role="group" aria-label="Strap"></div>
+        </div>
+        <div class="total">
+          <div>
+            <strong id="price"></strong>
+            <small>INCL. VAT · FREE SHIPPING</small>
+          </div>
+          <a class="metal" href="#reserve" data-metal>
+            Continue →
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="reserve" data-shot="final" class="final">
+      <div class="copy">
+        <div class="eyebrow">Your Halo 01</div>
+        <h2>
+          <span class="mask-line" data-rv-mask>
+            <span id="summary">Titanium · Midnight</span>
+          </span>
+        </h2>
+        <div class="price" id="finalPrice" data-rv="up"></div>
+        <div data-rv="up">
+          <button class="metal" id="preorder" data-metal type="button">
+            Reserve yours
+          </button>
+        </div>
+        <small data-rv="up">
+          CONCEPT DEMO · FICTIONAL BRAND · BUILT WITH THREE.JS BY{' '}
+          <a href={withBase()} style="text-decoration:underline">
+            DUY Q.
+          </a>
+        </small>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    import { initReveals } from '../../lib/dom/reveal';
+    import { initStickyNav } from '../../lib/dom/chrome';
+    import { hasWebGL } from '../../lib/three/support';
+    import { initConfigurator, initGauges, initMetalButtons } from '../../scripts/watch/ui';
+    import type { Config } from '../../scripts/watch/catalog';
+
+    initReveals();
+    initStickyNav(document.getElementById('nav'));
+    initGauges(document.getElementById('gauges'));
+    initMetalButtons();
+
+    // UI works immediately; the 3D stage picks up the configuration once it has loaded.
+    let apply: ((c: Config) => void) | undefined;
+    const configurator = initConfigurator((c) => apply?.(c));
+
+    const ld = document.getElementById('ld')!;
+    const arc = document.getElementById('ldArc')!;
+    const status = document.getElementById('ldSt')!;
+    if (hasWebGL()) {
+      import('../../scripts/watch/stage')
+        .then(({ startWatch }) =>
+          startWatch((p, label) => {
+            arc.style.strokeDashoffset = String(251.3 * (1 - p));
+            status.textContent = label;
+          }),
+        )
+        .then((stage) => {
+          apply = stage.setConfig;
+          stage.setConfig(configurator.get());
+          document.body.classList.add('gl-ready');
+          ld.classList.add('done');
+        })
+        .catch((err: unknown) => {
+          console.error(err);
+          ld.classList.add('done');
+          document.documentElement.classList.add('no-webgl');
+        });
+    } else {
+      ld.classList.add('done');
+      document.documentElement.classList.add('no-webgl');
+    }
+  </script>
+</BaseLayout>

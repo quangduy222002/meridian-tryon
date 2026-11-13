@@ -1,0 +1,39 @@
+{
+  "name": "meridian",
+  "private": true,
+  "type": "module",
+  "description": "Duy Q. \u2014 3D portfolio and product demos (Astro + Three.js) with a headless Shopify storefront (React).",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @meridian/web",
+    "dev:store": "npm run dev -w @meridian/store",
+    "build": "npm run build -w @meridian/web && npm run build -w @meridian/store",
+    "preview": "npm run preview -w @meridian/web",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run format:check",
+    "graph": "./scripts/graphify.sh",
+    "budget": "node scripts/check-bundle.mjs",
+    "test:e2e": "playwright test",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@playwright/test": "1.63.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-astro": "^3.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.0.0",
+    "prettier": "^3.10.1",
+    "prettier-plugin-astro": "^1.1.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2"
+  }
+}

@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import chairImg from '../../assets/projects/chair.jpg';
+import '../../styles/chair.css';
+---
+
+<BaseLayout
+  title="Norda — 3D chair configurator"
+  description="Configure the Norda lounge chair in 3D: frame, upholstery, colour, legs and armrests, with live pricing. Concept demo built with Three.js."
+  image={chairImg}
+  themeColor="#f4f1ec"
+>
+  <div class="app">
+    <div class="viewer" id="viewer">
+      <canvas aria-label="3D view of the configured chair"></canvas>
+      <div class="loading">Loading 3D…</div>
+      <div class="brand">NORDA · Lounge Chair</div>
+      <div class="hint">Drag to rotate · Pinch to zoom</div>
+    </div>
+
+    <aside class="panel">
+      <h1>Customize your chair</h1>
+      <section>
+        <h2>
+          Frame <span id="frameLabel"></span>
+        </h2>
+        <div class="chips" id="frames"></div>
+      </section>
+      <section>
+        <h2>
+          Upholstery <span id="fabricLabel"></span>
+        </h2>
+        <div class="segmented" id="fabrics"></div>
+      </section>
+      <section>
+        <h2>
+          Color <span id="colorLabel"></span>
+        </h2>
+        <div class="swatches" id="colors"></div>
+      </section>
+      <section>
+        <h2>
+          Legs <span id="legLabel"></span>
+        </h2>
+        <div class="segmented" id="legs"></div>
+      </section>
+      <section>
+        <label class="toggle">
+          <input type="checkbox" id="arms" />
+          <span class="track">
+            <span class="thumb"></span>
+          </span>
+          Armrests <small id="armPrice"></small>
+        </label>
+      </section>
+      <footer>
+        <div class="price">
+          <small>Total</small>
+          <strong id="price"></strong>
+        </div>
+        <button class="ghost" id="snap" type="button">
+          Snapshot
+        </button>
+        <button class="primary" id="cart" type="button">
+          Add to cart
+        </button>
+      </footer>
+    </aside>
+  </div>
+
+  <dialog class="modal" id="modal">
+    <div class="modal-card">
+      <img id="snapImg" alt="Your configured chair" />
+      <p>Press and hold the image to save it</p>
+      <button class="primary" id="closeModal" type="button">
+        Done
+      </button>
+    </div>
+  </dialog>
+
+  <script>
+    import { startChair } from '../../scripts/chair/configurator';
+    startChair().catch((err: unknown) => {
+      console.error(err);
+      document.querySelector('.loading')!.textContent = 'Your browser could not start 3D.';
+    });
+  </script>
+</BaseLayout>

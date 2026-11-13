@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import boxImg from '../../assets/projects/box.jpg';
+import '../../styles/box.css';
+---
+
+<BaseLayout
+  title="Pakka — custom box studio"
+  description="Design a custom shipping box in 3D: size, material, logo and quantity with an instant quote. Concept demo built with Three.js."
+  image={boxImg}
+  themeColor="#efe9df"
+>
+  <div class="app">
+    <div class="viewer" id="viewer">
+      <canvas aria-label="3D view of the custom box"></canvas>
+      <div class="brand">
+        PAKKA<span>Custom Box Studio</span>
+      </div>
+      <div class="dims-badge" id="dimsBadge"></div>
+      <div class="actions">
+        <button id="foldBtn" class="on" type="button">
+          Folded
+        </button>
+        <button id="flatBtn" type="button">
+          Dieline
+        </button>
+        <button id="lidBtn" type="button">
+          Open lid
+        </button>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <h1>Design your box</h1>
+      <section>
+        <h2>
+          Size <span>cm</span>
+        </h2>
+        <div class="slider">
+          <label for="w">Width</label>
+          <input type="range" id="w" min="10" max="40" value="24" />
+          <output id="wOut"></output>
+        </div>
+        <div class="slider">
+          <label for="h">Height</label>
+          <input type="range" id="h" min="4" max="30" value="10" />
+          <output id="hOut"></output>
+        </div>
+        <div class="slider">
+          <label for="d">Depth</label>
+          <input type="range" id="d" min="10" max="40" value="18" />
+          <output id="dOut"></output>
+        </div>
+      </section>
+      <section>
+        <h2>
+          Material <span id="matLabel"></span>
+        </h2>
+        <div class="mats" id="mats"></div>
+      </section>
+      <section>
+        <h2>Print</h2>
+        <input
+          class="text-in"
+          id="brandIn"
+          maxlength="18"
+          value="AURORA"
+          placeholder="Brand name"
+          aria-label="Brand name"
+        />
+        <div class="upload">
+          <label>
+            Upload logo
+            <input type="file" id="logoIn" accept="image/*" />
+          </label>
+          <small id="logoName">PNG with transparent background works best</small>
+        </div>
+      </section>
+      <section>
+        <h2>
+          Quantity <span id="unitLabel"></span>
+        </h2>
+        <div class="seg" id="qty"></div>
+      </section>
+      <footer>
+        <div class="price">
+          <small>Total</small>
+          <strong id="total"></strong>
+          <em id="perUnit"></em>
+        </div>
+        <button class="primary" id="quote" type="button">
+          Request quote
+        </button>
+      </footer>
+    </aside>
+  </div>
+
+  <script>
+    import { startBoxStudio } from '../../scripts/box/studio';
+    startBoxStudio().catch((err: unknown) => console.error(err));
+  </script>
+</BaseLayout>

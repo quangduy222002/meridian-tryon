@@ -1,0 +1,66 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/** Collects page errors, console errors and failed same-origin requests. */
+function watchErrors(page: Page) {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    // Software-rendered WebGL and the external demo API (mock.shop) are not our errors.
+    if (/GL Driver|GPU stall|mock\.shop|Failed to load resource/.test(text)) return;
+    errors.push(`console: ${text}`);
+  });
+  page.on('response', (r) => {
+    if (r.status() >= 400 && r.url().startsWith('http://localhost')) errors.push(`HTTP ${r.status()} ${r.url()}`);
+  });
+  return errors;
+}
+
+async function expectNoHorizontalScroll(page: Page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow, 'page should not scroll sideways').toBeLessThanOrEqual(1);
+}
+
+const pages3d = [
+  { path: '', name: 'portfolio', ready: 'body.gl-ready' },
+  { path: 'watch/', name: 'watch story', ready: 'body.gl-ready' },
+  { path: 'chair/', name: 'chair configurator', ready: '#viewer.ready' },
+  { path: 'box/', name: 'box studio', ready: '#viewer.ready' },
+];
+
+for (const p of pages3d) {
+  test(`${p.name} renders its 3D scene without errors`, async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto(p.path);
+    await expect(page).toHaveTitle(/.+/);
+    await expect(page.locator('h1').first()).toBeAttached();
+    await expect(page.locator(p.ready)).toBeAttached({ timeout: 60_000 });
+    await expectNoHorizontalScroll(page);
+    expect(errors).toEqual([]);
+  });
+}
+
+test('portfolio links to every live demo', async ({ page }) => {
+  await page.goto('');
+  for (const href of ['watch/', 'chair/', 'box/', 'store/']) {
+    await expect(page.locator(`a[href$="/${href}"]`).first()).toBeAttached();
+  }
+});
+
+test('watch configurator updates the price', async ({ page }) => {
+  await page.goto('watch/#configure');
+  // #finalPrice updates at once; #price animates its digits.
+  const price = page.locator('#finalPrice');
+  await expect(price).toHaveText('$389');
+  await page.getByRole('button', { name: 'Champagne Gold' }).click();
+  await expect(price).toHaveText('$539');
+  await expect(page.locator('#summary')).toHaveText('Gold · Midnight');
+});
+
+test('storefront boots', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('store/');
+  await expect(page.locator('#root header')).toBeVisible();
+  expect(errors).toEqual([]);
+});

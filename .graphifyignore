@@ -1,9 +1,11 @@
-# vendored / built / generated — not our source
+# generated, vendored or binary — not our source
 node_modules/
+**/dist/
+**/.astro/
 graphify-out/
-store/assets/
-assets/
-*.wasm
-*.data
-*.tflite
-!.graphify-inline/
+test-results/
+playwright-report/
+package-lock.json
+*.woff2
+*.jpg
+*.png

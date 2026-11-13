@@ -1,0 +1,25 @@
+---
+interface Props {
+  eyebrow: string;
+  lines: string[];
+  lede: string;
+  stacked?: boolean;
+}
+const { eyebrow, lines, lede, stacked = false } = Astro.props;
+---
+
+<div class:list={['sec-head', { stacked }]}>
+  <div>
+    <div class="eyebrow" data-rv="fade">
+      {eyebrow}
+    </div>
+    <h2 class="display">
+      {lines.map((line) => (
+        <span class="mask-line" data-rv-mask>
+          <span set:html={line} />
+        </span>
+      ))}
+    </h2>
+  </div>
+  <p data-rv="up">{lede}</p>
+</div>

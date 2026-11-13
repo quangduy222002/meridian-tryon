@@ -1,0 +1,245 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectChapter from '../components/home/ProjectChapter.astro';
+import SectionHead from '../components/home/SectionHead.astro';
+import { projects, services, steps, stack, UPWORK_URL } from '../content/site';
+import watchImg from '../assets/projects/watch.jpg';
+import '../styles/home.css';
+
+const rail = [
+  { id: 'top', label: 'Intro' },
+  { id: 'work', label: 'Work' },
+  ...projects.map((p) => ({ id: p.id, label: p.title.split(' ')[0]! })),
+  { id: 'services', label: 'Services' },
+  { id: 'process', label: 'Process' },
+  { id: 'contact', label: 'Contact' },
+];
+const liveDemos = projects.filter((p) => p.href).length;
+---
+
+<BaseLayout
+  title="Duy Q. — 3D experiences for the web"
+  description="Duy Q. builds interactive 3D experiences that run in the browser: product configurators, scroll-driven 3D stories and engineering model viewers."
+  image={watchImg}
+>
+  <div id="void" aria-hidden="true"></div>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div id="dim" aria-hidden="true"></div>
+  <div id="pins"></div>
+  <div class="fx-vignette" aria-hidden="true"></div>
+  <div class="fx-grain" aria-hidden="true"></div>
+  <div id="cursor" aria-hidden="true"></div>
+
+  <header class="nav" id="nav">
+    <a href="./" class="logo" data-cursor aria-label="Duy Q. — home">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          d="M32 8 54 20v24L32 56 10 44V20Z M10 20l22 12 22-12M32 32v24"
+          fill="none"
+          stroke="#e3a95c"
+          stroke-width="3.5"
+          stroke-linejoin="round"
+        ></path>
+      </svg>
+      Duy <i>Q.</i>
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#work" data-cursor>
+        Work
+      </a>
+      <a href="#services" data-cursor>
+        Services
+      </a>
+      <a href="#process" data-cursor>
+        Process
+      </a>
+      <a class="btn btn-primary btn-sm" href={UPWORK_URL} target="_blank" rel="noopener" data-cursor>
+        Hire me
+      </a>
+    </nav>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Chapters">
+    {rail.map((r) => (
+      <a href={`#${r.id}`}>
+        <span>{r.label}</span>
+        <i />
+      </a>
+    ))}
+  </nav>
+  <div class="hud" id="hud" aria-hidden="true">
+    <span>
+      CAM <b id="hud-cam">00 · ROOM</b>
+    </span>
+    <span>
+      FOV <b id="hud-fov">24°</b>
+    </span>
+    <span>
+      SCROLL <b id="hud-scroll">0%</b>
+    </span>
+  </div>
+
+  <main class="page">
+    <section class="hero" id="top" data-shot="hero">
+      <div class="hero-copy">
+        <div class="eyebrow" data-rv="fade">
+          <span class="dot"></span>3D Web Developer · Available
+        </div>
+        <h1 class="display" data-rv-group>
+          <span class="mask-line" data-rv-mask>
+            <span>
+              I build <em>3D</em>
+            </span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>experiences</span>
+          </span>
+          <span class="mask-line" data-rv-mask>
+            <span>for the web.</span>
+          </span>
+        </h1>
+        <p class="lede" data-rv="up">
+          Product configurators, scroll-driven 3D stories and model viewers that let customers explore what they're
+          buying — right in the browser, smooth on any phone.
+        </p>
+        <div class="cta-row" data-rv="up">
+          <a class="btn btn-primary" href="#work" data-cursor>
+            Fly through the work <span>↓</span>
+          </a>
+          <a class="btn btn-ghost" href={UPWORK_URL} target="_blank" rel="noopener" data-cursor>
+            <span class="ring"></span>Hire me on Upwork
+          </a>
+        </div>
+        <div class="facts" data-rv="up">
+          <div>
+            <b>{liveDemos}</b>
+            <span>Live 3D demos</span>
+          </div>
+          <div>
+            <b>
+              60<small>fps</small>
+            </b>
+            <span>Mobile target</span>
+          </div>
+          <div>
+            <b>0</b>
+            <span>Apps to install</span>
+          </div>
+        </div>
+      </div>
+      <div class="scroll-cue">
+        <i></i>Scroll — the camera flies to each project in this room
+      </div>
+    </section>
+
+    <section class="intro" id="work" data-shot="overview">
+      <div class="wrap">
+        <SectionHead
+          eyebrow="01 — Selected work"
+          lines={[
+            `${['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'][liveDemos]} live demos.`,
+            '<em>One room.</em>',
+          ]}
+          lede="Every object in this room is a project. Keep scrolling and the camera flies to each one — then open the real, custom-coded demo on your phone. No templates, no plugins."
+          stacked
+        />
+      </div>
+    </section>
+
+    {projects.map((project, i) => (
+      <ProjectChapter project={project} index={i} total={projects.length} />
+    ))}
+
+    <section class="block" id="services" data-shot="services">
+      <div class="wrap">
+        <SectionHead
+          eyebrow="02 — What I build"
+          lines={['3D that <em>sells</em>, explains', 'or gets work done.']}
+          lede="From a single 3D hero section to a full configurator with checkout — front end, back end and the 3D in between."
+        />
+        <div class="services">
+          {services.map((s, i) => (
+            <div class="svc" data-rv="up">
+              <span class="n">/{String(i + 1).padStart(2, '0')}</span>
+              <h4>{s.title}</h4>
+              <p>{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="process" data-shot="process">
+      <div class="wrap">
+        <SectionHead
+          eyebrow="03 — How we work"
+          lines={['Simple, visible,', '<em>no surprises.</em>']}
+          lede="You see working builds early and often. Clear English updates, every step of the way."
+        />
+        <div class="steps">
+          {steps.map((s, i) => (
+            <div class="step" data-rv="up">
+              <span class="n">{String(i + 1).padStart(2, '0')}</span>
+              <h4>{s.title}</h4>
+              <p>{s.body}</p>
+            </div>
+          ))}
+        </div>
+        <div class="stack" data-rv="up">
+          {stack.map((s) => (
+            <span>{s}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact" data-shot="contact">
+      <div class="eyebrow" data-rv="fade">
+        04 — Let's talk
+      </div>
+      <h2 class="display">
+        <span class="mask-line" data-rv-mask>
+          <span>Have a product people</span>
+        </span>
+        <span class="mask-line" data-rv-mask>
+          <span>
+            should <em>explore in 3D?</em>
+          </span>
+        </span>
+      </h2>
+      <p data-rv="up">
+        Send me what you have — photos, models or just an idea — and I'll reply with the simplest way to get there.
+      </p>
+      <div data-rv="up">
+        <a class="btn btn-primary btn-lg" href={UPWORK_URL} target="_blank" rel="noopener" data-cursor>
+          Hire me on Upwork →
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>© 2026 Duy Q. · 3D Web Developer · Ho Chi Minh City (UTC+7)</span>
+    <span>Demo brands are fictional. This room is rendered live with Three.js.</span>
+  </footer>
+
+  <script>
+    import { initReveals } from '../lib/dom/reveal';
+    import { initCursor, initRail, initStickyNav } from '../lib/dom/chrome';
+    import { hasWebGL } from '../lib/three/support';
+
+    initReveals();
+    initStickyNav(document.getElementById('nav'));
+    initRail(document.getElementById('rail'));
+    initCursor(document.getElementById('cursor'));
+
+    // The text is the first paint. The room (Three.js, ~150 kB gzipped) loads once the browser is idle.
+    if (hasWebGL()) {
+      const boot = () => import('../scripts/home/room/stage').then((m) => m.startRoom());
+      if ('requestIdleCallback' in window) requestIdleCallback(boot, { timeout: 1200 });
+      else setTimeout(boot, 200);
+    } else {
+      document.documentElement.classList.add('no-webgl');
+    }
+  </script>
+</BaseLayout>

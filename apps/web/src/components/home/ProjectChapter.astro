@@ -1,0 +1,69 @@
+---
+import { Picture } from 'astro:assets';
+import type { Project } from '../../content/site';
+import { withBase } from '../../lib/paths';
+
+interface Props {
+  project: Project;
+  index: number;
+  total: number;
+}
+
+const { project: p, index, total } = Astro.props;
+const href = p.href ? withBase(p.href) : undefined;
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<section class="chap" id={p.id} data-shot={p.shot} data-side={p.side}>
+  <div class="wrap">
+    <article class="panel" data-rv="up">
+      <div class="panel-top">
+        <span class="idx">
+          {pad(index + 1)} / {pad(total)}
+        </span>
+        <span>{p.kind}</span>
+      </div>
+      <h3>{p.title}</h3>
+      <p class="sub">{p.sub}</p>
+      <p class="desc">{p.desc}</p>
+      {p.image && href && (
+        <a class="shot" href={href} data-cursor>
+          <Picture
+            src={p.image}
+            formats={['avif', 'webp']}
+            widths={[480, 800]}
+            sizes="(max-width: 900px) 92vw, 400px"
+            alt={p.imageAlt ?? ''}
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="live">{p.live}</span>
+        </a>
+      )}
+      <ul class="chips">
+        {p.chips.map((c) => (
+          <li>{c}</li>
+        ))}
+      </ul>
+      {p.extra && (
+        <div class="sub-proj">
+          <h4>{p.extra.title}</h4>
+          <p class="desc">{p.extra.desc}</p>
+          <ul class="chips">
+            {p.extra.chips.map((c) => (
+              <li>{c}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {href && (
+        <div class="actions">
+          <a class="btn btn-primary btn-sm" href={href} data-cursor>
+            {p.cta} →
+          </a>
+        </div>
+      )}
+      {p.note && <span class="nda">{p.note}</span>}
+    </article>
+  </div>
+</section>
