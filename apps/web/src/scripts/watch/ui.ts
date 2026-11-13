@@ -1,5 +1,5 @@
 import { $, toast, usd } from '../../lib/dom/chrome';
-import { easeOutCubic } from '../../lib/math';
+import { easeOutCubic } from '@meridian/three-core/math';
 import { CASES, DIALS, STRAPS, priceOf, type Config } from './catalog';
 
 /** Configurator panel. Works before the 3D has loaded; `onChange` drives the model once it is ready. */

@@ -13,8 +13,38 @@ import '../../styles/chair.css';
   <div class="app">
     <div class="viewer" id="viewer">
       <canvas aria-label="3D view of the configured chair"></canvas>
-      <div class="loading">Loading 3D…</div>
+      <div id="pins" class="pins on" aria-hidden="true"></div>
+      <div class="loading" role="status">
+        Loading 3D…
+      </div>
       <div class="brand">NORDA · Lounge Chair</div>
+      <div class="toolbar">
+        <div class="seg-mini" role="group" aria-label="Camera">
+          <button type="button" data-view="three" class="on">
+            3/4
+          </button>
+          <button type="button" data-view="front">
+            Front
+          </button>
+          <button type="button" data-view="side">
+            Side
+          </button>
+          <button type="button" data-view="detail">
+            Detail
+          </button>
+        </div>
+        <div class="seg-mini" role="group" aria-label="Setting">
+          <button type="button" data-scene="studio" class="on">
+            Studio
+          </button>
+          <button type="button" data-scene="room">
+            Room
+          </button>
+        </div>
+        <button type="button" class="seg-mini solo" id="detailsBtn" aria-pressed="true">
+          Details
+        </button>
+      </div>
       <div class="hint">Drag to rotate · Pinch to zoom</div>
     </div>
 

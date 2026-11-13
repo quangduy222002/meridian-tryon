@@ -1,4 +1,4 @@
-import { smoothstep } from '../math';
+import { smoothstep } from './math';
 
 export interface ScrollSample {
   /** Shot key of the section the camera is leaving. */

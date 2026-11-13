@@ -2,15 +2,7 @@
  * Procedural texture painters. They only use the 2D canvas API, so the same code runs inside a
  * Web Worker (OffscreenCanvas) or on the main thread as a fallback.
  */
-import { TAU, rand32 } from '../../lib/math';
-
-export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-export interface TextureSpec {
-  width: number;
-  height: number;
-  paint: (c: Ctx2D, w: number, h: number) => void;
-}
+import { TAU, rand32, type TextureSpec } from '@meridian/three-core';
 
 /** Radial brushing: streaks run along U, so on a lathe they follow the circumference. */
 export const brush: TextureSpec = {
@@ -180,14 +172,13 @@ export const rehaut: TextureSpec = {
   },
 };
 
-export const specs = (dialSize: number) => ({ brush, dial: dial(dialSize), perlage, cotes, grain, engrave, rehaut });
+export const specs = (dialSize: number) => ({
+  brush: { ...brush, repeat: [1, 1] as [number, number] },
+  dial: { ...dial(dialSize), srgb: true },
+  perlage: { ...perlage, repeat: [3, 3] as [number, number] },
+  cotes: { ...cotes, repeat: [1, 1] as [number, number] },
+  grain: { ...grain, repeat: [2, 8] as [number, number] },
+  engrave,
+  rehaut: { ...rehaut, srgb: true },
+});
 export type TextureName = keyof ReturnType<typeof specs>;
-
-/**
- * Paints a spec upside down, so the result can be uploaded with `flipY = false`
- * (ImageBitmaps ignore WebGL's flip flag, and this keeps worker and fallback identical).
- */
-export function paintFlipped(c: Ctx2D, spec: TextureSpec) {
-  c.setTransform(1, 0, 0, -1, 0, spec.height);
-  spec.paint(c, spec.width, spec.height);
-}

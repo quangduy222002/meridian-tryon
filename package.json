@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Duy Q. \u2014 3D portfolio and product demos (Astro + Three.js) with a headless Shopify storefront (React).",
   "workspaces": [
+    "packages/*",
     "apps/*"
   ],
   "engines": {

@@ -10,9 +10,11 @@
 ## Layout
 
 - `apps/web` — Astro + TypeScript + three.js: portfolio (`/`), `/watch/`, `/chair/`, `/box/`.
-  - `src/lib/three/` is the shared 3D core (quality tiers, adaptive resolution, `RenderLoop`, `ScrollDirector`).
   - `src/scripts/<page>/` holds each page's scene and UI; `src/content/site.ts` holds portfolio copy.
 - `apps/store` — Vite + React storefront, built into `apps/web/dist/store`.
+- `packages/three-core` (`@meridian/three-core`) — the shared 3D runtime for both apps: quality tiers, adaptive
+  resolution, `RenderLoop`, `ScrollDirector`, `bakeStudio` lighting, `generateTextures`. Import math-only helpers from
+  `@meridian/three-core/math` and the WebGL check from `/support` in code that runs before first paint.
 - Each page is standalone: same-named functions on different pages are not related.
 
 ## 3D work: performance comes first
@@ -22,7 +24,8 @@
 - Use `getQuality()` for pixel ratio, shadows, textures and expensive materials; `RenderLoop` for the frame loop
   (demand mode for anything that can sit idle); `precompile()` before the first frame.
 - Static scenes: `renderer.shadowMap.autoUpdate = false` and set `needsUpdate` only when geometry changes.
-- Heavy canvas/procedural work goes in a Web Worker (see `scripts/watch/textures.worker.ts`).
+- Heavy canvas/procedural work goes in a Web Worker via `exposeTextureWorker` + `generateTextures` (see
+  `scripts/chair/textures*.ts`). Always pass `renderer` so textures reach the GPU before the worker is terminated.
 - Prefer animating in shaders over per-frame buffer uploads; build models in code instead of shipping files.
 
 ## Checks

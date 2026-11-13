@@ -58,6 +58,24 @@ test('watch configurator updates the price', async ({ page }) => {
   await expect(page.locator('#summary')).toHaveText('Gold · Midnight');
 });
 
+test('box studio shows the dieline and the whole order', async ({ page }) => {
+  await page.goto('box/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('#flatBtn').click();
+  await expect(page.locator('#dimW')).toHaveText('W 24 cm');
+  await page.locator('[data-mode=order]').click();
+  await expect(page.locator('#palletInfo')).toContainText('per pallet');
+});
+
+test('chair configurator switches setting and updates the price', async ({ page }) => {
+  await page.goto('chair/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('[data-scene=room]').click();
+  await page.locator('[data-value=walnut]').click();
+  await expect(page.locator('#price')).toHaveText('$289');
+  await expect(page.locator('#pins')).toContainText('walnut');
+});
+
 test('storefront boots', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('store/');

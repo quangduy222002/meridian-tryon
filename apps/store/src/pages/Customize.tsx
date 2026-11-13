@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { LIGHT_STUDIO, RenderLoop, bakeStudio, createRenderer, getQuality } from '@meridian/three-core';
 import { getProduct, type Variant } from '../lib/shopify';
 import { FIXTURE_PRODUCTS } from '../lib/fixtures';
 import { Price, flyToCart } from '../ui';
@@ -257,25 +257,21 @@ export default function Customize() {
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    el.appendChild(renderer.domElement);
+    const quality = getQuality();
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    const renderer = createRenderer(canvas, quality, { shadows: true, exposure: 1.05 });
+    // The cap only moves during its entrance; after that its shadow is reused instead of re-rendered.
+    renderer.shadowMap.autoUpdate = false;
     const scene = new THREE.Scene();
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.55;
+    scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#dfe6e3');
+    scene.environmentIntensity = 0.7;
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
     camera.position.set(...VIEWS.Front);
     const key = new THREE.DirectionalLight('#ffffff', 2.2);
     key.position.set(2.5, 4, 3);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    key.shadow.radius = 6;
+    key.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
     Object.assign(key.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2 });
     scene.add(key);
     scene.add(new THREE.HemisphereLight('#eef6f8', '#3a4a44', 0.6));
@@ -326,15 +322,18 @@ export default function Customize() {
         tint(cap.eyeletMat, thread);
         drawEmbroidery(cap.embCv, c.text, c.thread, c.style);
         cap.embTex.needsUpdate = true;
+        loop.invalidate();
       },
       fly: (v) => {
         flight = { from: camera.position.clone(), to: new THREE.Vector3(...VIEWS[v]), t: 0 };
         controls.autoRotate = false;
+        loop.invalidate();
       },
       snap: () => {
         const c = document.createElement('canvas');
         c.width = c.height = 480;
         const x = c.getContext('2d')!;
+        renderer.render(scene, camera); // draw now: the buffer is not preserved between frames
         const src = renderer.domElement,
           side = Math.min(src.width, src.height);
         x.fillStyle = '#eef2f0';
@@ -344,6 +343,7 @@ export default function Customize() {
       },
     };
     let flight: { from: THREE.Vector3; to: THREE.Vector3; t: number } | null = null;
+    let requestRender = () => {};
 
     const resize = () => {
       const w = el.clientWidth,
@@ -352,16 +352,15 @@ export default function Customize() {
       camera.aspect = w / h;
       camera.fov = w / h < 0.9 ? 38 : 30;
       camera.updateProjectionMatrix();
+      requestRender(); // resizing clears the canvas
     };
     const ro = new ResizeObserver(resize);
     ro.observe(el);
     resize();
     const t0 = performance.now();
-    let raf = 0,
-      last = t0;
-    const tick = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+    // Render on demand: draw only while colours ease, the camera flies, the cap lands or the view turns.
+    const tick = (dt: number) => {
+      const now = performance.now();
       targets.forEach((to, m) => {
         m.color.lerp(to, Math.min(1, dt * 9));
         if (m.color.equals(to)) targets.delete(m);
@@ -391,19 +390,22 @@ export default function Customize() {
         bounce = 1 - Math.pow(1 - intro, 3);
       cap.g.position.y = -0.2 + (1 - bounce) * 1.4;
       cap.g.rotation.y = (1 - bounce) * -1.2;
+      if (intro < 1 || now - t0 < 1200) renderer.shadowMap.needsUpdate = true;
       if (!touched && !flight) controls.autoRotate = !reducedMotion();
-      controls.update();
+      const moving = controls.update(dt);
       renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
+      return moving || !!flight || targets.size > 0 || intro < 1 || controls.autoRotate;
     };
-    raf = requestAnimationFrame(tick);
+    const loop = new RenderLoop(tick, { target: el, demand: true });
+    controls.addEventListener('change', () => loop.invalidate());
+    requestRender = () => loop.invalidate();
+    loop.start();
     return () => {
-      cancelAnimationFrame(raf);
+      loop.stop();
       ro.disconnect();
       controls.dispose();
-      pmrem.dispose();
       renderer.dispose();
-      el.removeChild(renderer.domElement);
+      el.removeChild(canvas);
       api.current = null;
     };
   }, []);

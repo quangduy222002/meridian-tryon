@@ -1,9 +1,9 @@
 import { Color, DirectionalLight, PerspectiveCamera, Scene, Vector3 } from 'three';
-import { AdaptiveResolution, getQuality } from '../../lib/three/quality';
-import { createRenderer, precompile } from '../../lib/three/renderer';
-import { RenderLoop } from '../../lib/three/loop';
-import { ScrollDirector } from '../../lib/three/scroll-director';
-import { TAU, damp, lerp, smoothstep } from '../../lib/math';
+import { AdaptiveResolution, getQuality } from '@meridian/three-core';
+import { createRenderer, precompile } from '@meridian/three-core';
+import { RenderLoop } from '@meridian/three-core';
+import { ScrollDirector } from '@meridian/three-core';
+import { TAU, damp, lerp, smoothstep } from '@meridian/three-core';
 import { CASES, DIALS, STRAPS, type Config } from './catalog';
 import { loadWatchTextures } from './texture-loader';
 import { createStudioEnvironment } from './environment';
@@ -37,7 +37,7 @@ export async function startWatch(onProgress: (p: number, label: string) => void)
 
   onProgress(0.05, 'Machining case');
   const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const textures = await loadWatchTextures(quality.textureSize, anisotropy, (p) =>
+  const textures = await loadWatchTextures(renderer, quality.textureSize, anisotropy, (p) =>
     onProgress(0.05 + p * 0.6, 'Engraving dial'),
   );
 

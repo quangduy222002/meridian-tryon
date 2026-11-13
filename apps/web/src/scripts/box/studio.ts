@@ -5,9 +5,9 @@ import {
   DirectionalLight,
   Group,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   NeutralToneMapping,
-  PMREMGenerator,
   PerspectiveCamera,
   PlaneGeometry,
   SRGBColorSpace,
@@ -16,17 +16,26 @@ import {
   Vector3,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { getQuality } from '../../lib/three/quality';
-import { createRenderer, precompile } from '../../lib/three/renderer';
-import { RenderLoop } from '../../lib/three/loop';
+import {
+  LIGHT_STUDIO,
+  RenderLoop,
+  bakeStudio,
+  createRenderer,
+  damp,
+  generateTextures,
+  getQuality,
+  precompile,
+  smoothstep,
+} from '@meridian/three-core';
 import { $, toast, usd } from '../../lib/dom/chrome';
-import { smoothstep } from '../../lib/math';
+import { boxSpecs, type BoxTexture } from './textures';
+import { createDieline } from './dieline';
+import { createPallet } from './pallet';
 
 const MATERIALS = {
   kraft: { label: 'Kraft', out: '#c79b6a', in: '#d8b88f', rough: 0.95, ink: '#3b2a1a', add: 0 },
   white: { label: 'White', out: '#f4f1ea', in: '#e9e4d9', rough: 0.8, ink: '#1f1d1a', add: 0.05 },
-  black: { label: 'Matte Black', out: '#232220', in: '#3a3835', rough: 0.85, ink: '#e8d3a8', add: 0.15 },
+  black: { label: 'Matte Black', out: '#2a2927', in: '#3a3835', rough: 0.85, ink: '#e8d3a8', add: 0.15 },
   coral: { label: 'Coral', out: '#e0745a', in: '#f2e6da', rough: 0.6, ink: '#ffffff', add: 0.25 },
   teal: { label: 'Teal', out: '#2f7a78', in: '#e7efe9', rough: 0.6, ink: '#ffffff', add: 0.25 },
   lilac: { label: 'Lilac', out: '#b9a6d6', in: '#f1ecf6', rough: 0.6, ink: '#2b2140', add: 0.25 },
@@ -35,6 +44,14 @@ type MaterialKey = keyof typeof MATERIALS;
 const QTY = [100, 500, 1000, 2500] as const;
 const DISCOUNT: Record<(typeof QTY)[number], number> = { 100: 1, 500: 0.72, 1000: 0.6, 2500: 0.5 };
 const TH = 0.02; // board thickness (1 unit = 10 cm)
+
+/** Camera directions for the view presets. */
+const VIEWS = {
+  three: new Vector3(0.62, 0.55, 0.72).normalize(),
+  top: new Vector3(0.001, 1, 0.08).normalize(),
+  front: new Vector3(0.0, 0.32, 1).normalize(),
+};
+type View = keyof typeof VIEWS;
 
 const state = {
   w: 24,
@@ -46,51 +63,72 @@ const state = {
   qty: 500 as (typeof QTY)[number],
   folded: false,
   lidOpen: false,
+  mode: 'box' as 'box' | 'order',
+  view: 'three' as View,
 };
 
 export async function startBoxStudio() {
   const viewer = $('viewer');
   const canvas = viewer.querySelector('canvas')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const quality = getQuality();
-  const renderer = createRenderer(canvas, quality, { shadows: true, toneMapping: NeutralToneMapping, exposure: 0.9 });
-  renderer.shadowMap.autoUpdate = false;
+  const renderer = createRenderer(canvas, quality, { shadows: true, toneMapping: NeutralToneMapping, exposure: 0.95 });
+  renderer.shadowMap.autoUpdate = false; // shadows refresh only while the box folds or changes
 
+  const tex = await generateTextures<{ size: number }, BoxTexture>({
+    build: (p) => boxSpecs(p.size),
+    params: { size: Math.min(1024, quality.textureSize) },
+    worker: () => new Worker(new URL('./textures.worker.ts', import.meta.url), { type: 'module' }),
+    anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
+    renderer,
+  });
+
+  /* ---------- Studio ---------- */
   const scene = new Scene();
-  const pmrem = new PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
-  scene.environmentIntensity = 0.45;
-  const camera = new PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(4.2, 3.6, 5.2);
-  scene.add(new AmbientLight(0xffffff, 0.25));
-  const sun = new DirectionalLight(0xfff4e2, 2.2);
+  scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#ddd5c8');
+  scene.environmentIntensity = 0.7;
+  scene.add(new AmbientLight(0xffffff, 0.15));
+  const sun = new DirectionalLight(0xfff4e2, 2.1);
   sun.position.set(3, 7, 4);
   sun.castShadow = true;
   sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
-  Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 0.5, far: 20 });
+  sun.shadow.bias = -0.0005;
+  Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 0.5, far: 30 });
   scene.add(sun);
-  const ground = new Mesh(new PlaneGeometry(30, 30), new ShadowMaterial({ opacity: 0.16 }));
+  const ground = new Mesh(new PlaneGeometry(60, 60), new ShadowMaterial({ opacity: 0.14 }));
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
+  const contact = new Mesh(
+    new PlaneGeometry(1, 1),
+    new MeshBasicMaterial({ color: '#000', alphaMap: tex.contact, transparent: true, opacity: 0.3, depthWrite: false }),
+  );
+  contact.rotation.x = -Math.PI / 2;
+  contact.position.y = 0.002;
+  scene.add(contact);
 
+  const camera = new PerspectiveCamera(32, 1, 0.1, 200);
+  camera.position.set(4.2, 3.6, 5.2);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.enablePan = false;
   controls.maxPolarAngle = Math.PI / 2.1;
-  controls.minDistance = 2.5;
-  controls.maxDistance = 14;
-  controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  controls.minDistance = 2;
+  controls.maxDistance = 60;
+  controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.5;
-  let userZoom = false;
-  controls.addEventListener('start', () => (controls.autoRotate = false));
-  renderer.domElement.addEventListener('wheel', () => (userZoom = true), { passive: true });
+  let autoFrame = true; // camera follows size/mode changes until the user takes over
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+    autoFrame = false;
+  });
 
-  /* ---------- Materials & print textures ---------- */
-  const outMat = new MeshStandardMaterial({ color: MATERIALS.kraft.out, roughness: 0.95 });
-  const inMat = new MeshStandardMaterial({ color: MATERIALS.kraft.in, roughness: 0.95 });
-  // BoxGeometry groups: +x, -x, +y, -y, +z, -z. Every panel's +y face is the inside of the box.
-  const panelMats = [outMat, outMat, inMat, outMat, outMat, outMat];
+  /* ---------- Board materials ---------- */
+  // BoxGeometry groups: +x, -x, +y, -y, +z, -z. A panel's ±x/±z faces are its cut edges, +y is the inside.
+  const outMat = new MeshStandardMaterial({ color: MATERIALS.kraft.out, roughness: 0.95, map: tex.fibre });
+  const inMat = new MeshStandardMaterial({ color: MATERIALS.kraft.in, roughness: 0.95, map: tex.fibre });
+  const edgeMat = new MeshStandardMaterial({ map: tex.flute, roughness: 1 });
+  const panelMats = [edgeMat, edgeMat, inMat, outMat, edgeMat, edgeMat];
   const lidCanvas = document.createElement('canvas');
   const frontCanvas = document.createElement('canvas');
   const lidTex = new CanvasTexture(lidCanvas);
@@ -100,7 +138,7 @@ export async function startBoxStudio() {
     t.anisotropy = 8;
   }
   const decalMat = (map: CanvasTexture) =>
-    new MeshStandardMaterial({ map, transparent: true, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -4 });
+    new MeshStandardMaterial({ map, transparent: true, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -4 });
   const lidDecalMat = decalMat(lidTex);
   const frontDecalMat = decalMat(frontTex);
 
@@ -172,7 +210,12 @@ export async function startBoxStudio() {
     parent.add(g);
     return g;
   };
+  const dieline = createDieline();
+  scene.add(dieline.group);
+  const pallet = createPallet([outMat, outMat, outMat, outMat, outMat, outMat]);
+  scene.add(pallet.group);
 
+  const tuckOf = () => Math.min((state.h / 10) * 0.6, 0.5);
   const buildBox = () => {
     if (box) {
       box.traverse((o) => (o as Mesh).geometry?.dispose());
@@ -181,9 +224,10 @@ export async function startBoxStudio() {
     const W = state.w / 10;
     const H = state.h / 10;
     const D = state.d / 10;
-    const tuck = Math.min(H * 0.6, 0.5);
+    const tuck = tuckOf();
     box = new Group();
     box.position.y = TH / 2;
+    box.visible = state.mode === 'box';
     scene.add(box);
     panel(W, D, box, 0, 0);
     const pFront = hinge(box, 'z', D / 2);
@@ -205,52 +249,115 @@ export async function startBoxStudio() {
     const pTuck = hinge(pLid, 'z', -D);
     panel(W - TH * 2, tuck, pTuck, 0, -tuck / 2);
     hinges = { pFront, pBack, pLeft, pRight, pLid, pTuck };
+    dieline.rebuild(W, H, D, tuck, TH);
     drawPrints();
     $('dimsBadge').textContent = `${state.w} × ${state.h} × ${state.d} cm`;
+    $('dimW').textContent = `W ${state.w} cm`;
+    $('dimD').textContent = `D ${state.d} cm`;
+    $('dimH').textContent = `H ${state.h} cm`;
+    autoFrame = true;
     renderer.shadowMap.needsUpdate = true;
   };
 
   /* ---------- Fold animation ---------- */
   let fold = 0;
   let open = 0;
-  const stage = (f: number, a: number, b: number) => smoothstep(a, b, f);
   const applyFold = () => {
-    const sides = (stage(fold, 0, 0.5) * Math.PI) / 2;
+    const sides = (smoothstep(0, 0.5, fold) * Math.PI) / 2;
     hinges.pFront.rotation.x = -sides;
     hinges.pBack.rotation.x = sides;
-    hinges.pLeft.rotation.z = (-stage(fold, 0.1, 0.55) * Math.PI) / 2;
-    hinges.pRight.rotation.z = (stage(fold, 0.1, 0.55) * Math.PI) / 2;
-    hinges.pLid.rotation.x = (stage(fold, 0.55, 0.85) * (1 - 0.6 * open) * Math.PI) / 2;
-    hinges.pTuck.rotation.x = (stage(fold, 0.8, 1) * (1 - open) * Math.PI) / 2;
+    hinges.pLeft.rotation.z = (-smoothstep(0.1, 0.55, fold) * Math.PI) / 2;
+    hinges.pRight.rotation.z = (smoothstep(0.1, 0.55, fold) * Math.PI) / 2;
+    hinges.pLid.rotation.x = (smoothstep(0.55, 0.85, fold) * (1 - 0.6 * open) * Math.PI) / 2;
+    hinges.pTuck.rotation.x = (smoothstep(0.8, 1, fold) * (1 - open) * Math.PI) / 2;
+  };
+
+  /* ---------- Dimension labels (dieline) ---------- */
+  const labels = {
+    width: $('dimW'),
+    depth: $('dimD'),
+    height: $('dimH'),
+  };
+  const tmp = new Vector3();
+  const placeLabels = (alpha: number) => {
+    $('dims').style.opacity = alpha.toFixed(2);
+    if (alpha < 0.01) return;
+    const w = viewer.clientWidth;
+    const h = viewer.clientHeight;
+    for (const k of ['width', 'depth', 'height'] as const) {
+      tmp.copy(dieline.anchors[k]).project(camera);
+      labels[k].style.transform =
+        `translate3d(${(tmp.x * 0.5 + 0.5) * w}px, ${(-tmp.y * 0.5 + 0.5) * h}px, 0) translate(-50%, -50%)`;
+    }
+  };
+
+  /* ---------- Camera framing ---------- */
+  const goalTarget = new Vector3();
+  const goalPos = new Vector3();
+  /** Distance at which a sphere of radius r fills the view, whatever the viewer's shape. */
+  const fitDistance = (r: number) => {
+    const v = (camera.fov * Math.PI) / 180;
+    const h = 2 * Math.atan(Math.tan(v / 2) * camera.aspect);
+    return (r / Math.sin(Math.min(v, h) / 2)) * 1.08;
+  };
+  const frameGoal = () => {
+    if (state.mode === 'order') {
+      const top = pallet.height();
+      goalTarget.set(0, top * 0.45, 0);
+      return fitDistance(Math.hypot(12, 8, top) / 2);
+    }
+    const W = state.w / 10;
+    const H = state.h / 10;
+    const D = state.d / 10;
+    if (fold > 0.5) {
+      goalTarget.set(0, H * 0.5, 0);
+      return Math.max(fitDistance(Math.hypot(W, H + open * D, D) / 2), 2.6);
+    }
+    // Flat blank: front flap, base, back, lid and tuck laid end to end.
+    const zMax = D / 2 + H;
+    const zMin = -(D / 2 + H + D + tuckOf());
+    goalTarget.set(0, 0, (zMax + zMin) / 2);
+    return fitDistance(Math.hypot(W + 2 * H, zMax - zMin) / 2);
   };
 
   /* ---------- Render on demand ---------- */
-  const focus = new Vector3();
-  const dir = new Vector3();
   const frame = (dt: number) => {
     const foldTo = state.folded ? 1 : 0;
     const openTo = state.lidOpen && state.folded ? 1 : 0;
     const folding = fold !== foldTo || open !== openTo;
-    fold += Math.sign(foldTo - fold) * Math.min(Math.abs(foldTo - fold), dt * 0.55);
-    open += Math.sign(openTo - open) * Math.min(Math.abs(openTo - open), dt * 1.4);
+    const speed = reduce ? 100 : 1;
+    fold += Math.sign(foldTo - fold) * Math.min(Math.abs(foldTo - fold), dt * 0.55 * speed);
+    open += Math.sign(openTo - open) * Math.min(Math.abs(openTo - open), dt * 1.4 * speed);
     applyFold();
     if (folding) renderer.shadowMap.needsUpdate = true;
+    const flatness = state.mode === 'box' ? 1 - smoothstep(0, 0.12, fold) : 0;
+    dieline.setOpacity(flatness);
 
-    // Keep the box framed whatever its size.
-    const H = state.h / 10;
-    const R = Math.hypot(state.w, state.d, state.h) / 10;
-    focus.set(0, fold * H * 0.45, 0);
-    controls.target.lerp(focus, 1 - Math.exp(-dt * 4));
-    const want = Math.max(R * 1.9, 3.2);
-    const cur = camera.position.distanceTo(controls.target);
-    const reframing = !userZoom && Math.abs(want - cur) > 0.01;
-    if (reframing) {
-      dir.copy(camera.position).sub(controls.target).normalize();
-      camera.position.copy(controls.target).addScaledVector(dir, cur + (want - cur) * (1 - Math.exp(-dt * 3)));
+    let framing = false;
+    if (autoFrame) {
+      const dist = frameGoal();
+      const dir =
+        state.view === 'three' && controls.autoRotate
+          ? camera.position.clone().sub(controls.target).normalize()
+          : VIEWS[state.view];
+      goalPos.copy(goalTarget).addScaledVector(dir, dist);
+      const r = reduce ? Infinity : 3;
+      controls.target.set(
+        damp(controls.target.x, goalTarget.x, r, dt),
+        damp(controls.target.y, goalTarget.y, r, dt),
+        damp(controls.target.z, goalTarget.z, r, dt),
+      );
+      camera.position.set(
+        damp(camera.position.x, goalPos.x, r, dt),
+        damp(camera.position.y, goalPos.y, r, dt),
+        damp(camera.position.z, goalPos.z, r, dt),
+      );
+      framing = camera.position.distanceTo(goalPos) > 0.01 || controls.target.distanceTo(goalTarget) > 0.005;
     }
     const moving = controls.update(dt);
     renderer.render(scene, camera);
-    return folding || reframing || moving || controls.autoRotate || controls.target.distanceTo(focus) > 1e-3;
+    placeLabels(flatness);
+    return folding || framing || moving || controls.autoRotate;
   };
   const loop = new RenderLoop(frame, { target: viewer, demand: true });
   controls.addEventListener('change', () => loop.invalidate());
@@ -265,6 +372,37 @@ export async function startBoxStudio() {
   };
   new ResizeObserver(resize).observe(viewer);
 
+  /* ---------- Order (pallet) view ---------- */
+  const updatePallet = () => {
+    const plan = pallet.layout(state.w / 10, state.h / 10, state.d / 10, state.qty);
+    $('palletInfo').textContent =
+      `${state.qty.toLocaleString('en-US')} boxes · ${plan.perPallet} per pallet · ${plan.pallets} pallet${plan.pallets > 1 ? 's' : ''}`;
+    const W = state.w / 10;
+    const D = state.d / 10;
+    const s = state.mode === 'order' ? 14 : Math.max(W, D) * 1.6;
+    contact.scale.set(s, s, 1);
+    renderer.shadowMap.needsUpdate = true;
+  };
+  const setView = (v: View) => {
+    state.view = v;
+    document
+      .querySelectorAll('[data-view]')
+      .forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.view === v));
+  };
+  const setMode = (mode: 'box' | 'order') => {
+    state.mode = mode;
+    if (mode === 'order') setView('three');
+    if (box) box.visible = mode === 'box';
+    pallet.group.visible = mode === 'order';
+    viewer.classList.toggle('order', mode === 'order');
+    document
+      .querySelectorAll('[data-mode]')
+      .forEach((b) => b.classList.toggle('on', (b as HTMLElement).dataset.mode === mode));
+    updatePallet();
+    autoFrame = true;
+    loop.invalidate();
+  };
+
   /* ---------- UI ---------- */
   for (const k of ['w', 'h', 'd'] as const) {
     const input = $<HTMLInputElement>(k);
@@ -276,6 +414,7 @@ export async function startBoxStudio() {
       buildBox();
       applyFold();
       updatePrice();
+      updatePallet();
       loop.invalidate();
     });
   }
@@ -311,6 +450,8 @@ export async function startBoxStudio() {
     b.addEventListener('click', () => {
       state.qty = q;
       updatePrice();
+      updatePallet();
+      loop.invalidate();
     });
     $('qty').appendChild(b);
   }
@@ -345,21 +486,41 @@ export async function startBoxStudio() {
     $('unitLabel').textContent = `${Math.round((1 - DISCOUNT[state.qty]) * 100)}% off`;
     for (const b of $('qty').children) b.classList.toggle('on', Number((b as HTMLElement).dataset.value) === state.qty);
   }
-  const setMode = (folded: boolean) => {
+  const setFold = (folded: boolean) => {
+    if (state.mode !== 'box') setMode('box');
     state.folded = folded;
     if (!folded) state.lidOpen = false;
-    $('foldBtn').classList.toggle('on', folded);
+    $('foldBtn').classList.toggle('on', folded && !state.lidOpen);
     $('flatBtn').classList.toggle('on', !folded);
     $('lidBtn').classList.toggle('on', state.lidOpen);
     $('lidBtn').textContent = state.lidOpen ? 'Close lid' : 'Open lid';
+    autoFrame = true;
     loop.invalidate();
   };
-  $('foldBtn').addEventListener('click', () => setMode(true));
-  $('flatBtn').addEventListener('click', () => setMode(false));
+  $('foldBtn').addEventListener('click', () => {
+    state.lidOpen = false;
+    if (state.view === 'top') setView('three');
+    setFold(true);
+  });
+  $('flatBtn').addEventListener('click', () => {
+    setView('top');
+    setFold(false);
+  });
   $('lidBtn').addEventListener('click', () => {
     state.lidOpen = !state.lidOpen;
-    setMode(true);
+    if (state.view === 'top') setView('three');
+    setFold(true);
   });
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-mode]'))
+    b.addEventListener('click', () => setMode(b.dataset.mode as 'box' | 'order'));
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+    b.addEventListener('click', () => {
+      setView(b.dataset.view as View);
+      controls.autoRotate = false;
+      autoFrame = true;
+      loop.invalidate();
+    });
+  }
   $('quote').addEventListener('click', () =>
     toast(
       `Quote requested: ${state.qty.toLocaleString('en-US')} × ${state.w}×${state.h}×${state.d} cm ${MATERIALS[state.mat].label} boxes`,
@@ -370,6 +531,7 @@ export async function startBoxStudio() {
   buildBox();
   applyMaterial();
   updatePrice();
+  updatePallet();
   resize();
   document.fonts?.ready.then(() => {
     drawPrints();
@@ -378,5 +540,5 @@ export async function startBoxStudio() {
   await precompile(renderer, scene, camera);
   loop.start();
   viewer.classList.add('ready');
-  setTimeout(() => setMode(true), 900);
+  setTimeout(() => setFold(true), 1100);
 }

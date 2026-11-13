@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import * as THREE from 'three';
+import { AdaptiveResolution, RenderLoop, createRenderer, getQuality } from '@meridian/three-core';
 import type { Img, ProductCard } from './lib/shopify';
 import { colorsOf, swatch } from './ui';
 import { reducedMotion, useStickyProgress } from './scroll';
@@ -68,10 +69,12 @@ export default function Story({ product }: { product: ProductCard }) {
     const el = host.current;
     if (!el) return;
     const reduced = reducedMotion();
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    el.appendChild(renderer.domElement);
+    // Shared runtime: device-appropriate resolution, pauses off screen, drops resolution if frames run long.
+    const quality = getQuality();
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    const renderer = createRenderer(canvas, quality, { toneMapping: THREE.NoToneMapping });
+    const adaptive = new AdaptiveResolution(renderer, quality);
     const scene = new THREE.Scene(),
       camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
     camera.position.set(0, 0.1, 6.4);
@@ -112,9 +115,6 @@ export default function Story({ product }: { product: ProductCard }) {
       target = 0,
       mix = 0,
       shake = 0,
-      raf = 0,
-      last = performance.now(),
-      visible = true,
       px = 0,
       py = 0;
     const onMove = (e: PointerEvent) => {
@@ -134,19 +134,9 @@ export default function Story({ product }: { product: ProductCard }) {
     const ro = new ResizeObserver(resize);
     ro.observe(el);
     resize();
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
-      if (visible) {
-        last = performance.now();
-        raf = requestAnimationFrame(tick);
-      }
-    });
-    io.observe(el);
     const t0 = performance.now();
-    function tick(now: number) {
-      if (!visible) return;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+    function tick(dt: number) {
+      const now = performance.now();
       const want = stepRef.current;
       if (want !== target && mix === 0) {
         target = want;
@@ -168,18 +158,17 @@ export default function Story({ product }: { product: ProductCard }) {
       cloth.rotation.y += (px * 0.35 - cloth.rotation.y) * Math.min(1, dt * 4);
       cloth.rotation.x += (py * 0.12 - cloth.rotation.x) * Math.min(1, dt * 4);
       renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
     }
-    raf = requestAnimationFrame(tick);
+    const loop = new RenderLoop(tick, { target: el, onFrameTime: (ms) => adaptive.sample(ms) });
+    loop.start();
     return () => {
-      cancelAnimationFrame(raf);
+      loop.stop();
       ro.disconnect();
-      io.disconnect();
       el.removeEventListener('pointermove', onMove);
       tex.forEach((t) => t.dispose());
       mat.dispose();
       renderer.dispose();
-      el.removeChild(renderer.domElement);
+      el.removeChild(canvas);
     };
   }, [looks]);
 

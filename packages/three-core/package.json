@@ -1,0 +1,21 @@
+{
+  "name": "@meridian/three-core",
+  "private": true,
+  "type": "module",
+  "description": "Shared performance-first three.js runtime: quality tiers, adaptive resolution, render loop, scroll director.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./support": "./src/support.ts",
+    "./math": "./src/math.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "three": "~0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "~0.187.0",
+    "typescript": "~5.9.3"
+  }
+}

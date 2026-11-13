@@ -13,20 +13,47 @@ import '../../styles/box.css';
   <div class="app">
     <div class="viewer" id="viewer">
       <canvas aria-label="3D view of the custom box"></canvas>
+      <div id="dims" class="dims" aria-hidden="true">
+        <span id="dimW" class="dim"></span>
+        <span id="dimD" class="dim"></span>
+        <span id="dimH" class="dim"></span>
+      </div>
       <div class="brand">
         PAKKA<span>Custom Box Studio</span>
       </div>
       <div class="dims-badge" id="dimsBadge"></div>
+      <div class="views seg-mini" role="group" aria-label="Camera">
+        <button type="button" data-view="three" class="on">
+          3/4
+        </button>
+        <button type="button" data-view="front">
+          Front
+        </button>
+        <button type="button" data-view="top">
+          Top
+        </button>
+      </div>
+      <div class="pallet-info" id="palletInfo"></div>
       <div class="actions">
-        <button id="foldBtn" class="on" type="button">
-          Folded
-        </button>
-        <button id="flatBtn" type="button">
-          Dieline
-        </button>
-        <button id="lidBtn" type="button">
-          Open lid
-        </button>
+        <div class="seg-mini" role="group" aria-label="Show">
+          <button type="button" data-mode="box" class="on">
+            Box
+          </button>
+          <button type="button" data-mode="order">
+            Whole order
+          </button>
+        </div>
+        <div class="seg-mini" role="group" aria-label="Box state">
+          <button id="foldBtn" class="on" type="button">
+            Folded
+          </button>
+          <button id="flatBtn" type="button">
+            Dieline
+          </button>
+          <button id="lidBtn" type="button">
+            Open lid
+          </button>
+        </div>
       </div>
     </div>
 

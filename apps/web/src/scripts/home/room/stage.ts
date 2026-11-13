@@ -10,11 +10,11 @@ import {
   type Object3D,
 } from 'three';
 import { buildRoom } from './build';
-import { AdaptiveResolution, getQuality } from '../../../lib/three/quality';
-import { createRenderer, precompile } from '../../../lib/three/renderer';
-import { RenderLoop } from '../../../lib/three/loop';
-import { ScrollDirector } from '../../../lib/three/scroll-director';
-import { DEG, damp, lerp } from '../../../lib/math';
+import { AdaptiveResolution, getQuality } from '@meridian/three-core';
+import { createRenderer, precompile } from '@meridian/three-core';
+import { RenderLoop } from '@meridian/three-core';
+import { ScrollDirector } from '@meridian/three-core';
+import { DEG, damp, lerp } from '@meridian/three-core';
 
 interface Framing {
   /** Share of the screen the subject should fill. */

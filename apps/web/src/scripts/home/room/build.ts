@@ -32,7 +32,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { createCodeScreen, createShipScreen } from './screens';
 import { createDust } from './dust';
 import { createLightShafts, createFloorShadow } from './atmosphere';
-import type { Quality } from '../../../lib/three/quality';
+import type { Quality } from '@meridian/three-core';
 
 export interface Hotspot {
   id: string;

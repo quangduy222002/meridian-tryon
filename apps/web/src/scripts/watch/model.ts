@@ -30,8 +30,8 @@ import {
   type Object3D,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { TAU } from '../../lib/math';
-import type { Quality } from '../../lib/three/quality';
+import { TAU } from '@meridian/three-core';
+import type { Quality } from '@meridian/three-core';
 import type { WatchTextures } from './texture-loader';
 import { CASES, DIALS, STRAPS } from './catalog';
 

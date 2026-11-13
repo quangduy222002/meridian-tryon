@@ -1,215 +1,257 @@
 import {
   AmbientLight,
-  BoxGeometry,
   Color,
-  CylinderGeometry,
   DirectionalLight,
-  Group,
   MathUtils,
-  Mesh,
-  MeshPhysicalMaterial,
-  PMREMGenerator,
   PerspectiveCamera,
-  PlaneGeometry,
   Scene,
-  ShadowMaterial,
-  type BufferGeometry,
-  type Material,
-  type Object3D,
+  Vector3,
+  type Texture,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { getQuality } from '../../lib/three/quality';
-import { createRenderer, precompile } from '../../lib/three/renderer';
-import { RenderLoop } from '../../lib/three/loop';
+import {
+  LIGHT_STUDIO,
+  RenderLoop,
+  bakeStudio,
+  createRenderer,
+  damp,
+  generateTextures,
+  getQuality,
+  precompile,
+} from '@meridian/three-core';
 import { $, toast, usd } from '../../lib/dom/chrome';
+import { ARMREST_PRICE, COLORS, FABRICS, FRAMES, LEGS, priceOf, type ChairConfig } from './catalog';
+import { chairSpecs, type ChairTexture } from './textures';
+import { buildChair, createMaterials } from './model';
+import { buildBackdrops } from './backdrop';
 
-const FRAMES = {
-  oak: { label: 'Oak', color: '#c8a27a', metalness: 0, roughness: 0.6, price: 0 },
-  walnut: { label: 'Walnut', color: '#5b3a29', metalness: 0, roughness: 0.5, price: 40 },
-  black: { label: 'Black Metal', color: '#1c1c1e', metalness: 0.8, roughness: 0.35, price: 25 },
-  brass: { label: 'Brass', color: '#b8903f', metalness: 1, roughness: 0.25, price: 60 },
+/** Camera presets: position and look-at target. */
+const VIEWS = {
+  three: { pos: new Vector3(1.85, 1.2, 2.05), target: new Vector3(0, 0.5, 0) },
+  front: { pos: new Vector3(0, 0.85, 2.7), target: new Vector3(0, 0.5, 0) },
+  side: { pos: new Vector3(2.7, 0.85, 0.05), target: new Vector3(0, 0.5, 0) },
+  detail: { pos: new Vector3(0.95, 0.62, 1.05), target: new Vector3(0.3, 0.38, 0.25) },
 };
-const FABRICS = {
-  linen: { label: 'Linen', roughness: 0.95, sheen: 0, price: 0 },
-  velvet: { label: 'Velvet', roughness: 0.75, sheen: 1, price: 30 },
-  leather: { label: 'Leather', roughness: 0.35, sheen: 0, price: 80 },
-};
-const COLORS = [
-  { name: 'Sand', hex: '#d9c9b0' },
-  { name: 'Sage', hex: '#8a9a7b' },
-  { name: 'Terracotta', hex: '#c0603f' },
-  { name: 'Navy', hex: '#2b3a55' },
-  { name: 'Charcoal', hex: '#3a3a3c' },
-];
-const LEGS = { straight: { label: 'Straight', price: 0 }, tapered: { label: 'Tapered', price: 15 } };
-const BASE_PRICE = 249;
-const ARMREST_PRICE = 35;
-
-type FrameKey = keyof typeof FRAMES;
-type FabricKey = keyof typeof FABRICS;
-type LegKey = keyof typeof LEGS;
-const state = {
-  frame: 'oak' as FrameKey,
-  fabric: 'linen' as FabricKey,
-  color: COLORS[0]!.hex,
-  legs: 'straight' as LegKey,
-  arms: false,
-};
+type View = keyof typeof VIEWS;
 
 export async function startChair() {
   const viewer = $('viewer');
   const canvas = viewer.querySelector('canvas')!;
+  const status = viewer.querySelector('.loading')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const quality = getQuality();
-  const renderer = createRenderer(canvas, quality, { alpha: false, shadows: true });
-  // Shadows only change when the chair does (legs, armrests), not when the camera orbits.
-  renderer.shadowMap.autoUpdate = false;
-  renderer.shadowMap.needsUpdate = true;
+  const renderer = createRenderer(canvas, quality, { alpha: false, shadows: true, exposure: 1.0 });
+  renderer.shadowMap.autoUpdate = false; // static set: shadows are re-rendered only when the chair changes
 
+  const tex = await generateTextures<{ size: number }, ChairTexture>({
+    build: (p) => chairSpecs(p.size),
+    params: { size: Math.min(1024, quality.textureSize) },
+    worker: () => new Worker(new URL('./textures.worker.ts', import.meta.url), { type: 'module' }),
+    anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
+    renderer,
+    onProgress: (p) => (status.textContent = `Preparing materials ${Math.round(p * 100)}%`),
+  });
+
+  /* ---------- Scene ---------- */
   const scene = new Scene();
-  scene.background = new Color('#f4f1ec');
-  const pmrem = new PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
-
-  const camera = new PerspectiveCamera(40, 1, 0.1, 50);
-  camera.position.set(2.2, 1.6, 2.4);
-  scene.add(new AmbientLight(0xffffff, 0.3));
-  const sun = new DirectionalLight(0xffffff, 1.6);
-  sun.position.set(3, 5, 2);
+  scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#d9d2c6');
+  scene.environmentIntensity = 0.85;
+  const backdrops = buildBackdrops(tex);
+  scene.add(backdrops.studio, backdrops.room, backdrops.contact);
+  scene.background = backdrops.backgrounds.studio.clone();
+  scene.add(new AmbientLight(0xffffff, 0.15));
+  const sun = new DirectionalLight(0xfff3e4, 2.0);
+  sun.position.set(2.5, 4.5, 2.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
-  Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: 0.5, far: 15 });
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.02;
+  Object.assign(sun.shadow.camera, { left: -1.6, right: 1.6, top: 1.6, bottom: -1.6, near: 0.5, far: 12 });
   scene.add(sun);
-  const ground = new Mesh(new PlaneGeometry(12, 12), new ShadowMaterial({ opacity: 0.18 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  scene.add(ground);
 
+  const mats = createMaterials(tex);
+  const chair = buildChair(mats);
+  scene.add(chair.root);
+
+  const camera = new PerspectiveCamera(32, 1, 0.05, 40);
+  camera.position.copy(VIEWS.three.pos);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0.6, 0);
+  controls.target.copy(VIEWS.three.target);
   controls.enablePan = false;
   controls.enableDamping = true;
-  controls.minDistance = 1.8;
-  controls.maxDistance = 5;
+  controls.minDistance = 1.1;
+  controls.maxDistance = 4.5;
   controls.maxPolarAngle = Math.PI / 2.05;
-  controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  controls.autoRotateSpeed = 0.6;
-  controls.addEventListener('start', () => (controls.autoRotate = false));
+  controls.autoRotate = !reduce;
+  controls.autoRotateSpeed = 0.5;
 
-  /* ---------- Chair ---------- */
-  const frameMat = new MeshPhysicalMaterial({ color: FRAMES.oak.color, roughness: 0.6, metalness: 0 });
-  const fabricMat = new MeshPhysicalMaterial({ color: state.color, roughness: 0.95, sheenRoughness: 0.5 });
-  const chair = new Group();
-  scene.add(chair);
-  const add = (parent: Object3D, geo: BufferGeometry, mat: Material, x: number, y: number, z: number) => {
-    const m = new Mesh(geo, mat);
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    parent.add(m);
-    return m;
-  };
-  add(chair, new BoxGeometry(1, 0.06, 0.9), frameMat, 0, 0.48, 0);
-  add(chair, new RoundedBoxGeometry(0.96, 0.14, 0.88, 4, 0.05), fabricMat, 0, 0.58, 0);
-  const back = new Group();
-  back.position.set(0, 0.51, -0.42);
-  back.rotation.x = -0.12;
-  chair.add(back);
-  const post = new CylinderGeometry(0.025, 0.025, 0.8, 16);
-  add(back, post, frameMat, -0.46, 0.4, 0);
-  add(back, post, frameMat, 0.46, 0.4, 0);
-  add(back, new BoxGeometry(0.97, 0.05, 0.05), frameMat, 0, 0.8, 0);
-  add(back, new RoundedBoxGeometry(0.88, 0.55, 0.12, 4, 0.05), fabricMat, 0, 0.48, 0.05);
-  const legGeos = {
-    straight: new CylinderGeometry(0.035, 0.035, 0.45, 20),
-    tapered: new CylinderGeometry(0.04, 0.02, 0.45, 20),
-  };
-  const legs = (
-    [
-      [-0.42, -0.38],
-      [0.42, -0.38],
-      [-0.42, 0.38],
-      [0.42, 0.38],
-    ] as const
-  ).map(([x, z]) => add(chair, legGeos.straight, frameMat, x, 0.225, z));
-  const arms = new Group();
-  arms.visible = false;
-  chair.add(arms);
-  const armPost = new CylinderGeometry(0.022, 0.022, 0.3, 16);
-  const armPad = new RoundedBoxGeometry(0.08, 0.04, 0.78, 3, 0.015);
-  for (const s of [-1, 1]) {
-    add(arms, armPost, frameMat, s * 0.5, 0.66, 0.3);
-    add(arms, armPad, frameMat, s * 0.5, 0.82, -0.04);
-  }
-
-  /* ---------- Render on demand ---------- */
-  const target = { frame: new Color(), fabric: new Color(), sheen: new Color() };
+  /* ---------- State ---------- */
+  const state: ChairConfig = { frame: 'oak', fabric: 'linen', color: COLORS[0]!.hex, legs: 'straight', arms: false };
+  const target = { wood: new Color(), fabric: new Color(), sheen: new Color() };
   let armScale = 0;
-  const settle = (cur: number, to: number, k: number) => (Math.abs(to - cur) < 1e-3 ? to : MathUtils.lerp(cur, to, k));
-  const colorDone = (a: Color, b: Color) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) < 1e-3;
+  let fly: { pos: Vector3; target: Vector3 } | null = null;
+  let showPins = true;
 
+  /* ---------- Annotation pins ---------- */
+  const pinLayer = $('pins');
+  const pins = (Object.keys(chair.anchors) as (keyof typeof chair.anchors)[]).map((key) => {
+    const el = document.createElement('div');
+    el.className = 'pin';
+    el.innerHTML = '<i></i><span></span>';
+    pinLayer.appendChild(el);
+    return { key, el, label: el.querySelector('span')! };
+  });
+  const tmp = new Vector3();
+  const placePins = () => {
+    pinLayer.classList.toggle('on', showPins);
+    if (!showPins) return;
+    const w = viewer.clientWidth;
+    const h = viewer.clientHeight;
+    for (const p of pins) {
+      tmp.copy(chair.anchors[p.key]);
+      chair.root.localToWorld(tmp);
+      tmp.project(camera);
+      p.el.style.transform = `translate3d(${(tmp.x * 0.5 + 0.5) * w}px, ${(-tmp.y * 0.5 + 0.5) * h}px, 0)`;
+    }
+  };
+
+  /* ---------- Frame (demand rendering) ---------- */
+  const settle = (cur: number, to: number, k: number) => (Math.abs(to - cur) < 1e-3 ? to : MathUtils.lerp(cur, to, k));
+  const near = (a: Color, b: Color) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) < 1e-3;
   const frame = (dt: number) => {
     const k = 1 - Math.exp(-dt * 8);
     const f = FRAMES[state.frame];
     const fb = FABRICS[state.fabric];
-    frameMat.color.lerp(target.frame, k);
-    frameMat.metalness = settle(frameMat.metalness, f.metalness, k);
-    frameMat.roughness = settle(frameMat.roughness, f.roughness, k);
-    fabricMat.color.lerp(target.fabric, k);
-    fabricMat.sheenColor.lerp(target.sheen, k);
-    fabricMat.sheen = settle(fabricMat.sheen, fb.sheen, k);
-    fabricMat.roughness = settle(fabricMat.roughness, fb.roughness, k);
+    mats.wood.color.lerp(target.wood, k);
+    mats.wood.metalness = settle(mats.wood.metalness, f.metalness, k);
+    mats.wood.roughness = settle(mats.wood.roughness, f.roughness, k);
+    mats.fabric.color.lerp(target.fabric, k);
+    mats.fabric.sheenColor.lerp(target.sheen, k);
+    mats.fabric.sheen = settle(mats.fabric.sheen, fb.sheen, k);
+    mats.fabric.roughness = settle(mats.fabric.roughness, fb.roughness, k);
+    mats.fabric.clearcoat = settle(mats.fabric.clearcoat, fb.clearcoat, k);
+
     const armTo = state.arms ? 1 : 0;
-    const armsMoving = Math.abs(armScale - armTo) > 1e-3;
+    const armsMoving = armScale !== armTo;
     armScale = settle(armScale, armTo, k);
-    arms.visible = armScale > 0.01;
-    arms.scale.set(1, Math.max(armScale, 0.001), 1);
+    chair.arms.visible = armScale > 0.01;
+    chair.arms.scale.set(1, Math.max(armScale, 0.001), 1);
     if (armsMoving) renderer.shadowMap.needsUpdate = true;
+
+    let flying = false;
+    if (fly) {
+      const r = reduce ? Infinity : 4;
+      camera.position.set(
+        damp(camera.position.x, fly.pos.x, r, dt),
+        damp(camera.position.y, fly.pos.y, r, dt),
+        damp(camera.position.z, fly.pos.z, r, dt),
+      );
+      controls.target.set(
+        damp(controls.target.x, fly.target.x, r, dt),
+        damp(controls.target.y, fly.target.y, r, dt),
+        damp(controls.target.z, fly.target.z, r, dt),
+      );
+      flying = camera.position.distanceTo(fly.pos) > 0.002;
+      if (!flying) fly = null;
+    }
     const moving = controls.update(dt);
     renderer.render(scene, camera);
-    // Keep drawing only while something is still changing.
+    placePins();
     return (
+      flying ||
       moving ||
       controls.autoRotate ||
       armsMoving ||
-      !colorDone(frameMat.color, target.frame) ||
-      !colorDone(fabricMat.color, target.fabric) ||
-      frameMat.metalness !== f.metalness ||
-      frameMat.roughness !== f.roughness ||
-      fabricMat.sheen !== fb.sheen ||
-      fabricMat.roughness !== fb.roughness
+      !near(mats.wood.color, target.wood) ||
+      !near(mats.fabric.color, target.fabric) ||
+      mats.wood.metalness !== f.metalness ||
+      mats.wood.roughness !== f.roughness ||
+      mats.fabric.sheen !== fb.sheen ||
+      mats.fabric.roughness !== fb.roughness ||
+      mats.fabric.clearcoat !== fb.clearcoat
     );
   };
   const loop = new RenderLoop(frame, { target: viewer, demand: true });
   controls.addEventListener('change', () => loop.invalidate());
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+    fly = null;
+  });
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = viewer;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    // Narrow viewers need the camera further back to keep the whole chair in frame.
+    camera.fov = w / h < 0.9 ? 40 : 32;
     camera.updateProjectionMatrix();
     loop.invalidate();
   };
   new ResizeObserver(resize).observe(viewer);
   resize();
 
+  /* ---------- Apply configuration ---------- */
+  const setTexture = (slot: 'map' | 'roughnessMap' | 'normalMap', mat: typeof mats.wood, t: Texture | null) => {
+    if (mat[slot] === t) return;
+    mat[slot] = t;
+    mat.needsUpdate = true;
+  };
+  const colorName = () => COLORS.find((c) => c.hex === state.color)?.name ?? '';
+  const markActive = (id: string, value: string) => {
+    for (const b of $(id).children) {
+      const on = (b as HTMLElement).dataset.value === value;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
+  };
+  function refresh() {
+    const f = FRAMES[state.frame];
+    const fb = FABRICS[state.fabric];
+    markActive('frames', state.frame);
+    markActive('fabrics', state.fabric);
+    markActive('legs', state.legs);
+    markActive('colors', state.color);
+    $('frameLabel').textContent = f.label;
+    $('fabricLabel').textContent = fb.label;
+    $('colorLabel').textContent = colorName();
+    $('legLabel').textContent = LEGS[state.legs].label;
+    $('price').textContent = usd(priceOf(state));
+
+    chair.setLegs(state.legs);
+    chair.buttons.visible = state.fabric !== 'linen';
+    setTexture('map', mats.wood, f.grain ? tex.wood : null);
+    setTexture('roughnessMap', mats.wood, f.grain ? tex.wood : null);
+    mats.wood.clearcoat = f.grain ? 0.25 : 0;
+    setTexture('normalMap', mats.fabric, fb.normal === 'leather' ? tex.leather : tex.weave);
+    mats.fabric.normalScale.setScalar(fb.normalScale);
+    target.wood.set(f.color);
+    target.fabric.set(state.color);
+    target.sheen.set(state.color).offsetHSL(0, 0, 0.3);
+
+    pins.find((p) => p.key === 'frame')!.label.textContent = f.note;
+    pins.find((p) => p.key === 'fabric')!.label.textContent = fb.note;
+    pins.find((p) => p.key === 'legs')!.label.textContent = LEGS[state.legs].note;
+
+    renderer.shadowMap.needsUpdate = true;
+    loop.invalidate();
+  }
+
   /* ---------- UI ---------- */
   const extra = (p: number) => (p > 0 ? `<small>+${usd(p)}</small>` : '');
-  const buildOptions = <T extends Record<string, { label: string; price: number; color?: string }>>(
+  const options = <T extends Record<string, { label: string; price: number }>>(
     id: string,
-    options: T,
+    opts: T,
     apply: (v: keyof T & string) => void,
     inner: (o: T[keyof T]) => string,
     cls = '',
   ) => {
-    for (const [value, opt] of Object.entries(options)) {
+    for (const [value, o] of Object.entries(opts)) {
       const b = document.createElement('button');
       b.type = 'button';
       if (cls) b.className = cls;
       b.dataset.value = value;
-      b.innerHTML = inner(opt as T[keyof T]);
+      b.innerHTML = inner(o as T[keyof T]);
       b.addEventListener('click', () => {
         apply(value);
         refresh();
@@ -217,20 +259,20 @@ export async function startChair() {
       $(id).appendChild(b);
     }
   };
-  buildOptions(
+  options(
     'frames',
     FRAMES,
     (v) => (state.frame = v),
     (o) => `<i style="background:${o.color}"></i>${o.label}${extra(o.price)}`,
     'chip',
   );
-  buildOptions(
+  options(
     'fabrics',
     FABRICS,
     (v) => (state.fabric = v),
     (o) => `${o.label}${extra(o.price)}`,
   );
-  buildOptions(
+  options(
     'legs',
     LEGS,
     (v) => (state.legs = v),
@@ -255,39 +297,35 @@ export async function startChair() {
     refresh();
   });
 
-  const markActive = (id: string, value: string) => {
-    for (const b of $(id).children) {
-      const on = (b as HTMLElement).dataset.value === value;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-pressed', String(on));
-    }
-  };
-  const colorName = () => COLORS.find((c) => c.hex === state.color)?.name ?? '';
-
-  function refresh() {
-    markActive('frames', state.frame);
-    markActive('fabrics', state.fabric);
-    markActive('legs', state.legs);
-    markActive('colors', state.color);
-    $('frameLabel').textContent = FRAMES[state.frame].label;
-    $('fabricLabel').textContent = FABRICS[state.fabric].label;
-    $('colorLabel').textContent = colorName();
-    $('legLabel').textContent = LEGS[state.legs].label;
-    for (const m of legs) m.geometry = legGeos[state.legs];
-    target.frame.set(FRAMES[state.frame].color);
-    target.fabric.set(state.color);
-    target.sheen.set(state.color).offsetHSL(0, 0, 0.25);
-    const price =
-      BASE_PRICE +
-      FRAMES[state.frame].price +
-      FABRICS[state.fabric].price +
-      LEGS[state.legs].price +
-      (state.arms ? ARMREST_PRICE : 0);
-    $('price').textContent = usd(price);
-    renderer.shadowMap.needsUpdate = true;
-    loop.invalidate();
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+    b.addEventListener('click', () => {
+      const v = VIEWS[b.dataset.view as View];
+      controls.autoRotate = false;
+      fly = { pos: v.pos.clone(), target: v.target.clone() };
+      document.querySelectorAll('[data-view]').forEach((x) => x.classList.toggle('on', x === b));
+      loop.invalidate();
+    });
   }
-  refresh();
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-scene]')) {
+    b.addEventListener('click', () => {
+      const room = b.dataset.scene === 'room';
+      backdrops.room.visible = room;
+      backdrops.studio.visible = !room;
+      scene.background = (room ? backdrops.backgrounds.room : backdrops.backgrounds.studio).clone();
+      // The room needs the key light's shadow to reach the wall; the studio keeps a tighter, sharper map.
+      const s = room ? 3.2 : 1.6;
+      Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s });
+      sun.shadow.camera.updateProjectionMatrix();
+      document.querySelectorAll('[data-scene]').forEach((x) => x.classList.toggle('on', x === b));
+      renderer.shadowMap.needsUpdate = true;
+      loop.invalidate();
+    });
+  }
+  $('detailsBtn').addEventListener('click', (e) => {
+    showPins = !showPins;
+    (e.currentTarget as HTMLElement).setAttribute('aria-pressed', String(showPins));
+    loop.invalidate();
+  });
 
   $('cart').addEventListener('click', () =>
     toast(
@@ -302,6 +340,8 @@ export async function startChair() {
   });
   $('closeModal').addEventListener('click', () => $<HTMLDialogElement>('modal').close());
 
+  refresh();
+  renderer.shadowMap.needsUpdate = true;
   await precompile(renderer, scene, camera);
   loop.start();
   viewer.classList.add('ready');

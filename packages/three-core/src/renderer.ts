@@ -1,8 +1,6 @@
 import {
   ACESFilmicToneMapping,
-  CanvasTexture,
   PCFShadowMap,
-  RepeatWrapping,
   SRGBColorSpace,
   WebGLRenderer,
   type Camera,
@@ -34,24 +32,6 @@ export function createRenderer(canvas: HTMLCanvasElement, quality: Quality, opts
     renderer.shadowMap.type = PCFShadowMap; // soft filtering is built in since r18x
   }
   return renderer;
-}
-
-interface TextureOptions {
-  srgb?: boolean;
-  repeat?: [number, number];
-  anisotropy?: number;
-}
-
-/** Wraps a canvas (or ImageBitmap from a worker) in a texture with sensible defaults. */
-export function makeTexture(source: HTMLCanvasElement | ImageBitmap | OffscreenCanvas, opts: TextureOptions = {}) {
-  const t = new CanvasTexture(source as HTMLCanvasElement);
-  if (opts.srgb) t.colorSpace = SRGBColorSpace;
-  if (opts.repeat) {
-    t.wrapS = t.wrapT = RepeatWrapping;
-    t.repeat.set(...opts.repeat);
-  }
-  t.anisotropy = opts.anisotropy ?? 8;
-  return t;
 }
 
 /**

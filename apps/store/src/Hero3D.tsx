@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
+import { AdaptiveResolution, RenderLoop, createRenderer, getQuality } from '@meridian/three-core';
 import type { ProductCard } from './lib/shopify';
 import { Price } from './ui';
 
@@ -54,10 +55,12 @@ export default function Hero3D({ products }: { products: ProductCard[] }) {
     const el = host.current;
     if (!el || items.length === 0) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    el.appendChild(renderer.domElement);
+    // Shared runtime: device-appropriate resolution, pauses off screen, drops resolution if frames run long.
+    const quality = getQuality();
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    const renderer = createRenderer(canvas, quality, { toneMapping: THREE.NoToneMapping });
+    const adaptive = new AdaptiveResolution(renderer, quality);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
 
@@ -179,22 +182,9 @@ export default function Hero3D({ products }: { products: ProductCard[] }) {
     resize();
 
     const t0 = performance.now();
-    let visible = true,
-      raf = 0,
-      last = t0,
-      frontIdx = -1;
-    const io = new IntersectionObserver(([e]) => {
-      visible = e.isIntersecting;
-      if (visible) {
-        last = performance.now();
-        raf = requestAnimationFrame(tick);
-      }
-    });
-    io.observe(el);
-    function tick(now: number) {
-      if (!visible) return;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+    let frontIdx = -1;
+    function tick(dt: number) {
+      const now = performance.now();
       const t = (now - t0) / 1000;
       // entrance: the ring spirals in once on load
       const intro = reduced ? 1 : Math.min(1, t / 1.6),
@@ -228,14 +218,13 @@ export default function Hero3D({ products }: { products: ProductCard[] }) {
         setFront(best % items.length);
       }
       renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
     }
-    raf = requestAnimationFrame(tick);
+    const loop = new RenderLoop(tick, { target: el, onFrameTime: (ms) => adaptive.sample(ms) });
+    loop.start();
 
     return () => {
-      cancelAnimationFrame(raf);
+      loop.stop();
       ro.disconnect();
-      io.disconnect();
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', up);
       cards.forEach((c) => {
@@ -244,7 +233,7 @@ export default function Hero3D({ products }: { products: ProductCard[] }) {
       });
       geo.dispose();
       renderer.dispose();
-      el.removeChild(renderer.domElement);
+      el.removeChild(canvas);
     };
   }, [items.map((p) => p.id).join()]); // eslint-disable-line
 
