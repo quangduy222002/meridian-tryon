@@ -1,13 +1,13 @@
-/* Forge build guide: dark gaming theme. */
+/* Forge build guide: light, printed-manual look in the same warm palette as the chair and box demos. */
 :root {
-  --bg: #06070a;
-  --glass: rgb(13 15 21 / 0.78);
-  --line: rgb(255 255 255 / 0.09);
-  --text: #e9edf3;
-  --mute: #8a93a3;
-  --accent: #2ee6ff;
-  --accent-2: #ff3df2;
-  --warn: #ffb547;
+  --bg: #f4f1ec;
+  --glass: rgb(255 255 255 / 0.88);
+  --line: #e8e3da;
+  --text: #1d1d1f;
+  --mute: #8a857c;
+  --accent: #e2622b;
+  --accent-2: #e3a95c;
+  --warn: #c2410c;
   --r: 16px;
 }
 html,
@@ -61,10 +61,7 @@ svg {
   position: absolute;
   inset: 0;
   touch-action: none;
-  background:
-    radial-gradient(60% 50% at 22% 30%, rgb(46 230 255 / 0.1), transparent 70%),
-    radial-gradient(50% 45% at 82% 70%, rgb(255 61 242 / 0.08), transparent 70%),
-    radial-gradient(120% 100% at 50% 40%, #0f1219 0%, #06070a 75%);
+  background: radial-gradient(120% 90% at 55% 35%, #fbf9f5 0%, #ebe5da 75%);
 }
 .viewer canvas {
   display: block;
@@ -126,9 +123,10 @@ svg {
   top: 0;
   padding: 5px 10px;
   border-radius: 8px;
-  border: 1px solid rgb(46 230 255 / 0.5);
-  background: rgb(6 8 12 / 0.82);
-  color: var(--accent);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgb(60 40 10 / 0.12);
+  background: #fff;
+  color: var(--text);
   font: 500 12px var(--mono);
   white-space: nowrap;
   transition: opacity 0.2s;
@@ -190,9 +188,8 @@ svg {
   color: var(--mute);
 }
 .modes button.on {
-  color: #031016;
-  background: var(--accent);
-  box-shadow: 0 0 18px rgb(46 230 255 / 0.45);
+  color: #fff;
+  background: var(--text);
 }
 .top-actions {
   display: flex;
@@ -217,11 +214,11 @@ svg {
   font: 500 11px var(--mono);
   padding: 2px 6px;
   border-radius: 6px;
-  background: rgb(255 255 255 / 0.08);
+  background: rgb(29 29 31 / 0.08);
 }
 .pill[aria-pressed='true'],
 .pill[aria-expanded='true'] {
-  border-color: rgb(46 230 255 / 0.6);
+  border-color: rgb(226 98 43 / 0.6);
   color: var(--accent);
 }
 
@@ -236,7 +233,7 @@ svg {
   border-radius: var(--r);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 20px 60px rgb(0 0 0 / 0.45);
+  box-shadow: 0 12px 40px rgb(60 40 10 / 0.1);
 }
 .card {
   left: 20px;
@@ -257,16 +254,14 @@ svg {
 }
 .step-no {
   margin-top: 14px;
-  font: 500 44px/1 var(--mono);
-  color: var(--accent);
-  text-shadow: 0 0 24px rgb(46 230 255 / 0.45);
+  font: 400 64px/0.9 var(--serif);
+  color: var(--text);
 }
 .step-no em {
   font-style: normal;
-  font-size: 15px;
+  font: 400 13px var(--mono);
   color: var(--mute);
-  margin-left: 6px;
-  text-shadow: none;
+  margin-left: 8px;
 }
 .card h1 {
   margin-top: 10px;
@@ -276,7 +271,7 @@ svg {
 }
 .card .body {
   margin-top: 10px;
-  color: #c4cad4;
+  color: #4a4640;
 }
 .warn {
   display: flex;
@@ -284,9 +279,9 @@ svg {
   margin-top: 14px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgb(255 181 71 / 0.1);
-  border: 1px solid rgb(255 181 71 / 0.35);
-  color: #ffd79a;
+  background: #fff4ea;
+  border: 1px solid #f3c9a8;
+  color: #7c2d12;
   font-size: 13.5px;
 }
 .warn[hidden] {
@@ -332,7 +327,6 @@ svg {
   margin-right: 8px;
   border-radius: 2px;
   background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
   vertical-align: 2px;
 }
 .step-parts b {
@@ -345,7 +339,7 @@ svg {
   right: 0;
   bottom: 0;
   height: 3px;
-  background: rgb(255 255 255 / 0.06);
+  background: rgb(29 29 31 / 0.06);
 }
 .progress i {
   display: block;
@@ -405,11 +399,11 @@ svg {
   text-align: left;
 }
 .bom li button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.05);
+  background: rgb(29 29 31 / 0.05);
 }
 .bom li.on button {
-  background: rgb(46 230 255 / 0.1);
-  box-shadow: inset 0 0 0 1px rgb(46 230 255 / 0.4);
+  background: rgb(226 98 43 / 0.1);
+  box-shadow: inset 0 0 0 1px rgb(226 98 43 / 0.4);
 }
 .bom .q {
   font: 500 12px var(--mono);
@@ -464,12 +458,11 @@ svg {
   flex: none;
 }
 .icon:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.06);
+  background: rgb(29 29 31 / 0.06);
 }
 .icon.play {
-  background: var(--accent);
-  color: #031016;
-  box-shadow: 0 0 20px rgb(46 230 255 / 0.45);
+  background: var(--text);
+  color: #fff;
 }
 .icon.play svg {
   fill: currentColor;
@@ -498,7 +491,7 @@ svg {
   border-radius: 6px;
   background:
     linear-gradient(90deg, var(--accent), var(--accent-2)) 0 / var(--fill, 0%) 100% no-repeat,
-    rgb(255 255 255 / 0.1);
+    rgb(29 29 31 / 0.1);
   cursor: pointer;
 }
 .scrub input::-webkit-slider-thumb {
@@ -507,7 +500,9 @@ svg {
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 0 4px rgb(46 230 255 / 0.35);
+  box-shadow:
+    0 0 0 2px var(--text),
+    0 2px 8px rgb(60 40 10 / 0.2);
 }
 .scrub input::-moz-range-thumb {
   width: 18px;
@@ -515,7 +510,9 @@ svg {
   border: none;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 0 4px rgb(46 230 255 / 0.35);
+  box-shadow:
+    0 0 0 2px var(--text),
+    0 2px 8px rgb(60 40 10 / 0.2);
 }
 .ticks {
   position: absolute;
@@ -531,7 +528,7 @@ svg {
   height: 10px;
   margin-left: -1px;
   border-radius: 1px;
-  background: rgb(255 255 255 / 0.28);
+  background: rgb(29 29 31 / 0.28);
 }
 
 /* ---------- Studio ---------- */
@@ -573,7 +570,7 @@ svg {
   padding: 9px 11px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: rgb(0 0 0 / 0.35);
+  background: #fff;
   font-size: 14px;
   resize: vertical;
 }
@@ -581,7 +578,7 @@ svg {
   margin-top: 8px;
 }
 .studio select option {
-  background: #11141b;
+  background: #fff;
 }
 .st-title {
   margin-top: 6px;
@@ -601,14 +598,14 @@ svg {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 0.04);
+  background: rgb(29 29 31 / 0.04);
   font-size: 13px;
   font-weight: 600;
 }
 .st-row .primary {
-  background: var(--accent);
+  background: var(--text);
   border-color: transparent;
-  color: #031016;
+  color: #fff;
 }
 .st-steps {
   list-style: none;
@@ -622,8 +619,8 @@ svg {
   border: 1px solid transparent;
 }
 .st-steps li.on {
-  border-color: rgb(46 230 255 / 0.45);
-  background: rgb(46 230 255 / 0.07);
+  border-color: rgb(226 98 43 / 0.45);
+  background: rgb(226 98 43 / 0.07);
 }
 .st-sel {
   flex: 1;
@@ -663,7 +660,7 @@ svg {
 }
 .st-ops button:hover:not(:disabled) {
   color: var(--text);
-  background: rgb(255 255 255 / 0.06);
+  background: rgb(29 29 31 / 0.06);
 }
 .st-add {
   width: 100%;
@@ -701,14 +698,14 @@ svg {
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 0.04);
+  background: rgb(29 29 31 / 0.04);
   color: var(--text);
   font-size: 12.5px;
 }
 .chip.on {
-  border-color: rgb(46 230 255 / 0.6);
+  border-color: rgb(226 98 43 / 0.6);
   color: var(--accent);
-  background: rgb(46 230 255 / 0.08);
+  background: rgb(226 98 43 / 0.08);
 }
 .chip.part {
   padding: 0;
@@ -729,8 +726,8 @@ svg {
   gap: 8px;
   padding: 12px;
   border-radius: 12px;
-  background: rgb(46 230 255 / 0.06);
-  border: 1px solid rgb(46 230 255 / 0.25);
+  background: rgb(226 98 43 / 0.06);
+  border: 1px solid rgb(226 98 43 / 0.25);
   font-size: 13px;
 }
 .st-part[hidden] {
@@ -789,7 +786,7 @@ svg {
   }
   .step-no {
     margin-top: 0;
-    font-size: 30px;
+    font-size: 44px;
   }
   .card h1 {
     margin-top: 6px;

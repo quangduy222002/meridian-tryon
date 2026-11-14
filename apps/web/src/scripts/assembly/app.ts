@@ -14,6 +14,8 @@ import {
   Raycaster,
   Scene,
   ShaderMaterial,
+  ShadowMaterial,
+  NeutralToneMapping,
   Vector2,
   Vector3,
   type Object3D,
@@ -81,14 +83,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-/** Dark gaming studio: white key, cyan and magenta rims. */
-const GAME_STUDIO: LightCard[] = [
-  { size: [8, 3], color: '#ffffff', intensity: 3.2, position: [0, 7, 4] },
-  { size: [0.8, 8], color: '#2ee6ff', intensity: 3.4, position: [-7, 2, 2] },
-  { size: [0.8, 8], color: '#ff3df2', intensity: 2.4, position: [7, 2, -3] },
-  { size: [10, 1], color: '#ffffff', intensity: 1.4, position: [0, 1, -8] },
-  { size: [3, 3], color: '#ffffff', intensity: 2.4, position: [5, 4, 6] },
-  { size: [14, 14], color: '#11131a', intensity: 1, position: [0, -6, 0] },
+/** Bright, soft product studio (same family as the chair and box demos). */
+const STUDIO: LightCard[] = [
+  { size: [10, 6], color: '#ffffff', intensity: 2.6, position: [0, 7, 3] },
+  { size: [3, 6], color: '#fff4e8', intensity: 2.2, position: [-6, 2.5, 4] },
+  { size: [3, 6], color: '#eef2fb', intensity: 1.3, position: [6, 2, -2] },
+  { size: [16, 16], color: '#e8e0d4', intensity: 0.9, position: [0, -5, 0] },
+  { size: [12, 6], color: '#f4efe7', intensity: 0.8, position: [0, 2, -8] },
 ];
 
 export async function startAssembly() {
@@ -97,7 +98,12 @@ export async function startAssembly() {
   const canvas = viewer.querySelector('canvas')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const quality = getQuality();
-  const renderer = createRenderer(canvas, quality, { exposure: 1.25 });
+  const renderer = createRenderer(canvas, quality, {
+    shadows: true,
+    toneMapping: NeutralToneMapping,
+    exposure: 1.0,
+  });
+  renderer.shadowMap.autoUpdate = false; // refreshed only when a part moves
 
   const tex = await generateTextures<{ size: number }, AssemblyTexture>({
     build: (p) => assemblySpecs(p.size),
@@ -109,23 +115,27 @@ export async function startAssembly() {
 
   /* ---------- Scene ---------- */
   const scene = new Scene();
-  scene.environment = bakeStudio(renderer, GAME_STUDIO, '#06070a');
-  scene.environmentIntensity = 0.9;
-  scene.add(new AmbientLight(0xffffff, 0.2));
-  const key = new DirectionalLight(0xffffff, 1.6);
-  key.position.set(4, 8, 6);
-  const rimC = new DirectionalLight(0x2ee6ff, 1.1);
-  rimC.position.set(-6, 3, -2);
-  const rimM = new DirectionalLight(0xff3df2, 0.7);
-  rimM.position.set(6, 2, -6);
-  scene.add(key, rimC, rimM);
+  scene.environment = bakeStudio(renderer, STUDIO, '#ddd5c8');
+  scene.environmentIntensity = 0.85;
+  scene.add(new AmbientLight(0xffffff, 0.25));
+  const sun = new DirectionalLight(0xfff2e2, 2.2);
+  sun.position.set(4, 9, 6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+  sun.shadow.bias = -0.0006;
+  sun.shadow.normalBias = 0.02;
+  Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 30 });
+  const fill = new DirectionalLight(0xdfe8ff, 0.5);
+  fill.position.set(-6, 3, 4);
+  scene.add(sun, fill);
 
+  // Cutting-mat grid that fades out, plus the shadows the parts cast.
   const floor = new Mesh(
     new PlaneGeometry(60, 60),
     new ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      uniforms: { uColor: { value: new Color('#2ee6ff') } },
+      uniforms: { uColor: { value: new Color('#8a857c') } },
       vertexShader: `varying vec2 vW;
 void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`,
       fragmentShader: `varying vec2 vW;
@@ -134,21 +144,28 @@ void main() {
   vec2 p = vW * 1.25;
   vec2 g = abs(fract(p - 0.5) - 0.5) / fwidth(p);
   float line = 1.0 - min(min(g.x, g.y), 1.0);
-  float fade = 1.0 - smoothstep(2.5, 15.0, length(vW));
-  float a = line * fade * 0.22 + fade * 0.05;
-  gl_FragColor = vec4(uColor * a, a);
+  vec2 q = vW * 0.25;
+  vec2 g5 = abs(fract(q - 0.5) - 0.5) / fwidth(q);
+  float major = 1.0 - min(min(g5.x, g5.y), 1.0);
+  float fade = 1.0 - smoothstep(3.0, 16.0, length(vW));
+  gl_FragColor = vec4(uColor, max(line * 0.18, major * 0.35) * fade);
 }`,
     }),
   );
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
+  const shadowFloor = new Mesh(new PlaneGeometry(40, 40), new ShadowMaterial({ opacity: 0.14 }));
+  shadowFloor.rotation.x = -Math.PI / 2;
+  shadowFloor.position.y = 0.001;
+  shadowFloor.receiveShadow = true;
+  scene.add(shadowFloor);
   const contact = new Mesh(
     new PlaneGeometry(6.6, 3.8),
     new MeshBasicMaterial({
-      color: '#000',
+      color: '#3a2f22',
       alphaMap: tex.contact,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.35,
       depthWrite: false,
     }),
   );
@@ -158,6 +175,13 @@ void main() {
 
   const kit = buildParts(tex);
   scene.add(kit.root);
+  for (const p of kit.parts)
+    p.group.traverse((o) => {
+      const m = o as Mesh;
+      if (!m.isMesh || p.id === 'glass') return;
+      m.castShadow = true;
+      m.receiveShadow = true;
+    });
 
   const camera = new PerspectiveCamera(30, 1, 0.1, 200);
   camera.position.set(...DEFAULT_VIEW.pos);
@@ -197,7 +221,7 @@ void main() {
     const done = isDone();
     const rate = reduce ? Infinity : 7;
     const eCur = ease(clamp(t - cur, 0, 1));
-    kit.ghostLook.uAlpha.value = 0.6 * (1 - eCur);
+    kit.ghostLook.uAlpha.value = 0.9 * (1 - eCur);
     for (const p of kit.parts) {
       const s = stepOf.get(p.id);
       let dim = 0;
@@ -210,7 +234,7 @@ void main() {
         p.group.visible = mode === 'studio';
         p.group.position.copy(p.home);
         fade = 1;
-        alpha = 0.18;
+        alpha = 0.7;
       } else {
         const e = ease(clamp(t - s, 0, 1));
         const off = guide.offsets[p.id] ?? [0, 0, 0];
@@ -223,7 +247,7 @@ void main() {
         } else if (!done && s < cur) {
           if (xray) {
             fade = 1;
-            alpha = 0.3;
+            alpha = 0.9;
           } else dim = 0.5;
         }
       }
@@ -232,12 +256,26 @@ void main() {
       l.alpha = damp(l.alpha, alpha, rate, dt);
       l.fade = fade; // blending switches at once; fading it would pop anyway
       if (Math.abs(l.dim - dim) > 0.004 || Math.abs(l.alpha - alpha) > 0.004) settling = true;
+      const wasXray = p.xray;
       kit.setXray(p, l.fade > 0);
+      if (wasXray !== p.xray) {
+        // See-through parts don't cast shadows.
+        p.group.traverse((o) => {
+          if ((o as Mesh).isMesh && p.id !== 'glass') o.castShadow = !p.xray;
+        });
+        renderer.shadowMap.needsUpdate = true;
+      }
       p.look.uDim.value = l.dim;
       p.look.uFade.value = l.fade;
       p.look.uAlpha.value = l.alpha;
       p.look.uGlow.value = glow;
       p.ghost.visible = ghost && p.group.visible;
+      const at = p.group.position;
+      const key = `${+p.group.visible},${at.x.toFixed(3)},${at.y.toFixed(3)},${at.z.toFixed(3)}`;
+      if (p.group.userData.shadowKey !== key) {
+        p.group.userData.shadowKey = key;
+        renderer.shadowMap.needsUpdate = true;
+      }
     }
     return settling;
   };

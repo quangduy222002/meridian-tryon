@@ -1,11 +1,11 @@
 /**
  * One shader patch drives every "look" a part can have, so changing steps only moves a few uniforms:
- * dimmed (already installed), glowing rim (the part being installed), x-ray (see-through) and RGB lighting
+ * washed out (already installed), accent rim (the part being installed), x-ray (see-through) and RGB lighting
  * that cycles in the shader once the build powers on.
  */
-import { AdditiveBlending, Color, type MeshStandardMaterial } from 'three';
+import { Color, NormalBlending, type MeshStandardMaterial } from 'three';
 
-export const ACCENT = new Color('#2ee6ff');
+export const ACCENT = new Color('#e2622b');
 
 /** Shared by every part: time for the RGB cycle and how far the build is powered on (0..1). */
 export const globals = { uTime: { value: 0 }, uPower: { value: 0 } };
@@ -68,20 +68,22 @@ totalEmissiveRadiance += rgbC * rgbC * uPower * 1.6;`
   float fr = pow(1.0 - clamp(abs(dot(normalize(vViewPosition), normal)), 0.0, 1.0), 2.0);
   vec3 c = gl_FragColor.rgb;
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  c = mix(c, vec3(l) * 0.5, uDim * 0.75);
-  c += uAccent * uGlow * (0.015 + fr * 0.7);
-  c = mix(c, uAccent * (0.03 + fr * 0.9), uFade);
-  gl_FragColor = vec4(c, mix(gl_FragColor.a, 1.0, uFade) * uAlpha);
+  // Installed parts wash out to a pale warm grey, like the greyed-out parts in a printed manual.
+  c = mix(c, vec3(0.7, 0.68, 0.65) + l * 0.22, uDim * 0.72);
+  c = mix(c, uAccent, uGlow * fr * 0.6);
+  // X-ray: thin accent outlines, see-through faces.
+  c = mix(c, uAccent * 0.9, uFade);
+  gl_FragColor = vec4(c, mix(gl_FragColor.a, 0.03 + fr * 0.55, uFade) * uAlpha);
 }`,
       );
   };
 }
 
-/** Switches a patched material between its own blending and additive x-ray blending. */
+/** Switches a patched material between its own look and the see-through x-ray look. */
 export function setXray(m: MeshStandardMaterial, on: boolean) {
   const saved = m.userData.saved as Saved;
   const transparent = on || saved.transparent;
-  const blending = on ? AdditiveBlending : saved.blending;
+  const blending = on ? NormalBlending : saved.blending;
   if (m.transparent === transparent && m.blending === blending) return;
   m.transparent = transparent;
   m.depthWrite = on ? false : saved.depthWrite;

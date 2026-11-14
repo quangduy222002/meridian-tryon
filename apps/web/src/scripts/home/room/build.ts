@@ -259,18 +259,18 @@ export function buildRoom(quality: Quality) {
   carton(0.32, 0.22, 0.3, -0.62, 0, 0.18, -0.3);
   hotspot('box', 'Packaging box studio', 'Box studio', boxes, new Vector3(0, 1.0, 0));
 
-  /* ---------- Gaming PC tower (build guide) ---------- */
+  /* ---------- PC tower (build guide) ---------- */
   const pc = new Group();
   pc.position.set(1.55, 0, -2.45);
   pc.rotation.y = -0.25;
   scene.add(pc);
   {
-    const shell = mat('#16181d', { roughness: 0.45, metalness: 0.6 });
-    const glow = new MeshBasicMaterial({ color: '#2ee6ff', toneMapped: false });
-    const glow2 = new MeshBasicMaterial({ color: '#ff3df2', toneMapped: false });
+    const shell = mat('#ece8e1', { roughness: 0.55, metalness: 0.1 });
+    const glow = new MeshBasicMaterial({ color: '#e3a95c', toneMapped: false });
+    const glow2 = new MeshBasicMaterial({ color: '#e2622b', toneMapped: false });
     const glassM = mat('#8fa6bd', { roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.25 });
     add(rbox(0.46, 0.48, 0.23, 0.012), shell, 0, 0.26, 0, pc);
-    add(new PlaneGeometry(0.42, 0.42), mat('#07080b', { roughness: 0.8 }), 0, 0.27, 0.116, pc, false);
+    add(new PlaneGeometry(0.42, 0.42), mat('#2a2622', { roughness: 0.8 }), 0, 0.27, 0.116, pc, false);
     const ringGeo = new TorusGeometry(0.045, 0.006, 6, 24);
     for (const y of [0.15, 0.27, 0.39]) add(ringGeo, glow, -0.17, y, 0.12, pc, false);
     add(ringGeo, glow2, 0.17, 0.38, 0.12, pc, false);

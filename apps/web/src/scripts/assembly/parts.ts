@@ -16,7 +16,6 @@ import {
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
-  RepeatWrapping,
   TorusGeometry,
   TubeGeometry,
   Vector3,
@@ -82,6 +81,9 @@ export function buildParts(tex: Record<AssemblyTexture, Texture>): Kit {
     Object.assign(new MeshStandardMaterial({ color, roughness, metalness }), extra);
   const steel = std('#1a1d23', 0.42, 0.7);
   const steelLight = std('#30343c', 0.4, 0.75);
+  // White powder-coated case panels
+  const shell = std('#ece9e3', 0.55, 0.12);
+  const shellDark = std('#d4cfc6', 0.5, 0.15);
   const alu = std('#9aa0a8', 0.3, 1);
   const aluDark = std('#353a43', 0.38, 0.9);
   const plastic = std('#0e0f12', 0.55);
@@ -93,17 +95,18 @@ export function buildParts(tex: Record<AssemblyTexture, Texture>): Kit {
   const rubber = std('#050506', 0.9);
   const rgb = std('#8c939e', 0.35, 0, { emissive: new Color('#000000') });
   rgb.userData.rgb = true;
-  const meshTex = (rx: number, ry: number) => {
-    const t = tex.mesh.clone();
-    t.repeat.set(rx, ry);
-    t.wrapS = t.wrapT = RepeatWrapping;
-    t.needsUpdate = true;
-    return std('#ffffff', 0.6, 0.5, { map: t });
-  };
+  const meshTex = (map: Texture, tint = '#ffffff') => std(tint, 0.7, 0, { map });
+
   const pcb = std('#ffffff', 0.62, 0.25, { map: tex.pcb });
   const sleeve = std('#ffffff', 0.75, 0.1, { map: tex.sleeve });
   const label = std('#ffffff', 0.5, 0.1, { map: tex.label });
   const logo = std('#ffffff', 0.4, 0.2, {
+    map: tex.logo,
+    transparent: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+  });
+  const logoInk = std('#1d1d1f', 0.4, 0.2, {
     map: tex.logo,
     transparent: true,
     polygonOffset: true,
@@ -178,23 +181,23 @@ export function buildParts(tex: Record<AssemblyTexture, Texture>): Kit {
     const g = part('case', new Vector3(0, 0, 0));
     const L = 4.6;
     const W = 2.3;
-    box(g, L, 0.06, W, steel, 0, 0.18, 0); // floor
-    box(g, L, 0.06, W, [steel, steel, meshTex(14, 7), steel, steel, steel], 0, 4.92, 0); // top
-    box(g, L, 4.8, 0.04, steelLight, 0, 2.55, -1.13); // motherboard tray / right side
-    box(g, 0.08, 4.8, W, [steel, meshTex(7, 14), steel, steel, steel, steel], -2.26, 2.55, 0); // front
+    box(g, L, 0.06, W, shell, 0, 0.18, 0); // floor
+    box(g, L, 0.06, W, [shell, shell, meshTex(tex.meshTop), shell, shell, shell], 0, 4.92, 0); // top
+    box(g, L, 4.8, 0.04, shellDark, 0, 2.55, -1.13); // motherboard tray / right side
+    box(g, 0.08, 4.8, W, [shell, meshTex(tex.meshFront), shell, shell, shell, shell], -2.26, 2.55, 0); // front
     // Rear panel with the PSU opening
-    box(g, 0.04, 3.81, W, steel, 2.28, 2.985, 0);
-    for (const s of [-1, 1]) box(g, 0.04, 0.87, 0.4, steel, 2.28, 0.645, s * 0.95);
+    box(g, 0.04, 3.81, W, shell, 2.28, 2.985, 0);
+    for (const s of [-1, 1]) box(g, 0.04, 0.87, 0.4, shell, 2.28, 0.645, s * 0.95);
     box(g, 0.02, 1.1, 0.45, rubber, 2.29, 4.06, -0.84); // I/O cutout
     const rearGrill = plane(g, 1.1, 1.1, grill, 2.305, 3.9, 0);
     rearGrill.rotation.y = Math.PI / 2;
-    for (let i = 0; i < 7; i++) box(g, 0.02, 0.06, 0.95, steelLight, 2.3, 2.62 - i * 0.2, 0.1); // slot covers
+    for (let i = 0; i < 7; i++) box(g, 0.02, 0.06, 0.95, shellDark, 2.3, 2.62 - i * 0.2, 0.1); // slot covers
     // Feet
     for (const x of [-1.9, 1.9]) for (const z of [-0.85, 0.85]) box(g, 0.5, 0.15, 0.3, rubber, x, 0.075, z);
     // PSU shroud
-    box(g, 3.85, 0.04, 2.22, steel, 0.35, 1.08, 0);
-    box(g, 2.0, 0.87, 0.04, steel, -0.6, 0.645, 1.1);
-    const shroudLogo = plane(g, 1.2, 0.3, logo, -0.6, 0.66, 1.125);
+    box(g, 3.85, 0.04, 2.22, shell, 0.35, 1.08, 0);
+    box(g, 2.0, 0.87, 0.04, shell, -0.6, 0.645, 1.1);
+    const shroudLogo = plane(g, 1.2, 0.3, logoInk, -0.6, 0.66, 1.125);
     shroudLogo.renderOrder = 1;
     box(g, 0.3, 0.012, 0.6, rubber, -0.42, 1.1, -0.55); // cable grommet
     box(g, 0.05, 2.2, 0.01, rubber, -0.62, 3.3, -1.105); // tray grommets
@@ -209,7 +212,7 @@ export function buildParts(tex: Record<AssemblyTexture, Texture>): Kit {
     box(g, 1.5, 0.8, 1.5, steel);
     const bottom = plane(g, 1.2, 1.2, grill, 0, -0.401, 0);
     bottom.rotation.x = Math.PI / 2;
-    const rear = plane(g, 0.7, 0.6, meshTex(4, 3), 0.751, 0, 0.35);
+    const rear = plane(g, 0.7, 0.6, meshTex(tex.meshPsu, '#4a4a4a'), 0.751, 0, 0.35);
     rear.rotation.y = Math.PI / 2;
     box(g, 0.05, 0.22, 0.3, rubber, 0.76, 0.1, -0.45); // power socket
     box(g, 0.05, 0.12, 0.08, plasticGrey, 0.76, -0.18, -0.45); // switch

@@ -1,5 +1,21 @@
 /** Procedural textures for the PC build guide, painted in a worker. */
-import { rand32, type SpecMap } from '@meridian/three-core';
+import { rand32, type Ctx2D, type SpecMap } from '@meridian/three-core';
+
+function paintMesh(c: Ctx2D, w: number, h: number) {
+  c.fillStyle = '#f4f2ee';
+  c.fillRect(0, 0, w, h);
+  c.fillStyle = '#a39d93';
+  const step = w / 8;
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const x = col * step + (row % 2 ? step / 2 : 0);
+      const y = row * step * 0.866 * 1.155;
+      c.beginPath();
+      c.arc(x, y, step * 0.24, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+}
 
 export const assemblySpecs = (size: number): SpecMap => ({
   /** Black motherboard PCB: copper traces at 45°, vias and silkscreen footprints. */
@@ -48,7 +64,7 @@ export const assemblySpecs = (size: number): SpecMap => ({
         c.strokeRect(r() * w, r() * h, fw, fh);
       }
       // Accent stripes and board name
-      c.fillStyle = 'rgba(46,230,255,0.22)';
+      c.fillStyle = 'rgba(226,98,43,0.4)';
       c.fillRect(w * 0.06, h * 0.93, w * 0.5, h * 0.006);
       c.fillStyle = 'rgba(220,224,230,0.6)';
       c.font = `700 ${Math.round(w * 0.045)}px sans-serif`;
@@ -74,27 +90,10 @@ export const assemblySpecs = (size: number): SpecMap => ({
       }
     },
   },
-  /** Perforated steel mesh for the front and top panels. */
-  mesh: {
-    width: 128,
-    height: 128,
-    srgb: true,
-    paint(c, w, h) {
-      c.fillStyle = '#24272d';
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#060708';
-      const step = w / 8;
-      for (let row = 0; row < 9; row++) {
-        for (let col = 0; col < 9; col++) {
-          const x = col * step + (row % 2 ? step / 2 : 0);
-          const y = row * step * 0.866 * 1.155;
-          c.beginPath();
-          c.arc(x, y, step * 0.36, 0, Math.PI * 2);
-          c.fill();
-        }
-      }
-    },
-  },
+  /** Perforated mesh for the top, front and PSU panels (one spec per tiling: worker textures can't be cloned). */
+  meshTop: { width: 128, height: 128, srgb: true, repeat: [14, 7], paint: paintMesh },
+  meshFront: { width: 128, height: 128, srgb: true, repeat: [7, 14], paint: paintMesh },
+  meshPsu: { width: 128, height: 128, srgb: true, repeat: [4, 3], paint: paintMesh },
   /** PSU fan grill: rings and spokes. */
   grill: {
     width: 256,
@@ -127,7 +126,7 @@ export const assemblySpecs = (size: number): SpecMap => ({
     paint(c, w, h) {
       c.fillStyle = '#16181c';
       c.fillRect(0, 0, w, h);
-      c.fillStyle = '#2ee6ff';
+      c.fillStyle = '#e2622b';
       c.fillRect(0, h * 0.78, w, h * 0.04);
       c.fillStyle = '#f2f4f7';
       c.font = `800 ${Math.round(h * 0.3)}px sans-serif`;
@@ -167,7 +166,7 @@ export const assemblySpecs = (size: number): SpecMap => ({
         c.moveTo(i * 16, 0);
         c.lineTo(i * 16 + 32, h);
         c.stroke();
-        c.strokeStyle = 'rgba(46,230,255,0.35)';
+        c.strokeStyle = 'rgba(226,98,43,0.4)';
         c.lineWidth = 1.2;
         c.beginPath();
         c.moveTo(i * 16 + 32, 0);
@@ -192,4 +191,5 @@ export const assemblySpecs = (size: number): SpecMap => ({
   },
 });
 
-export type AssemblyTexture = 'pcb' | 'mesh' | 'grill' | 'label' | 'logo' | 'sleeve' | 'contact';
+export type AssemblyTexture =
+  'pcb' | 'meshTop' | 'meshFront' | 'meshPsu' | 'grill' | 'label' | 'logo' | 'sleeve' | 'contact';

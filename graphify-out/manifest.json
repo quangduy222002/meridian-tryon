@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794665486.0773513,
-    "seen": 1794669310.279555,
-    "ast_hash": "97935c4dcbc7e5a3d0c5c2013dfbe9eb",
+    "mtime": 1794669337.0814898,
+    "seen": 1794677164.8654728,
+    "ast_hash": "27e40638c057d72d5c912a2b2b6ed6f0",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/home/room/build.ts": {
-    "mtime": 1794669307.62484,
-    "seen": 1794669310.279507,
-    "ast_hash": "4eed1454e6c725ea89a9148f11747835",
+    "mtime": 1794677426.80638,
+    "seen": 1794677685.6745567,
+    "ast_hash": "9e52dadfe82fc49d0a61fd19e36b404c",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/home/room/dust.ts": {
@@ -492,15 +492,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/assembly/index.astro": {
-    "mtime": 1794669133.9005976,
-    "seen": 1794669310.279468,
-    "ast_hash": "7cff5e44c89f2c82436f02b193e81323",
+    "mtime": 1794677295.7949255,
+    "seen": 1794677685.6745265,
+    "ast_hash": "42a6787d056e2ae4f724a86eeb5faa7f",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/app.ts": {
-    "mtime": 1794669133.5125976,
-    "seen": 1794669310.279476,
-    "ast_hash": "0e96448b8306b1fdae662f75ea1e6986",
+    "mtime": 1794677592.6060557,
+    "seen": 1794677685.6745338,
+    "ast_hash": "bd47a4c2843e481e330f4b7e493793e6",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/guide.ts": {
@@ -510,15 +510,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/look.ts": {
-    "mtime": 1794669133.5805976,
-    "seen": 1794669310.279479,
-    "ast_hash": "95ba0816e5bd74ddade32d16a1736dd1",
+    "mtime": 1794677426.805991,
+    "seen": 1794677685.6745365,
+    "ast_hash": "27f2983a318579c130912bbe4ad85dce",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/parts.ts": {
-    "mtime": 1794669133.7005975,
-    "seen": 1794669310.2794821,
-    "ast_hash": "4923bdf77c20fbe1d4b1dfffb09678bd",
+    "mtime": 1794677618.1851313,
+    "seen": 1794677685.6745377,
+    "ast_hash": "80cab40fb24082f9725105f0779304f2",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/studio.ts": {
@@ -528,9 +528,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/textures.ts": {
-    "mtime": 1794668162.94854,
-    "seen": 1794669310.2794852,
-    "ast_hash": "c910e56d8250e72a3a3992aa3f1298a0",
+    "mtime": 1794677683.2234352,
+    "seen": 1794677685.67454,
+    "ast_hash": "c9bc91b9d32019aa113561720d899bf2",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/textures.worker.ts": {
