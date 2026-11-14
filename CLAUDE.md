@@ -9,7 +9,7 @@
 
 ## Layout
 
-- `apps/web` — Astro + TypeScript + three.js: portfolio (`/`), `/watch/`, `/chair/`, `/box/`.
+- `apps/web` — Astro + TypeScript + three.js: portfolio (`/`), `/watch/`, `/chair/`, `/box/`, `/assembly/` (PC build guide + studio).
   - `src/scripts/<page>/` holds each page's scene and UI; `src/content/site.ts` holds portfolio copy.
 - `apps/store` — Vite + React storefront, built into `apps/web/dist/store`.
 - `packages/three-core` (`@meridian/three-core`) — the shared 3D runtime for both apps: quality tiers, adaptive

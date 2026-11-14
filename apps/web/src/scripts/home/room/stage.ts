@@ -52,6 +52,7 @@ const SECTION_OF: Record<string, string> = {
   watch: 'work-watch',
   chair: 'work-chair',
   box: 'work-box',
+  forge: 'work-assembly',
   viewers: 'work-client',
   store: 'work-store',
 };
@@ -154,8 +155,18 @@ export function startRoom() {
       { frac: 0.62, at: [0.66, 0.48] },
       { frac: 0.5, at: [0.5, 0.24] },
     ),
+    assembly: shot(
+      '06 · FORGE',
+      () => boxOf(room.pc),
+      16,
+      14,
+      30,
+      { frac: 0.6, at: [0.32, 0.5] },
+      { frac: 0.46, at: [0.5, 0.24] },
+      { lamp: 1.2 },
+    ),
     services: shot(
-      '06 · SERVICES',
+      '07 · SERVICES',
       () => ROOM,
       60,
       64,
@@ -165,7 +176,7 @@ export function startRoom() {
       { dim: 0.82 },
     ),
     process: shot(
-      '07 · PROCESS',
+      '08 · PROCESS',
       () => ROOM,
       18,
       24,
@@ -175,7 +186,7 @@ export function startRoom() {
       { dim: 0.84 },
     ),
     contact: shot(
-      '08 · CONTACT',
+      '09 · CONTACT',
       () => ROOM,
       45,
       30,

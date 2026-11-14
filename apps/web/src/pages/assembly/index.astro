@@ -1,0 +1,129 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import '../../styles/assembly.css';
+---
+
+<BaseLayout
+  title="Forge — 3D PC build guide & studio"
+  description="Step-by-step PC assembly in 3D instead of a paper manual: each part flies into place with tools, warnings and a parts list. Build your own guide in the studio. Concept demo built with Three.js."
+  themeColor="#06070a"
+>
+  <div class="app" id="app" data-mode="guide">
+    <div class="viewer" id="viewer">
+      <canvas aria-label="3D view of the PC being assembled"></canvas>
+      <div class="pins" id="pins" aria-hidden="true"></div>
+      <p class="loader" aria-hidden="true">
+        <i></i>Unboxing parts…
+      </p>
+    </div>
+
+    <header class="top">
+      <a class="brand" href="../">
+        FORGE<span>Build guides</span>
+      </a>
+      <div class="modes" role="tablist" aria-label="Mode">
+        <button type="button" role="tab" data-mode="guide" class="on" aria-selected="true">
+          Guide
+        </button>
+        <button type="button" role="tab" data-mode="studio" aria-selected="false">
+          Studio
+        </button>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="xrayBtn" class="pill" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          X-ray
+        </button>
+        <button type="button" id="bomBtn" class="pill" aria-expanded="false" aria-controls="bom">
+          Parts <b id="bomCount">0</b>
+        </button>
+      </div>
+    </header>
+
+    <section class="card" id="card" aria-live="polite">
+      <p class="guide-name" id="guideName"></p>
+      <p class="step-no">
+        <span id="stepNo">01</span>
+        <em>
+          / <span id="stepTotal">00</span>
+        </em>
+      </p>
+      <h1 id="stepTitle">Loading build guide</h1>
+      <p class="body" id="stepBody"></p>
+      <p class="warn" id="stepWarn" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3l10 18H2zM12 10v5M12 18v.5"></path>
+        </svg>
+        <span id="stepWarnText"></span>
+      </p>
+      <div class="meta">
+        <div>
+          <h2>You need</h2>
+          <ul class="tools" id="stepTools"></ul>
+        </div>
+        <div>
+          <h2>Parts</h2>
+          <ul class="step-parts" id="stepParts"></ul>
+        </div>
+      </div>
+      <div class="progress" aria-hidden="true">
+        <i></i>
+      </div>
+    </section>
+
+    <aside class="studio" id="studio" aria-label="Studio" hidden></aside>
+
+    <aside class="bom" id="bom" aria-label="Parts list" aria-hidden="true">
+      <header>
+        <h2>Parts list</h2>
+        <button type="button" id="bomClose" aria-label="Close parts list">
+          ✕
+        </button>
+      </header>
+      <ol id="bomList"></ol>
+      <p class="bom-note">Tap a part to jump to the step that installs it.</p>
+    </aside>
+
+    <div class="dock">
+      <button type="button" id="prevBtn" class="icon" aria-label="Previous step">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 5l-7 7 7 7"></path>
+        </svg>
+      </button>
+      <button type="button" id="playBtn" class="icon play" aria-label="Play">
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5l11 7-11 7z"></path>
+        </svg>
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5v14M16 5v14"></path>
+        </svg>
+      </button>
+      <button type="button" id="nextBtn" class="icon" aria-label="Next step">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 5l7 7-7 7"></path>
+        </svg>
+      </button>
+      <div class="scrub">
+        <input type="range" id="scrub" min="0" max="1" step="0.001" value="0" aria-label="Build timeline" />
+        <div class="ticks" id="ticks"></div>
+      </div>
+      <button type="button" id="replayBtn" class="icon" aria-label="Replay this step">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    import { hasWebGL } from '@meridian/three-core/support';
+    if (hasWebGL()) {
+      import('../../scripts/assembly/app').then((m) => m.startAssembly()).catch((err: unknown) => console.error(err));
+    } else {
+      document.getElementById('viewer')?.classList.add('no-gl');
+    }
+  </script>
+</BaseLayout>

@@ -259,6 +259,28 @@ export function buildRoom(quality: Quality) {
   carton(0.32, 0.22, 0.3, -0.62, 0, 0.18, -0.3);
   hotspot('box', 'Packaging box studio', 'Box studio', boxes, new Vector3(0, 1.0, 0));
 
+  /* ---------- Gaming PC tower (build guide) ---------- */
+  const pc = new Group();
+  pc.position.set(1.55, 0, -2.45);
+  pc.rotation.y = -0.25;
+  scene.add(pc);
+  {
+    const shell = mat('#16181d', { roughness: 0.45, metalness: 0.6 });
+    const glow = new MeshBasicMaterial({ color: '#2ee6ff', toneMapped: false });
+    const glow2 = new MeshBasicMaterial({ color: '#ff3df2', toneMapped: false });
+    const glassM = mat('#8fa6bd', { roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.25 });
+    add(rbox(0.46, 0.48, 0.23, 0.012), shell, 0, 0.26, 0, pc);
+    add(new PlaneGeometry(0.42, 0.42), mat('#07080b', { roughness: 0.8 }), 0, 0.27, 0.116, pc, false);
+    const ringGeo = new TorusGeometry(0.045, 0.006, 6, 24);
+    for (const y of [0.15, 0.27, 0.39]) add(ringGeo, glow, -0.17, y, 0.12, pc, false);
+    add(ringGeo, glow2, 0.17, 0.38, 0.12, pc, false);
+    add(new BoxGeometry(0.22, 0.01, 0.004), glow2, 0.04, 0.24, 0.121, pc, false);
+    add(new BoxGeometry(0.004, 0.44, 0.004), glow, -0.228, 0.26, 0.116, pc, false);
+    add(new PlaneGeometry(0.44, 0.46), glassM, 0, 0.26, 0.122, pc, false);
+    for (const x of [-0.18, 0.18]) add(new BoxGeometry(0.06, 0.02, 0.2), shell, x, 0.01, 0, pc);
+  }
+  hotspot('forge', 'PC build guide', 'Build guide', pc, new Vector3(0, 0.62, 0));
+
   /* ---------- Wall shelf with ship model ---------- */
   const shelf = new Group();
   shelf.position.set(-S + 0.18, 1.95, 0.55);
@@ -430,5 +452,5 @@ export function buildRoom(quality: Quality) {
   // Small objects never cast a visible shadow at this scale; skipping them shortens the shadow pass.
   for (const g of [face, win, art]) g.traverse((o) => (o.castShadow = false));
 
-  return { scene, hotspots, face, hands, chair, boxes, rack, screens, bulb, code, dust, half: S };
+  return { scene, hotspots, face, hands, chair, boxes, pc, rack, screens, bulb, code, dust, half: S };
 }

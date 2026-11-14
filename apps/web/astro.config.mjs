@@ -15,8 +15,12 @@ export default defineConfig({
       // Fonts stay separate files: inlined base64 would bloat the render-blocking CSS.
       assetsInlineLimit: (file) => (/\.(woff2?|ttf)$/.test(file) ? false : undefined),
       rollupOptions: {
-        // One long-lived, shared chunk for three.js: cached once, reused by every 3D page.
-        output: { manualChunks: (id) => (id.includes('node_modules/three/') ? 'three' : undefined) },
+        // One long-lived, shared chunk for three.js: cached once, reused by every 3D page. Editor-only addons
+        // (the build-guide studio's gizmo) stay out of it so pages that never open the studio don't pay for them.
+        output: {
+          manualChunks: (id) =>
+            id.includes('node_modules/three/') && !id.includes('TransformControls') ? 'three' : undefined,
+        },
       },
     },
     worker: { format: 'es' },

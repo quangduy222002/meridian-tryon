@@ -27,6 +27,7 @@ const pages3d = [
   { path: 'watch/', name: 'watch story', ready: 'body.gl-ready' },
   { path: 'chair/', name: 'chair configurator', ready: '#viewer.ready' },
   { path: 'box/', name: 'box studio', ready: '#viewer.ready' },
+  { path: 'assembly/', name: 'build guide', ready: '#viewer.ready' },
 ];
 
 for (const p of pages3d) {
@@ -43,7 +44,7 @@ for (const p of pages3d) {
 
 test('portfolio links to every live demo', async ({ page }) => {
   await page.goto('');
-  for (const href of ['watch/', 'chair/', 'box/', 'store/']) {
+  for (const href of ['watch/', 'chair/', 'box/', 'assembly/', 'store/']) {
     await expect(page.locator(`a[href$="/${href}"]`).first()).toBeAttached();
   }
 });
@@ -74,6 +75,31 @@ test('chair configurator switches setting and updates the price', async ({ page 
   await page.locator('[data-value=walnut]').click();
   await expect(page.locator('#price')).toHaveText('$289');
   await expect(page.locator('#pins')).toContainText('walnut');
+});
+
+test('build guide steps through the guide and edits it in the studio', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('assembly/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await expect(page.locator('#stepTitle')).toHaveText('Prepare the case');
+  await page.locator('#nextBtn').click();
+  await expect(page.locator('#stepTitle')).toHaveText('Install the power supply');
+  await expect(page.locator('#stepNo')).toHaveText('02');
+  // Parts list jumps to the step that installs a part.
+  await page.locator('#bomBtn').click();
+  await page.locator('#bomList li[data-part=gpu] button').click();
+  await expect(page.locator('#stepTitle')).toHaveText('Install the graphics card');
+  if (await page.locator('#bom.open').count()) await page.locator('#bomClose').click();
+  // Studio: rename the step and add a new one; the guide picks the change up.
+  await page.locator('[data-mode=studio]').click();
+  await expect(page.locator('#stTitle')).toHaveValue('Install the graphics card', { timeout: 30_000 });
+  await page.locator('#stTitle').fill('Fit the GPU');
+  await page.locator('#stAdd').click();
+  await expect(page.locator('#stCount')).toHaveText('12');
+  await page.locator('[data-mode=guide]').click();
+  await page.locator('#prevBtn').click();
+  await expect(page.locator('#stepTitle')).toHaveText('Fit the GPU');
+  expect(errors).toEqual([]);
 });
 
 test('storefront boots', async ({ page }) => {

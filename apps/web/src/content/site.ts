@@ -3,6 +3,7 @@ import watchImg from '../assets/projects/watch.jpg';
 import chairImg from '../assets/projects/chair.jpg';
 import boxImg from '../assets/projects/box.jpg';
 import storeImg from '../assets/projects/store.jpg';
+import assemblyImg from '../assets/projects/assembly.jpg';
 
 export const UPWORK_URL = 'https://www.upwork.com/freelancers/~0199cc702afa884c91';
 
@@ -103,6 +104,21 @@ export const projects: Project[] = [
       chips: ['Nuxt.js', 'NestJS', 'Shopify', 'Stripe'],
     },
     note: 'Private client work — walkthrough on request',
+  },
+  {
+    id: 'work-assembly',
+    shot: 'assembly',
+    side: 'right',
+    kind: '3D instructions',
+    title: 'Forge',
+    sub: 'Assembly manuals, in 3D',
+    desc: 'A paper manual turned into a 3D build guide: each part of a gaming PC flies into place step by step, with tools, warnings, x-ray and a parts list. A built-in studio lets anyone author their own guide — pick parts, drag where they come from, set the camera.',
+    chips: ['Step timeline', 'Authoring studio', 'X-ray shader', 'Built in code'],
+    image: assemblyImg,
+    imageAlt: 'Forge 3D PC build guide with step card and timeline',
+    href: 'assembly/',
+    cta: 'Open demo',
+    live: 'Live demo',
   },
 ];
 
