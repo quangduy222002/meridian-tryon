@@ -102,6 +102,64 @@ test('build guide steps through the guide and edits it in the studio', async ({ 
   expect(errors).toEqual([]);
 });
 
+test('studio edits both ends of a move and builds a step with AI', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Stand-in for the Anthropic API: the AI builder calls it from the browser with the visitor's key.
+  let sentKey = '';
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    const cors = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': '*',
+      'access-control-allow-methods': 'POST, OPTIONS',
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    sentKey = (await route.request().allHeaders())['authorization'] ?? '';
+    const step = {
+      title: 'Take the side panel off again',
+      body: 'Unscrew the thumbscrews and set the glass aside.',
+      warning: 'Glass is fragile.',
+      tools: ['hands'],
+      moves: [{ part: 'glass', from: 'previous position', to: 'set aside', distance_cm: 0 }],
+      camera: 'wide',
+    };
+    await route.fulfill({
+      status: 200,
+      headers: { ...cors, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        id: 'msg_test',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-opus-5-5',
+        content: [{ type: 'text', text: JSON.stringify(step) }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+    });
+  });
+  await page.goto('assembly/?studio');
+  await expect(page.locator('#stCount')).toHaveText('11', { timeout: 60_000 });
+  // Step 1 moves the glass from on the case (A) to beside it (B).
+  await page.locator('.st-sel[data-i="0"]').click();
+  await page.locator('#stParts [data-part=glass]').click();
+  await page.locator('[data-end=B]').click();
+  await expect(page.locator('[data-end=B]')).toHaveClass(/on/);
+  await page.locator('#stDirs [data-dir=installed]').click();
+  await expect(page.locator('#stOffset')).toContainText('B: installed');
+  // AI builder
+  await page.locator('#aiPrompt').fill('Take the glass off again and put it aside');
+  await page.locator('#aiGo').click();
+  await expect(page.locator('#aiKeyBox')).toBeVisible();
+  await page.locator('#aiKeyIn').fill('sk-ant-test');
+  await page.locator('#aiKeySave').click();
+  await page.locator('#aiGo').click();
+  await expect(page.locator('#aiStatus')).toContainText('Added step 2', { timeout: 30_000 });
+  expect(sentKey).toBe('Bearer sk-ant-test');
+  await expect(page.locator('#stCount')).toHaveText('12');
+  await expect(page.locator('#stTitle')).toHaveValue('Take the side panel off again');
+  expect(errors).toEqual([]);
+});
+
 test('storefront boots', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('store/');

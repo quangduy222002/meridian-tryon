@@ -30,17 +30,28 @@ export interface Step {
   body: string;
   warning: string;
   tools: ToolId[];
-  /** Part ids that move home during this step. */
-  parts: string[];
+  /** Parts that move during this step. A part can move again in later steps. */
+  moves: Move[];
   view?: StepView;
+}
+
+/**
+ * One part travelling from A to B during a step. Both points are offsets from the part's installed position, so
+ * [0, 0, 0] means "installed". After the step the part stays at B until a later step moves it again.
+ */
+export interface Move {
+  part: string;
+  from: Vec3;
+  to: Vec3;
 }
 
 export interface Guide {
   title: string;
   steps: Step[];
-  /** Where each part starts, relative to its installed position. */
-  offsets: Record<string, Vec3>;
 }
+
+export const INSTALLED: Vec3 = [0, 0, 0];
+export const partsOf = (s: Step | undefined) => (s ? s.moves.map((m) => m.part) : []);
 
 let seq = 0;
 export const newId = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`;
@@ -63,11 +74,36 @@ export const DEFAULT_OFFSETS: Record<string, Vec3> = {
   glass: [0, 0, 2.6],
 };
 
-const step = (s: Omit<Step, 'id' | 'warning'> & { warning?: string }): Step => ({ id: newId(), warning: '', ...s });
+/** Where a part was after the last step before `before` that moved it (undefined: not in the guide yet). */
+export function lastPosition(g: Guide, part: string, before: number): Vec3 | undefined {
+  for (let i = Math.min(before, g.steps.length) - 1; i >= 0; i--) {
+    const m = g.steps[i]!.moves.find((x) => x.part === part);
+    if (m) return m.to;
+  }
+  return undefined;
+}
+
+/** A new move for `part` in step `at`: continue from where it was, or fly in from its default side; end installed. */
+export const defaultMove = (g: Guide, part: string, at: number): Move => ({
+  part,
+  from: [...(lastPosition(g, part, at) ?? DEFAULT_OFFSETS[part] ?? [0, 0, 2.4])],
+  to: [...INSTALLED],
+});
+
+type StepInput = Omit<Step, 'id' | 'warning' | 'moves'> & { warning?: string; parts?: string[]; moves?: Move[] };
+/** Sample steps list parts that simply fly in from their default side; `moves` spells out anything else. */
+const step = ({ parts = [], moves = [], ...s }: StepInput): Step => ({
+  id: newId(),
+  warning: '',
+  ...s,
+  moves: [...parts.map((part) => ({ part, from: DEFAULT_OFFSETS[part]!, to: INSTALLED })), ...moves],
+});
+
+/** Where the glass panel waits, leaning beside the case, between taking it off and putting it back. */
+const GLASS_ASIDE: Vec3 = [5.2, 0, 0.7];
 
 export const SAMPLE_GUIDE: Guide = {
   title: 'Forge X1 — gaming PC build',
-  offsets: DEFAULT_OFFSETS,
   steps: [
     step({
       title: 'Prepare the case',
@@ -75,7 +111,9 @@ export const SAMPLE_GUIDE: Guide = {
       warning: 'Touch the bare metal of the case before handling any part, to discharge static.',
       tools: ['hands', 'strap'],
       parts: ['case'],
-      view: { pos: [6.8, 5.6, 11], target: [0, 2.5, 0] },
+      // The panel arrives with the case and is set aside (A: on the case, B: beside it).
+      moves: [{ part: 'glass', from: [0, 2.6, 0], to: GLASS_ASIDE }],
+      view: { pos: [9.6, 6.4, 14.2], target: [2.4, 2.4, 0.6] },
     }),
     step({
       title: 'Install the power supply',
@@ -151,7 +189,7 @@ export const SAMPLE_GUIDE: Guide = {
       title: 'Close up and power on',
       body: 'Hang the glass panel back on and tighten the four thumbscrews by hand. Plug in the power cable, flip the PSU switch to I and press the power button. Welcome to your new PC.',
       tools: ['hands'],
-      parts: ['glass'],
+      moves: [{ part: 'glass', from: GLASS_ASIDE, to: INSTALLED }],
       view: { pos: [7.4, 5.2, 10.4], target: [0, 2.5, 0] },
     }),
   ],

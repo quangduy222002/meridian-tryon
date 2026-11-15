@@ -37,7 +37,7 @@ import { $ } from '../../lib/dom/chrome';
 import { assemblySpecs, type AssemblyTexture } from './textures';
 import { buildParts, type Kit, type Part } from './parts';
 import { globals } from './look';
-import { DEFAULT_VIEW, SAMPLE_GUIDE, TOOLS, cloneGuide, type Guide, type StepView } from './guide';
+import { DEFAULT_VIEW, SAMPLE_GUIDE, TOOLS, cloneGuide, partsOf, type Guide, type Move, type StepView } from './guide';
 
 export interface AssemblyApi {
   kit: Kit;
@@ -52,9 +52,10 @@ export interface AssemblyApi {
   /** Call after mutating the guide in place. */
   changed(): void;
   current(): number;
-  /** Studio pose: earlier steps installed, step i's parts waiting at their start position. */
-  edit(i: number): void;
-  isEditing(): boolean;
+  /** Studio pose for step i: its parts at A (start) or B (end), earlier steps played. */
+  edit(i: number, end?: 'A' | 'B'): void;
+  /** Which end of the current step the scene is paused on, or null while it plays. */
+  editing(): 'A' | 'B' | null;
   /** Play step i once, then return to its edit pose. */
   preview(i: number): void;
   /** Camera view to store on a step, normalised for the current layout. */
@@ -205,10 +206,20 @@ void main() {
   let holdTimer = 0;
   let previewOf: number | null = null;
   let studio: Studio | null = null;
+  /** Every move of each part, in step order, and the step that first brings it in (for the parts list). */
+  const tracks = new Map<string, { step: number; move: Move }[]>();
   const stepOf = new Map<string, number>();
   const reindex = () => {
+    tracks.clear();
     stepOf.clear();
-    guide.steps.forEach((s, i) => s.parts.forEach((id) => stepOf.set(id, i)));
+    guide.steps.forEach((s, i) =>
+      s.moves.forEach((move) => {
+        const tr = tracks.get(move.part) ?? [];
+        tr.push({ step: i, move });
+        tracks.set(move.part, tr);
+        if (!stepOf.has(move.part)) stepOf.set(move.part, i);
+      }),
+    );
   };
   const N = () => guide.steps.length;
   const isDone = () => N() > 0 && t >= N() - 1e-4;
@@ -223,28 +234,41 @@ void main() {
     const eCur = ease(clamp(t - cur, 0, 1));
     kit.ghostLook.uAlpha.value = 0.9 * (1 - eCur);
     for (const p of kit.parts) {
-      const s = stepOf.get(p.id);
+      const tr = tracks.get(p.id);
       let dim = 0;
       let fade = 0;
       let alpha = 1;
       let glow = 0;
       let ghost = false;
-      if (s === undefined) {
+      if (!tr) {
         // Not in the guide yet: only the studio shows it, as a clickable ghost.
         p.group.visible = mode === 'studio';
         p.group.position.copy(p.home);
         fade = 1;
         alpha = 0.7;
       } else {
-        const e = ease(clamp(t - s, 0, 1));
-        const off = guide.offsets[p.id] ?? [0, 0, 0];
-        // A step's parts appear once it starts playing; the studio also shows them waiting at their start.
-        p.group.visible = t > s + 1e-4 || (mode === 'studio' && s === cur && t >= s);
-        p.group.position.set(p.home.x + off[0] * (1 - e), p.home.y + off[1] * (1 - e), p.home.z + off[2] * (1 - e));
-        if (!done && s === cur) {
+        // The move driving the part now: the latest one whose step has started playing. In the studio the step
+        // being edited counts from its start, so its parts wait at A.
+        let seg: { step: number; move: Move } | undefined;
+        for (const e of tr) if (e.step < t - 1e-4 || (mode === 'studio' && e.step === cur && t >= e.step)) seg = e;
+        p.group.visible = !!seg;
+        if (seg) {
+          const e = ease(clamp(t - seg.step, 0, 1));
+          const { from, to } = seg.move;
+          p.group.position.set(
+            p.home.x + from[0] + (to[0] - from[0]) * e,
+            p.home.y + from[1] + (to[1] - from[1]) * e,
+            p.home.z + from[2] + (to[2] - from[2]) * e,
+          );
+        }
+        const now = tr.find((x) => x.step === cur);
+        if (!done && now) {
+          const e = ease(clamp(t - cur, 0, 1));
           glow = 1 - 0.7 * e;
           ghost = e < 0.999;
-        } else if (!done && s < cur) {
+          const to = now.move.to;
+          p.ghost.position.set(p.home.x + to[0], p.home.y + to[1], p.home.z + to[2]);
+        } else if (!done && seg) {
           if (xray) {
             fade = 1;
             alpha = 0.9;
@@ -365,7 +389,7 @@ void main() {
     const warn = $('stepWarn');
     warn.hidden = !s?.warning;
     $('stepWarnText').textContent = s?.warning ?? '';
-    pinParts = (s?.parts ?? []).map((id) => kit.byId.get(id)).filter((p): p is Part => !!p);
+    pinParts = [...new Set(partsOf(s))].map((id) => kit.byId.get(id)).filter((p): p is Part => !!p);
     $('stepParts').innerHTML = pinParts
       .map((p) => `<li>${p.qty > 1 ? `<b>${p.qty}×</b> ` : ''}${esc(p.name)}</li>`)
       .join('');
@@ -375,7 +399,7 @@ void main() {
     $('card').style.setProperty('--p', String(N() ? (cur + 1) / N() : 0));
     for (const li of $('bomList').children) {
       const id = (li as HTMLElement).dataset.part!;
-      li.classList.toggle('on', stepOf.get(id) === cur);
+      li.classList.toggle('on', partsOf(s).includes(id));
     }
     $('prevBtn').toggleAttribute('disabled', cur <= 0);
     $('nextBtn').toggleAttribute('disabled', cur >= N() - 1);
@@ -548,19 +572,19 @@ void main() {
       loop.invalidate();
     },
     current: () => cur,
-    edit(i) {
+    edit(i, end = 'A') {
       setPlaying(false);
       previewOf = null;
       clearTimeout(holdTimer);
       const changed = clamp(i, 0, Math.max(0, N() - 1)) !== cur;
       cur = clamp(i, 0, Math.max(0, N() - 1));
-      t = goal = N() ? cur : 0;
+      t = goal = N() ? cur + (end === 'B' ? 1 : 0) : 0;
       renderCard();
       if (changed) setViewGoal();
       emitStep();
       loop.invalidate();
     },
-    isEditing: () => t === cur && goal === cur && previewOf === null,
+    editing: () => (t !== goal || previewOf !== null ? null : t === cur ? 'A' : t === cur + 1 ? 'B' : null),
     preview(i) {
       api.edit(i);
       previewOf = cur;

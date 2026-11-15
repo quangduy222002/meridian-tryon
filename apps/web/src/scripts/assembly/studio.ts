@@ -1,19 +1,28 @@
 /**
- * Studio: author a build guide on top of the same scene. Steps are an ordered list; each step moves some parts home.
- * The selected part sits at its start position with a move gizmo, so dragging it sets where it flies in from.
- * Loaded only when the studio tab is opened (it brings TransformControls in its own chunk).
+ * Studio: author a build guide on top of the same scene. Steps are an ordered list; in each step some parts travel
+ * from A to B, and a part can travel again in a later step (take the panel off, put it back). The selected part
+ * shows a move gizmo at the end being edited, so dragging it sets A or B. An AI builder can write a whole step from
+ * a sentence. Loaded only when the studio tab is opened (it brings TransformControls in its own chunk).
  */
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { $, toast } from '../../lib/dom/chrome';
 import type { AssemblyApi } from './app';
+import type { AiStep, Place } from './ai';
 import {
   DEFAULT_OFFSETS,
+  DEFAULT_VIEW,
+  INSTALLED,
   SAMPLE_GUIDE,
   TOOLS,
   cloneGuide,
+  defaultMove,
+  lastPosition,
   newId,
+  partsOf,
   type Guide,
+  type Move,
   type Step,
+  type StepView,
   type ToolId,
   type Vec3,
 } from './guide';
@@ -23,13 +32,14 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const pad = (n: number) => String(n).padStart(2, '0');
 const round = (n: number) => Math.round(n * 100) / 100;
+const KEY_STORE = 'forge.anthropicKey';
 
-const DIRS: { id: string; label: string; v: Vec3 }[] = [
-  { id: 'side', label: 'Open side', v: [0, 0, 1] },
-  { id: 'top', label: 'Above', v: [0, 1, 0] },
+/** Side presets for either end of a move (directions from the installed position). */
+const SIDES: { id: string; label: string; v: Vec3 }[] = [
+  { id: 'open side', label: 'Open side', v: [0, 0, 1] },
+  { id: 'above', label: 'Above', v: [0, 1, 0] },
   { id: 'front', label: 'Front', v: [-1, 0, 0] },
   { id: 'rear', label: 'Rear', v: [1, 0, 0] },
-  { id: 'home', label: 'In place', v: [0, 0, 0] },
 ];
 
 const TEMPLATE = `
@@ -43,6 +53,23 @@ const TEMPLATE = `
       <button type="button" id="stPlay" class="primary">Play guide</button>
     </div>
   </header>
+  <section class="st-ai">
+    <h2>AI step builder</h2>
+    <textarea id="aiPrompt" rows="3" placeholder="Describe a step, e.g. “Slide the graphics card in from the open side. Warn that it is heavy. Needs a screwdriver.”"></textarea>
+    <div class="st-row">
+      <button type="button" id="aiGo" class="primary">Generate step</button>
+      <button type="button" id="aiKeyBtn" aria-expanded="false" aria-controls="aiKeyBox">API key</button>
+    </div>
+    <div id="aiKeyBox" class="st-key" hidden>
+      <input id="aiKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Anthropic API key" />
+      <div class="st-row">
+        <button type="button" id="aiKeySave">Save key</button>
+        <button type="button" id="aiKeyForget">Forget</button>
+      </div>
+      <small>Your Anthropic API key stays in this browser and goes straight to Anthropic; usage is billed to it.</small>
+    </div>
+    <p id="aiStatus" class="st-ai-status" aria-live="polite"></p>
+  </section>
   <section>
     <h2>Steps <span id="stCount"></span></h2>
     <ol id="stSteps" class="st-steps"></ol>
@@ -55,12 +82,16 @@ const TEMPLATE = `
     <label class="st-field">Warning <small>optional</small><input id="stWarn" maxlength="160" /></label>
     <div class="st-field"><span>Tools</span><div id="stTools" class="st-chips"></div></div>
     <div class="st-field">
-      <span>Parts in this step</span>
+      <span>Parts that move in this step</span>
       <div id="stParts" class="st-chips"></div>
       <select id="stAddPart" aria-label="Add a part to this step"></select>
     </div>
     <div id="stPart" class="st-part" hidden>
-      <p><b id="stPartName"></b> flies in from</p>
+      <p><b id="stPartName"></b> moves from A to B</p>
+      <div class="st-ab" role="group" aria-label="End to edit">
+        <button type="button" data-end="A">A · start</button>
+        <button type="button" data-end="B">B · end</button>
+      </div>
       <div class="st-dirs" id="stDirs"></div>
       <output id="stOffset"></output>
       <small>Or drag the arrows on the part in the 3D view.</small>
@@ -70,7 +101,7 @@ const TEMPLATE = `
       <button type="button" id="stPreview" class="primary">Preview step</button>
     </div>
   </section>
-  <p class="st-hint">Click a part in 3D to select it. Glowing outlines are parts that aren't in any step yet — click one to add it to the current step.</p>
+  <p class="st-hint">Click a part in 3D to select it. Outlined parts aren't in the guide yet — click one to add it to the current step.</p>
 </div>`;
 
 export function startStudio(api: AssemblyApi) {
@@ -78,7 +109,9 @@ export function startStudio(api: AssemblyApi) {
   panel.innerHTML = TEMPLATE;
   const g = () => api.guide();
   const step = (): Step | undefined => g().steps[api.current()];
+  const moveOf = (s: Step | undefined, id: string | undefined) => s?.moves.find((m) => m.part === id);
   let selected: Part | null = null;
+  let end: 'A' | 'B' = 'A';
   let isOpen = false;
 
   /* ---------- Gizmo ---------- */
@@ -92,19 +125,18 @@ export function startStudio(api: AssemblyApi) {
     api.controls.enabled = !e.value;
   });
   gizmo.addEventListener('objectChange', () => {
-    if (!selected) return;
+    const m = moveOf(step(), selected?.id);
+    if (!m || !selected) return;
     const p = selected.group.position;
-    g().offsets[selected.id] = [
-      round(p.x - selected.home.x),
-      round(p.y - selected.home.y),
-      round(p.z - selected.home.z),
-    ];
+    const v: Vec3 = [round(p.x - selected.home.x), round(p.y - selected.home.y), round(p.z - selected.home.z)];
+    if (end === 'A') m.from = v;
+    else m.to = v;
     renderOffset();
   });
 
   const attach = () => {
-    const s = step();
-    if (isOpen && selected && s?.parts.includes(selected.id) && api.isEditing()) gizmo.attach(selected.group);
+    const ok = isOpen && selected && moveOf(step(), selected.id) && api.editing() === end;
+    if (ok) gizmo.attach(selected!.group);
     else gizmo.detach();
     api.invalidate();
   };
@@ -114,29 +146,33 @@ export function startStudio(api: AssemblyApi) {
     const cur = api.current();
     $('stCount').textContent = String(g().steps.length);
     $('stSteps').innerHTML = g()
-      .steps.map(
-        (s, i) => `<li class="${i === cur ? 'on' : ''}">
-  <button type="button" class="st-sel" data-i="${i}"><span>${pad(i + 1)}</span><b>${esc(s.title || 'Untitled step')}</b><small>${s.parts.length} part${s.parts.length === 1 ? '' : 's'}</small></button>
+      .steps.map((s, i) => {
+        const n = s.moves.length;
+        return `<li class="${i === cur ? 'on' : ''}">
+  <button type="button" class="st-sel" data-i="${i}"><span>${pad(i + 1)}</span><b>${esc(s.title || 'Untitled step')}</b><small>${n} part${n === 1 ? '' : 's'}</small></button>
   <div class="st-ops">
     <button type="button" data-op="up" data-i="${i}" aria-label="Move step ${i + 1} up" ${i === 0 ? 'disabled' : ''}>↑</button>
     <button type="button" data-op="down" data-i="${i}" aria-label="Move step ${i + 1} down" ${i === g().steps.length - 1 ? 'disabled' : ''}>↓</button>
     <button type="button" data-op="del" data-i="${i}" aria-label="Delete step ${i + 1}">✕</button>
   </div>
-</li>`,
-      )
+</li>`;
+      })
       .join('');
   };
+  const fmt = (v: Vec3) =>
+    v.every((n) => n === 0) ? 'installed' : `x ${v[0].toFixed(2)} · y ${v[1].toFixed(2)} · z ${v[2].toFixed(2)}`;
   const renderOffset = () => {
-    if (!selected) return;
-    const o = g().offsets[selected.id] ?? [0, 0, 0];
-    $('stOffset').textContent = `x ${o[0].toFixed(2)} · y ${o[1].toFixed(2)} · z ${o[2].toFixed(2)}`;
+    const m = moveOf(step(), selected?.id);
+    if (!m) return;
+    $('stOffset').textContent = `A: ${fmt(m.from)}   →   B: ${fmt(m.to)}`;
   };
   const renderEditor = () => {
     const s = step();
     $('stEditor').hidden = !s;
     $<HTMLInputElement>('stGuideTitle').value = g().title;
     if (!s) return;
-    $('stEdNo').textContent = `${pad(api.current() + 1)} / ${pad(g().steps.length)}`;
+    const cur = api.current();
+    $('stEdNo').textContent = `${pad(cur + 1)} / ${pad(g().steps.length)}`;
     $<HTMLInputElement>('stTitle').value = s.title;
     $<HTMLTextAreaElement>('stBody').value = s.body;
     $<HTMLInputElement>('stWarn').value = s.warning;
@@ -147,30 +183,43 @@ export function startStudio(api: AssemblyApi) {
       )
       .join('');
     $('stParts').innerHTML =
-      s.parts
-        .map((id) => api.kit.byId.get(id))
+      s.moves
+        .map((m) => api.kit.byId.get(m.part))
         .filter((p): p is Part => !!p)
         .map(
           (p) =>
             `<span class="chip part${p === selected ? ' on' : ''}"><button type="button" data-part="${p.id}">${esc(p.name)}</button><button type="button" data-remove="${p.id}" aria-label="Remove ${esc(p.name)} from this step">✕</button></span>`,
         )
-        .join('') || '<small class="st-empty">No parts yet — pick one below or click a ghost part.</small>';
-    const stepOf = new Map<string, number>();
-    g().steps.forEach((st, i) => st.parts.forEach((id) => stepOf.set(id, i)));
+        .join('') || '<small class="st-empty">No parts yet — pick one below or click an outlined part.</small>';
+    const stepsOf = (id: string) =>
+      g()
+        .steps.map((st, i) => (partsOf(st).includes(id) ? i + 1 : 0))
+        .filter(Boolean);
     $('stAddPart').innerHTML =
       '<option value="">+ Add a part…</option>' +
       api.kit.parts
-        .filter((p) => !s.parts.includes(p.id))
+        .filter((p) => !moveOf(s, p.id))
         .map((p) => {
-          const at = stepOf.get(p.id);
-          return `<option value="${p.id}">${esc(p.name)}${at === undefined ? '' : ` (move from step ${at + 1})`}</option>`;
+          const at = stepsOf(p.id);
+          return `<option value="${p.id}">${esc(p.name)}${at.length ? ` (also in step ${at.join(', ')})` : ''}</option>`;
         })
         .join('');
-    const inStep = !!selected && s.parts.includes(selected.id);
-    $('stPart').hidden = !inStep;
-    if (inStep && selected) {
+    const m = moveOf(s, selected?.id);
+    $('stPart').hidden = !m;
+    if (m && selected) {
       $('stPartName').textContent = selected.name;
-      $('stDirs').innerHTML = DIRS.map((d) => `<button type="button" data-dir="${d.id}">${d.label}</button>`).join('');
+      for (const b of $('stPart').querySelectorAll<HTMLElement>('[data-end]')) {
+        b.classList.toggle('on', b.dataset.end === end);
+        b.setAttribute('aria-pressed', String(b.dataset.end === end));
+      }
+      const extra =
+        end === 'A'
+          ? `<button type="button" data-dir="previous">Where it was</button>`
+          : `<button type="button" data-dir="aside">Set aside</button>`;
+      $('stDirs').innerHTML =
+        `<button type="button" data-dir="installed">Installed</button>` +
+        SIDES.map((d) => `<button type="button" data-dir="${d.id}">${d.label}</button>`).join('') +
+        extra;
       renderOffset();
     }
   };
@@ -185,33 +234,47 @@ export function startStudio(api: AssemblyApi) {
     api.changed();
     renderSteps();
   };
-  const assign = (p: Part, i: number) => {
-    for (const s of g().steps) s.parts = s.parts.filter((id) => id !== p.id);
-    g().steps[i]!.parts.push(p.id);
-    g().offsets[p.id] ??= [...(DEFAULT_OFFSETS[p.id] ?? [0, 0, 2.4])];
+  const addToStep = (p: Part, i: number) => {
+    const s = g().steps[i]!;
+    if (!moveOf(s, p.id)) s.moves.push(defaultMove(g(), p.id, i));
     api.changed();
+  };
+  /** Offset for a named place, relative to the part's installed position. */
+  const placeOffset = (p: Part, place: Place | string, at: number, dist?: number): Vec3 => {
+    if (place === 'installed') return [...INSTALLED];
+    if (place === 'previous' || place === 'previous position')
+      return [...(lastPosition(g(), p.id, at) ?? DEFAULT_OFFSETS[p.id] ?? [0, 0, 2.4])];
+    if (place === 'aside' || place === 'set aside') return [round(5.4 - p.home.x), 0, round(0.8 + 1.17 - p.home.z)];
+    const side = SIDES.find((d) => d.id === place) ?? SIDES[0]!;
+    const d = dist ?? Math.max(1.6, Math.hypot(...(DEFAULT_OFFSETS[p.id] ?? [0, 0, 2.4])));
+    return side.v.map((n) => round(n * d)) as Vec3;
   };
   const select = (p: Part | null) => {
     selected = p;
-    if (p) {
-      const i = g().steps.findIndex((s) => s.parts.includes(p.id));
-      if (i >= 0 && (i !== api.current() || !api.isEditing())) api.edit(i);
-    }
+    if (p && !moveOf(step(), p.id)) {
+      // Jump to the latest step up to here that moves this part, else its first step.
+      const steps = g().steps;
+      let i = -1;
+      for (let k = Math.min(api.current(), steps.length - 1); k >= 0 && i < 0; k--) if (moveOf(steps[k], p.id)) i = k;
+      if (i < 0) i = steps.findIndex((s) => moveOf(s, p.id));
+      if (i >= 0) api.edit(i, end);
+    } else if (p && api.editing() !== end) api.edit(api.current(), end);
     render();
   };
-  const newStep = (title: string): Step => ({
+  const newStep = (title: string, view: StepView = api.captureView()): Step => ({
     id: newId(),
     title,
     body: '',
     warning: '',
     tools: [],
-    parts: [],
-    view: api.captureView(),
+    moves: [],
+    view,
   });
 
   /* ---------- Events ---------- */
   api.onStep = () => {
-    if (selected && !step()?.parts.includes(selected.id)) selected = null;
+    if (selected && !moveOf(step(), selected.id)) selected = null;
+    end = api.editing() ?? end; // e.g. a preview hands back at A
     if (isOpen) render();
   };
 
@@ -225,13 +288,14 @@ export function startStudio(api: AssemblyApi) {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
     down = null;
     const p = api.pick(e.clientX, e.clientY);
-    if (p && !g().steps.some((s) => s.parts.includes(p.id))) {
+    if (p && !g().steps.some((s) => moveOf(s, p.id))) {
       if (!g().steps.length) {
         g().steps.push(newStep('Step 1'));
         api.changed();
       }
-      assign(p, api.current());
-      api.edit(api.current());
+      addToStep(p, api.current());
+      end = 'A';
+      api.edit(api.current(), end);
       toast(`${p.name} added to step ${api.current() + 1}`);
     }
     select(p);
@@ -305,29 +369,39 @@ export function startStudio(api: AssemblyApi) {
     const rm = t.closest<HTMLElement>('[data-remove]')?.dataset.remove;
     const pick = t.closest<HTMLElement>('[data-part]')?.dataset.part;
     if (rm) {
-      s.parts = s.parts.filter((id) => id !== rm);
+      s.moves = s.moves.filter((m) => m.part !== rm);
       if (selected?.id === rm) selected = null;
       edited();
-      api.edit(api.current());
+      api.edit(api.current(), end);
     } else if (pick) select(api.kit.byId.get(pick) ?? null);
   });
   $('stAddPart').addEventListener('change', (e) => {
     const sel = e.target as HTMLSelectElement;
     const p = api.kit.byId.get(sel.value);
     if (!p || !step()) return;
-    assign(p, api.current());
+    addToStep(p, api.current());
     selected = p;
-    api.edit(api.current());
+    end = 'A';
+    api.edit(api.current(), end);
   });
   $('stPart').addEventListener('click', (e) => {
-    const b = (e.target as Element).closest<HTMLButtonElement>('[data-dir]');
-    if (!b || !selected) return;
-    const d = DIRS.find((x) => x.id === b.dataset.dir)!;
-    const o = g().offsets[selected.id] ?? [0, 0, 0];
-    const dist = Math.max(1.6, Math.hypot(...o));
-    g().offsets[selected.id] = d.v.map((n) => round(n * dist)) as Vec3;
-    api.edit(api.current());
-    renderOffset();
+    const t = e.target as Element;
+    const m = moveOf(step(), selected?.id);
+    if (!m || !selected) return;
+    const endBtn = t.closest<HTMLElement>('[data-end]');
+    if (endBtn) {
+      end = endBtn.dataset.end as 'A' | 'B';
+      api.edit(api.current(), end);
+      return;
+    }
+    const dir = t.closest<HTMLElement>('[data-dir]')?.dataset.dir;
+    if (!dir) return;
+    const cur = end === 'A' ? m.from : m.to;
+    const dist = Math.hypot(...cur) > 0.3 ? Math.hypot(...cur) : undefined;
+    const v = placeOffset(selected, dir, api.current(), dist);
+    if (end === 'A') m.from = v;
+    else m.to = v;
+    api.edit(api.current(), end);
   });
   $('stView').addEventListener('click', () => {
     const s = step();
@@ -342,10 +416,10 @@ export function startStudio(api: AssemblyApi) {
   });
   $('stNew').addEventListener('click', () => {
     selected = null;
-    const fresh: Guide = { title: 'My build guide', offsets: { ...DEFAULT_OFFSETS }, steps: [] };
+    const fresh: Guide = { title: 'My build guide', steps: [] };
     fresh.steps.push(newStep('Step 1'));
     api.setGuide(fresh);
-    toast('Blank guide — click the ghost parts to add them to steps');
+    toast('Blank guide — click the outlined parts, or describe a step to the AI');
   });
   $('stSample').addEventListener('click', () => {
     selected = null;
@@ -355,6 +429,124 @@ export function startStudio(api: AssemblyApi) {
   $('stPlay').addEventListener('click', () => {
     if (!g().steps.length) return toast('Add a step first');
     void api.setMode('guide').then(() => api.playFrom(0));
+  });
+
+  /* ---------- AI step builder ---------- */
+  const readKey = () => {
+    try {
+      return localStorage.getItem(KEY_STORE) ?? '';
+    } catch {
+      return '';
+    }
+  };
+  let apiKey = readKey();
+  const keyBox = $('aiKeyBox');
+  const status = $('aiStatus');
+  const setKeyBox = (open: boolean) => {
+    keyBox.hidden = !open;
+    $('aiKeyBtn').setAttribute('aria-expanded', String(open));
+    $('aiKeyBtn').textContent = apiKey ? 'API key ✓' : 'API key';
+    if (open) $<HTMLInputElement>('aiKeyIn').focus();
+  };
+  setKeyBox(false);
+  $('aiKeyBtn').addEventListener('click', () => setKeyBox(keyBox.hidden));
+  $('aiKeySave').addEventListener('click', () => {
+    const v = $<HTMLInputElement>('aiKeyIn').value.trim();
+    if (!v) return;
+    apiKey = v;
+    try {
+      localStorage.setItem(KEY_STORE, v);
+    } catch {
+      // Private mode: the key still works for this visit.
+    }
+    $<HTMLInputElement>('aiKeyIn').value = '';
+    setKeyBox(false);
+    status.textContent = 'Key saved in this browser.';
+  });
+  $('aiKeyForget').addEventListener('click', () => {
+    apiKey = '';
+    try {
+      localStorage.removeItem(KEY_STORE);
+    } catch {
+      // nothing stored
+    }
+    setKeyBox(false);
+    status.textContent = 'Key removed.';
+  });
+
+  /** Camera for an AI step: wide shot, or a close-up on where the moved parts end up. */
+  const aiView = (moves: Move[], kind: AiStep['camera']): StepView => {
+    if (kind === 'wide' || !moves.length) return structuredClone(DEFAULT_VIEW);
+    const c = [0, 0, 0];
+    for (const m of moves) {
+      const p = api.kit.byId.get(m.part)!;
+      c[0] += p.home.x + p.center.x + m.to[0];
+      c[1] += p.home.y + p.center.y + m.to[1];
+      c[2] += p.home.z + p.center.z + m.to[2];
+    }
+    const target = c.map((n) => round(n / moves.length)) as Vec3;
+    const dir = [0.45, 0.38, 0.81];
+    return { target, pos: target.map((n, i) => round(n + dir[i]! * 4.6)) as Vec3 };
+  };
+
+  const go = $<HTMLButtonElement>('aiGo');
+  go.addEventListener('click', async () => {
+    const request = $<HTMLTextAreaElement>('aiPrompt').value.trim();
+    if (!request) {
+      status.textContent = 'Describe the step first.';
+      return;
+    }
+    if (!apiKey) {
+      status.textContent = 'Add your Anthropic API key to use the AI builder.';
+      setKeyBox(true);
+      return;
+    }
+    const at = g().steps.length ? api.current() + 1 : 0;
+    go.disabled = true;
+    status.textContent = 'Writing the step…';
+    panel.classList.add('ai-busy');
+    try {
+      const { generateStep } = await import('./ai');
+      const where = (id: string) => {
+        const v = lastPosition(g(), id, at);
+        if (!v) return 'not in the build yet';
+        return v.every((n) => n === 0) ? 'installed' : 'off its installed position (taken off or set aside)';
+      };
+      const ai = await generateStep(apiKey, request, {
+        parts: api.kit.parts.map((p) => ({ id: p.id, name: p.name, spec: p.spec, qty: p.qty, where: where(p.id) })),
+        tools: (Object.keys(TOOLS) as ToolId[]).map((id) => ({ id, label: TOOLS[id].label })),
+        steps: g().steps.map((s) => ({ title: s.title, parts: partsOf(s) })),
+        at,
+      });
+      const moves: Move[] = [];
+      for (const m of ai.moves) {
+        const p = api.kit.byId.get(m.part);
+        if (!p || moves.some((x) => x.part === m.part)) continue;
+        const dist = m.distance_cm > 0 ? Math.min(6, Math.max(0.5, m.distance_cm / 10)) : undefined;
+        moves.push({ part: p.id, from: placeOffset(p, m.from, at, dist), to: placeOffset(p, m.to, at, dist) });
+      }
+      const s: Step = {
+        ...newStep(ai.title, aiView(moves, ai.camera)),
+        body: ai.body,
+        warning: ai.warning,
+        tools: ai.tools,
+        moves,
+      };
+      g().steps.splice(at, 0, s);
+      selected = null;
+      end = 'A';
+      api.changed();
+      api.edit(at);
+      api.reframe();
+      api.preview(at);
+      $<HTMLTextAreaElement>('aiPrompt').value = '';
+      status.textContent = `Added step ${at + 1}: ${ai.title}. Fine-tune it below.`;
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+    } finally {
+      go.disabled = false;
+      panel.classList.remove('ai-busy');
+    }
   });
 
   return {

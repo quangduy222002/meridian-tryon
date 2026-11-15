@@ -70,7 +70,7 @@ totalEmissiveRadiance += rgbC * rgbC * uPower * 1.6;`
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   // Installed parts wash out to a pale warm grey, like the greyed-out parts in a printed manual.
   c = mix(c, vec3(0.7, 0.68, 0.65) + l * 0.22, uDim * 0.72);
-  c = mix(c, uAccent, uGlow * fr * 0.6);
+  c = mix(c, uAccent, uGlow * fr * fr * 0.7);
   // X-ray: thin accent outlines, see-through faces.
   c = mix(c, uAccent * 0.9, uFade);
   gl_FragColor = vec4(c, mix(gl_FragColor.a, 0.03 + fr * 0.55, uFade) * uAlpha);

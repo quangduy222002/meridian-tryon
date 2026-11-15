@@ -746,6 +746,70 @@ svg {
   font: 500 12px var(--mono);
   color: var(--accent);
 }
+.st-ab {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgb(29 29 31 / 0.06);
+}
+.st-ab button {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mute);
+}
+.st-ab button.on {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgb(60 40 10 / 0.15);
+}
+.st-ai {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(160deg, #fff7f0, #fff);
+}
+.st-ai h2 {
+  margin-bottom: 0;
+  color: var(--accent);
+}
+.st-ai .st-row {
+  margin-top: 0;
+}
+.st-key {
+  display: grid;
+  gap: 8px;
+}
+.st-key[hidden] {
+  display: none;
+}
+.st-key small,
+.st-ai-status {
+  color: var(--mute);
+  font-size: 12px;
+}
+.st-ai-status:empty {
+  display: none;
+}
+.studio.ai-busy #aiGo {
+  cursor: progress;
+}
+.studio.ai-busy .st-ai-status::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  border-right-color: transparent;
+  vertical-align: -1px;
+  animation: spin 0.8s linear infinite;
+}
 .st-part small,
 .st-hint {
   color: var(--mute);
