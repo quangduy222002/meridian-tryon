@@ -25,6 +25,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   RenderLoop,
   bakeStudio,
+  DEG,
   clamp,
   createRenderer,
   damp,
@@ -37,7 +38,17 @@ import { $ } from '../../lib/dom/chrome';
 import { assemblySpecs, type AssemblyTexture } from './textures';
 import { buildParts, type Kit, type Part } from './parts';
 import { globals } from './look';
-import { DEFAULT_VIEW, SAMPLE_GUIDE, TOOLS, cloneGuide, partsOf, type Guide, type Move, type StepView } from './guide';
+import {
+  DEFAULT_VIEW,
+  SAMPLE_GUIDE,
+  TOOLS,
+  cloneGuide,
+  endOf,
+  partsOf,
+  type Guide,
+  type Move,
+  type StepView,
+} from './guide';
 
 export interface AssemblyApi {
   kit: Kit;
@@ -240,10 +251,13 @@ void main() {
       let alpha = 1;
       let glow = 0;
       let ghost = false;
+      let opacity = 1;
       if (!tr) {
         // Not in the guide yet: only the studio shows it, as a clickable ghost.
         p.group.visible = mode === 'studio';
         p.group.position.copy(p.home);
+        p.group.rotation.set(0, 0, 0);
+        p.group.scale.setScalar(1);
         fade = 1;
         alpha = 0.7;
       } else {
@@ -254,20 +268,34 @@ void main() {
         p.group.visible = !!seg;
         if (seg) {
           const e = ease(clamp(t - seg.step, 0, 1));
-          const { from, to } = seg.move;
+          const a = endOf(seg.move, 'A');
+          const b = endOf(seg.move, 'B');
+          const mix = (u: number, v: number) => u + (v - u) * e;
           p.group.position.set(
-            p.home.x + from[0] + (to[0] - from[0]) * e,
-            p.home.y + from[1] + (to[1] - from[1]) * e,
-            p.home.z + from[2] + (to[2] - from[2]) * e,
+            p.home.x + mix(a.pos[0], b.pos[0]),
+            p.home.y + mix(a.pos[1], b.pos[1]),
+            p.home.z + mix(a.pos[2], b.pos[2]),
           );
+          p.group.rotation.set(
+            mix(a.rot[0], b.rot[0]) * DEG,
+            mix(a.rot[1], b.rot[1]) * DEG,
+            mix(a.rot[2], b.rot[2]) * DEG,
+          );
+          p.group.scale.setScalar(Math.max(0.01, mix(a.scale, b.scale)));
+          opacity = mix(a.hidden ? 0 : 1, b.hidden ? 0 : 1);
+          // Hidden ends stay faintly visible in the studio so they can still be picked and edited.
+          if (mode === 'studio') opacity = Math.max(opacity, 0.25);
+          if (opacity < 0.002) p.group.visible = false;
         }
         const now = tr.find((x) => x.step === cur);
         if (!done && now) {
           const e = ease(clamp(t - cur, 0, 1));
+          const b = endOf(now.move, 'B');
           glow = 1 - 0.7 * e;
-          ghost = e < 0.999;
-          const to = now.move.to;
-          p.ghost.position.set(p.home.x + to[0], p.home.y + to[1], p.home.z + to[2]);
+          ghost = e < 0.999 && !b.hidden;
+          p.ghost.position.set(p.home.x + b.pos[0], p.home.y + b.pos[1], p.home.z + b.pos[2]);
+          p.ghost.rotation.set(b.rot[0] * DEG, b.rot[1] * DEG, b.rot[2] * DEG);
+          p.ghost.scale.setScalar(b.scale);
         } else if (!done && seg) {
           if (xray) {
             fade = 1;
@@ -281,7 +309,7 @@ void main() {
       l.fade = fade; // blending switches at once; fading it would pop anyway
       if (Math.abs(l.dim - dim) > 0.004 || Math.abs(l.alpha - alpha) > 0.004) settling = true;
       const wasXray = p.xray;
-      kit.setXray(p, l.fade > 0);
+      kit.setXray(p, l.fade > 0 || opacity < 0.999); // x-ray and fading both need see-through materials
       if (wasXray !== p.xray) {
         // See-through parts don't cast shadows.
         p.group.traverse((o) => {
@@ -291,11 +319,14 @@ void main() {
       }
       p.look.uDim.value = l.dim;
       p.look.uFade.value = l.fade;
-      p.look.uAlpha.value = l.alpha;
+      p.look.uAlpha.value = l.alpha * opacity;
       p.look.uGlow.value = glow;
-      p.ghost.visible = ghost && p.group.visible;
+      p.ghost.visible = ghost;
       const at = p.group.position;
-      const key = `${+p.group.visible},${at.x.toFixed(3)},${at.y.toFixed(3)},${at.z.toFixed(3)}`;
+      const r = p.group.rotation;
+      const key = [+p.group.visible, at.x, at.y, at.z, r.x, r.y, r.z, p.group.scale.x, opacity]
+        .map((n) => n.toFixed(3))
+        .join();
       if (p.group.userData.shadowKey !== key) {
         p.group.userData.shadowKey = key;
         renderer.shadowMap.needsUpdate = true;
@@ -366,7 +397,7 @@ void main() {
     pinParts.forEach((p, i) => {
       const el = pins.children[i] as HTMLElement | undefined;
       if (!el) return;
-      tmp.copy(p.center).add(p.group.position).project(camera);
+      p.group.localToWorld(tmp.copy(p.center)).project(camera);
       const hidden = tmp.z > 1 || !p.group.visible;
       el.style.opacity = hidden ? '0' : '1';
       el.style.transform = `translate3d(${(tmp.x * 0.5 + 0.5) * w}px, ${(-tmp.y * 0.5 + 0.5) * h}px, 0) translate(-50%, calc(-100% - 16px))`;

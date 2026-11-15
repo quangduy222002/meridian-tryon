@@ -16,6 +16,13 @@ export interface AiMove {
   to: Place;
   /** How far away the named side is, in centimetres (0 = default). */
   distance_cm: number;
+  /** Rotation at the start, in degrees; the part turns back to its installed orientation while it moves. */
+  turn_at_start_deg: { x: number; y: number; z: number };
+  /** Size at the start (1 = real size); it grows or shrinks to real size while it moves. */
+  scale_at_start: number;
+  /** Fade in (hidden at start) or fade out (hidden at end). */
+  hidden_at_start: boolean;
+  hidden_at_end: boolean;
 }
 
 export interface AiStep {
@@ -49,12 +56,30 @@ const schema = (ctx: AiContext) => ({
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['part', 'from', 'to', 'distance_cm'],
+        required: [
+          'part',
+          'from',
+          'to',
+          'distance_cm',
+          'turn_at_start_deg',
+          'scale_at_start',
+          'hidden_at_start',
+          'hidden_at_end',
+        ],
         properties: {
           part: { type: 'string', enum: ctx.parts.map((p) => p.id) },
           from: { type: 'string', enum: [...PLACES] },
           to: { type: 'string', enum: [...PLACES] },
           distance_cm: { type: 'number' },
+          turn_at_start_deg: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['x', 'y', 'z'],
+            properties: { x: { type: 'number' }, y: { type: 'number' }, z: { type: 'number' } },
+          },
+          scale_at_start: { type: 'number' },
+          hidden_at_start: { type: 'boolean' },
+          hidden_at_end: { type: 'boolean' },
         },
       },
     },
@@ -74,6 +99,11 @@ Places:
 - set aside: on the table beside the case (for parts taken off, like a side panel).
 
 Typical moves: a new part flies in from a side to "installed"; a part taken off goes from "previous position" to "set aside"; a part refitted goes from "previous position" to "installed". Choose the side a real builder would come from. Use distance_cm 0 unless the request implies a distance.
+
+Each move can also:
+- turn_at_start_deg: start rotated (degrees around x = front-rear axis, y = vertical, z = towards the viewer) and turn into its installed orientation while moving — e.g. {"x":0,"y":0,"z":90} for a part that has to be twisted into place. Use 0s when no turn is needed.
+- scale_at_start: start smaller or larger and grow to real size (1 = no change; use 1 unless asked, e.g. 0.5 to "grow into place").
+- hidden_at_start / hidden_at_end: fade the part in or out (e.g. hidden_at_end for packaging or a part that is removed for good). Use false unless asked.
 
 Parts (id — name — where it is before this step):
 ${ctx.parts.map((p) => `- ${p.id} — ${p.qty > 1 ? `${p.qty}× ` : ''}${p.name} (${p.spec}) — ${p.where}`).join('\n')}

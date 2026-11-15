@@ -43,7 +43,29 @@ export interface Move {
   part: string;
   from: Vec3;
   to: Vec3;
+  /** Rotation in degrees around x, y, z at A and B (default 0). */
+  fromRot?: Vec3;
+  toRot?: Vec3;
+  /** Uniform scale at A and B (default 1 = real size). */
+  fromScale?: number;
+  toScale?: number;
+  /** Hidden at A or B: the part fades in or out during the step. */
+  fromHidden?: boolean;
+  toHidden?: boolean;
 }
+
+/** Everything about one end of a move, with defaults filled in. */
+export interface EndState {
+  pos: Vec3;
+  rot: Vec3;
+  scale: number;
+  hidden: boolean;
+}
+
+export const endOf = (m: Move, which: 'A' | 'B'): EndState =>
+  which === 'A'
+    ? { pos: m.from, rot: m.fromRot ?? [0, 0, 0], scale: m.fromScale ?? 1, hidden: !!m.fromHidden }
+    : { pos: m.to, rot: m.toRot ?? [0, 0, 0], scale: m.toScale ?? 1, hidden: !!m.toHidden };
 
 export interface Guide {
   title: string;
@@ -84,11 +106,21 @@ export function lastPosition(g: Guide, part: string, before: number): Vec3 | und
 }
 
 /** A new move for `part` in step `at`: continue from where it was, or fly in from its default side; end installed. */
-export const defaultMove = (g: Guide, part: string, at: number): Move => ({
-  part,
-  from: [...(lastPosition(g, part, at) ?? DEFAULT_OFFSETS[part] ?? [0, 0, 2.4])],
-  to: [...INSTALLED],
-});
+export function defaultMove(g: Guide, part: string, at: number): Move {
+  // Continue from the part's last state (position, rotation, scale, visibility) if it has one.
+  let prev: Move | undefined;
+  for (let i = Math.min(at, g.steps.length) - 1; i >= 0 && !prev; i--)
+    prev = g.steps[i]!.moves.find((x) => x.part === part);
+  const b = prev && endOf(prev, 'B');
+  return {
+    part,
+    from: [...(b?.pos ?? DEFAULT_OFFSETS[part] ?? [0, 0, 2.4])],
+    to: [...INSTALLED],
+    ...(b && b.rot.some((n) => n) ? { fromRot: [...b.rot] } : {}),
+    ...(b && b.scale !== 1 ? { fromScale: b.scale } : {}),
+    ...(b?.hidden ? { fromHidden: true } : {}),
+  };
+}
 
 type StepInput = Omit<Step, 'id' | 'warning' | 'moves'> & { warning?: string; parts?: string[]; moves?: Move[] };
 /** Sample steps list parts that simply fly in from their default side; `moves` spells out anything else. */
@@ -141,10 +173,11 @@ export const SAMPLE_GUIDE: Guide = {
     }),
     step({
       title: 'Install the CPU cooler',
-      body: 'Put a pea-sized dot of thermal paste in the middle of the CPU. Lower the cooler straight on and tighten its two screws a few turns at a time, alternating sides, until they stop.',
+      body: 'Put a pea-sized dot of thermal paste in the middle of the CPU. Lower the cooler on with its fan facing the front of the case, so it blows toward the rear exhaust, and tighten its two screws a few turns at a time, alternating sides, until they stop.',
       warning: 'Peel the protective film off the cooler’s copper base first.',
       tools: ['paste', 'screwdriver'],
-      parts: ['cooler'],
+      // Turned a quarter while it comes in, so the fan ends up blowing toward the rear exhaust.
+      moves: [{ part: 'cooler', from: DEFAULT_OFFSETS.cooler!, to: INSTALLED, fromRot: [0, 0, 90] }],
       view: { pos: [4.4, 5.6, 5.6], target: [0.9, 3.8, -0.3] },
     }),
     step({

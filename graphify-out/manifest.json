@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794719848.1567636,
-    "seen": 1794719947.4903245,
-    "ast_hash": "14c8be6bb1b671e98234828179866a26",
+    "mtime": 1794735540.2537231,
+    "seen": 1794735737.4877567,
+    "ast_hash": "dc035b660864363a3cdb586314b9a341",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -498,15 +498,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/app.ts": {
-    "mtime": 1794719554.2599933,
-    "seen": 1794719947.4902616,
-    "ast_hash": "25f1780baa0e545e6e82151f09d89b30",
+    "mtime": 1794735524.466091,
+    "seen": 1794735737.4876955,
+    "ast_hash": "5232d72ef84042fceabfc669d6bdd52b",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/guide.ts": {
-    "mtime": 1794719917.047644,
-    "seen": 1794719947.4902635,
-    "ast_hash": "771702352c3663f1b710d4806691fc29",
+    "mtime": 1794735428.0758364,
+    "seen": 1794735737.487697,
+    "ast_hash": "acb24d26c148c5f4523803ccf9b4d04c",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/look.ts": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/studio.ts": {
-    "mtime": 1794719693.2626688,
-    "seen": 1794719947.490268,
-    "ast_hash": "6963c6e972711f19da0d25dc88beec9b",
+    "mtime": 1794735524.6940908,
+    "seen": 1794735737.487701,
+    "ast_hash": "eaf2853c5b62480a3d32fafc6d92d176",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/textures.ts": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/ai.ts": {
-    "mtime": 1794719721.4638321,
-    "seen": 1794719947.4902592,
-    "ast_hash": "d282de5cc4a6faba020d2a13422b91f1",
+    "mtime": 1794735522.0512078,
+    "seen": 1794735737.4876935,
+    "ast_hash": "ab922076ba8a671ff00ab5ee6a9e939b",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -5,6 +5,7 @@
  * a sentence. Loaded only when the studio tab is opened (it brings TransformControls in its own chunk).
  */
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { DEG } from '@meridian/three-core/math';
 import { $, toast } from '../../lib/dom/chrome';
 import type { AssemblyApi } from './app';
 import type { AiStep, Place } from './ai';
@@ -16,9 +17,11 @@ import {
   TOOLS,
   cloneGuide,
   defaultMove,
+  endOf,
   lastPosition,
   newId,
   partsOf,
+  type EndState,
   type Guide,
   type Move,
   type Step,
@@ -92,9 +95,22 @@ const TEMPLATE = `
         <button type="button" data-end="A">A · start</button>
         <button type="button" data-end="B">B · end</button>
       </div>
+      <div class="st-ab" role="group" aria-label="Gizmo">
+        <button type="button" data-gizmo="translate">Move</button>
+        <button type="button" data-gizmo="rotate">Rotate</button>
+        <button type="button" data-gizmo="scale">Scale</button>
+      </div>
       <div class="st-dirs" id="stDirs"></div>
+      <div class="st-dirs">
+        <button type="button" data-turn="0">Turn 90° X</button>
+        <button type="button" data-turn="1">Turn 90° Y</button>
+        <button type="button" data-turn="2">Turn 90° Z</button>
+        <button type="button" data-reset="rot">Reset rotation</button>
+        <button type="button" data-reset="scale">Reset scale</button>
+      </div>
+      <label class="st-check"><input type="checkbox" id="stHidden" /> Hidden at this end <small>(fades in or out)</small></label>
       <output id="stOffset"></output>
-      <small>Or drag the arrows on the part in the 3D view.</small>
+      <small>Or drag the gizmo on the part in the 3D view.</small>
     </div>
     <div class="st-row">
       <button type="button" id="stView">Use current camera</button>
@@ -112,6 +128,23 @@ export function startStudio(api: AssemblyApi) {
   const moveOf = (s: Step | undefined, id: string | undefined) => s?.moves.find((m) => m.part === id);
   let selected: Part | null = null;
   let end: 'A' | 'B' = 'A';
+  /** Writes part of the state of the end being edited (A or B) into a move. */
+  const setEnd = (m: Move, v: Partial<EndState>) => {
+    const a = end === 'A';
+    if (v.pos) m[a ? 'from' : 'to'] = v.pos;
+    if (v.rot) {
+      if (v.rot.some((n) => n)) m[a ? 'fromRot' : 'toRot'] = v.rot;
+      else delete m[a ? 'fromRot' : 'toRot'];
+    }
+    if (v.scale !== undefined) {
+      if (v.scale !== 1) m[a ? 'fromScale' : 'toScale'] = v.scale;
+      else delete m[a ? 'fromScale' : 'toScale'];
+    }
+    if (v.hidden !== undefined) {
+      if (v.hidden) m[a ? 'fromHidden' : 'toHidden'] = true;
+      else delete m[a ? 'fromHidden' : 'toHidden'];
+    }
+  };
   let isOpen = false;
 
   /* ---------- Gizmo ---------- */
@@ -127,10 +160,25 @@ export function startStudio(api: AssemblyApi) {
   gizmo.addEventListener('objectChange', () => {
     const m = moveOf(step(), selected?.id);
     if (!m || !selected) return;
-    const p = selected.group.position;
-    const v: Vec3 = [round(p.x - selected.home.x), round(p.y - selected.home.y), round(p.z - selected.home.z)];
-    if (end === 'A') m.from = v;
-    else m.to = v;
+    const grp = selected.group;
+    const prev = endOf(m, end);
+    if (gizmo.mode === 'translate') {
+      const p = grp.position;
+      setEnd(m, { pos: [round(p.x - selected.home.x), round(p.y - selected.home.y), round(p.z - selected.home.z)] });
+    } else if (gizmo.mode === 'rotate') {
+      const r = grp.rotation;
+      setEnd(m, { rot: [r.x, r.y, r.z].map((n) => Math.round((n / DEG) * 10) / 10) as Vec3 });
+    } else {
+      // Keep scale uniform: follow whichever axis was dragged furthest.
+      const axes = [grp.scale.x, grp.scale.y, grp.scale.z];
+      const k = axes.reduce(
+        (best, v) => (Math.abs(v - prev.scale) > Math.abs(best - prev.scale) ? v : best),
+        prev.scale,
+      );
+      const sc = Math.min(5, Math.max(0.05, round(k)));
+      grp.scale.setScalar(sc);
+      setEnd(m, { scale: sc });
+    }
     renderOffset();
   });
 
@@ -159,12 +207,20 @@ export function startStudio(api: AssemblyApi) {
       })
       .join('');
   };
-  const fmt = (v: Vec3) =>
-    v.every((n) => n === 0) ? 'installed' : `x ${v[0].toFixed(2)} · y ${v[1].toFixed(2)} · z ${v[2].toFixed(2)}`;
+  const fmt = (e: EndState) => {
+    const out = [e.pos.every((n) => n === 0) ? 'installed' : `at ${e.pos.map((n) => n.toFixed(1)).join(', ')}`];
+    if (e.rot.some((n) => n)) out.push(`turned ${e.rot.map((n) => `${Math.round(n)}°`).join(' / ')}`);
+    if (e.scale !== 1) out.push(`×${e.scale.toFixed(2)}`);
+    if (e.hidden) out.push('hidden');
+    return out.join(' · ');
+  };
   const renderOffset = () => {
     const m = moveOf(step(), selected?.id);
     if (!m) return;
-    $('stOffset').textContent = `A: ${fmt(m.from)}   →   B: ${fmt(m.to)}`;
+    $('stOffset').textContent = `A: ${fmt(endOf(m, 'A'))}\nB: ${fmt(endOf(m, 'B'))}`;
+    $<HTMLInputElement>('stHidden').checked = endOf(m, end).hidden;
+    for (const b of $('stPart').querySelectorAll<HTMLElement>('[data-gizmo]'))
+      b.classList.toggle('on', b.dataset.gizmo === gizmo.mode);
   };
   const renderEditor = () => {
     const s = step();
@@ -394,13 +450,33 @@ export function startStudio(api: AssemblyApi) {
       api.edit(api.current(), end);
       return;
     }
+    const gz = t.closest<HTMLElement>('[data-gizmo]')?.dataset.gizmo;
+    if (gz) {
+      gizmo.setMode(gz as 'translate' | 'rotate' | 'scale');
+      gizmo.setSpace(gz === 'scale' ? 'local' : 'world');
+      renderOffset();
+      return;
+    }
+    const state = endOf(m, end);
+    const turn = t.closest<HTMLElement>('[data-turn]')?.dataset.turn;
+    const reset = t.closest<HTMLElement>('[data-reset]')?.dataset.reset;
     const dir = t.closest<HTMLElement>('[data-dir]')?.dataset.dir;
-    if (!dir) return;
-    const cur = end === 'A' ? m.from : m.to;
-    const dist = Math.hypot(...cur) > 0.3 ? Math.hypot(...cur) : undefined;
-    const v = placeOffset(selected, dir, api.current(), dist);
-    if (end === 'A') m.from = v;
-    else m.to = v;
+    if (turn !== undefined) {
+      const rot = [...state.rot] as Vec3;
+      rot[Number(turn)] = ((rot[Number(turn)]! + 90 + 180) % 360) - 180;
+      setEnd(m, { rot });
+    } else if (reset === 'rot') setEnd(m, { rot: [0, 0, 0] });
+    else if (reset === 'scale') setEnd(m, { scale: 1 });
+    else if (dir) {
+      const dist = Math.hypot(...state.pos) > 0.3 ? Math.hypot(...state.pos) : undefined;
+      setEnd(m, { pos: placeOffset(selected, dir, api.current(), dist) });
+    } else return;
+    api.edit(api.current(), end);
+  });
+  $('stHidden').addEventListener('change', (e) => {
+    const m = moveOf(step(), selected?.id);
+    if (!m) return;
+    setEnd(m, { hidden: (e.target as HTMLInputElement).checked });
     api.edit(api.current(), end);
   });
   $('stView').addEventListener('click', () => {
@@ -523,7 +599,23 @@ export function startStudio(api: AssemblyApi) {
         const p = api.kit.byId.get(m.part);
         if (!p || moves.some((x) => x.part === m.part)) continue;
         const dist = m.distance_cm > 0 ? Math.min(6, Math.max(0.5, m.distance_cm / 10)) : undefined;
-        moves.push({ part: p.id, from: placeOffset(p, m.from, at, dist), to: placeOffset(p, m.to, at, dist) });
+        const mv: Move = {
+          part: p.id,
+          from: placeOffset(p, m.from, at, dist),
+          to: placeOffset(p, m.to, at, dist),
+        };
+        // Continuing from where it was keeps the turn, size and visibility it ended the last step with.
+        const carried = m.from === 'previous position' ? defaultMove(g(), p.id, at) : undefined;
+        const turn = m.turn_at_start_deg ?? { x: 0, y: 0, z: 0 };
+        const rot: Vec3 = [turn.x, turn.y, turn.z].map((n) => Math.round(Number(n) || 0)) as Vec3;
+        if (rot.some((n) => n)) mv.fromRot = rot;
+        else if (carried?.fromRot) mv.fromRot = carried.fromRot;
+        const sc = Number(m.scale_at_start);
+        if (sc > 0 && sc !== 1) mv.fromScale = Math.min(5, Math.max(0.05, sc));
+        else if (carried?.fromScale) mv.fromScale = carried.fromScale;
+        if (m.hidden_at_start || carried?.fromHidden) mv.fromHidden = true;
+        if (m.hidden_at_end) mv.toHidden = true;
+        moves.push(mv);
       }
       const s: Step = {
         ...newStep(ai.title, aiView(moves, ai.camera)),

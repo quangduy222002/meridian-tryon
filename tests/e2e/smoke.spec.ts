@@ -119,7 +119,18 @@ test('studio edits both ends of a move and builds a step with AI', async ({ page
       body: 'Unscrew the thumbscrews and set the glass aside.',
       warning: 'Glass is fragile.',
       tools: ['hands'],
-      moves: [{ part: 'glass', from: 'previous position', to: 'set aside', distance_cm: 0 }],
+      moves: [
+        {
+          part: 'glass',
+          from: 'previous position',
+          to: 'set aside',
+          distance_cm: 0,
+          turn_at_start_deg: { x: 0, y: 0, z: 0 },
+          scale_at_start: 1,
+          hidden_at_start: false,
+          hidden_at_end: true,
+        },
+      ],
       camera: 'wide',
     };
     await route.fulfill({
@@ -146,6 +157,16 @@ test('studio edits both ends of a move and builds a step with AI', async ({ page
   await expect(page.locator('[data-end=B]')).toHaveClass(/on/);
   await page.locator('#stDirs [data-dir=installed]').click();
   await expect(page.locator('#stOffset')).toContainText('B: installed');
+  // Rotate, scale and hide the B end, then put it back.
+  await page.locator('[data-turn="1"]').click();
+  await expect(page.locator('#stOffset')).toContainText('turned 0° / 90° / 0°');
+  await page.locator('#stHidden').check();
+  await expect(page.locator('#stOffset')).toContainText('hidden');
+  await page.locator('[data-gizmo=scale]').click();
+  await expect(page.locator('[data-gizmo=scale]')).toHaveClass(/on/);
+  await page.locator('[data-reset=rot]').click();
+  await page.locator('#stHidden').uncheck();
+  await expect(page.locator('#stOffset')).not.toContainText('turned');
   // AI builder
   await page.locator('#aiPrompt').fill('Take the glass off again and put it aside');
   await page.locator('#aiGo').click();

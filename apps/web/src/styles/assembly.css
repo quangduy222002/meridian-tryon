@@ -742,7 +742,23 @@ svg {
   min-height: 30px;
   font-size: 12px;
 }
+.st-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.st-check input {
+  width: 16px !important;
+  height: 16px;
+  padding: 0 !important;
+  accent-color: var(--accent);
+}
+.st-check small {
+  color: var(--mute);
+}
 .st-part output {
+  white-space: pre-line;
   font: 500 12px var(--mono);
   color: var(--accent);
 }
