@@ -55,14 +55,34 @@ export function initCursor(el: HTMLElement | null) {
 }
 
 let toastTimer = 0;
-/** Small confirmation message at the bottom of the screen. */
+
+/**
+ * Screen-reader channel for toasts. A live region only announces changes once it is already in the page, so it is
+ * created when this module loads (well before the first toast); browsers with `ariaNotify()` use that instead.
+ */
+const liveRegion = (() => {
+  if (typeof document === 'undefined') return null;
+  const el = document.createElement('div');
+  el.setAttribute('aria-live', 'polite');
+  el.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap';
+  document.body.appendChild(el);
+  return el;
+})();
+function announce(message: string) {
+  const doc = document as Document & { ariaNotify?: (message: string) => void };
+  if (typeof doc.ariaNotify === 'function') doc.ariaNotify(message);
+  else if (liveRegion) liveRegion.textContent = message;
+}
+
+/** Small, short-lived confirmation at the bottom of the screen; also announced to screen readers. */
 export function toast(message: string, ms = 2600) {
   document.querySelector('.toast')?.remove();
   const t = document.createElement('div');
   t.className = 'toast';
-  t.setAttribute('role', 'status');
+  t.setAttribute('aria-hidden', 'true'); // announced once through announce(), not twice
   t.textContent = message;
   document.body.appendChild(t);
+  announce(message);
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => t.remove(), ms);
 }

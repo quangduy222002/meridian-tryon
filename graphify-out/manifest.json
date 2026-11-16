@@ -174,9 +174,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/dom/chrome.ts": {
-    "mtime": 1794665486.0818574,
-    "seen": 1794669310.2794626,
-    "ast_hash": "72729d2d1453217b5285d589041c2221",
+    "mtime": 1794794357.7621274,
+    "seen": 1794794484.6492262,
+    "ast_hash": "0b4b78f10ee8244d2c5e73b5a44bc6fa",
     "semantic_hash": ""
   },
   "apps/web/src/lib/dom/reveal.ts": {
@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794735540.2537231,
-    "seen": 1794735737.4877567,
-    "ast_hash": "dc035b660864363a3cdb586314b9a341",
+    "mtime": 1794794357.7628348,
+    "seen": 1794794484.649297,
+    "ast_hash": "e283462a52384cb65241c45e79cbb81d",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -492,15 +492,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/assembly/index.astro": {
-    "mtime": 1794677295.7949255,
-    "seen": 1794677685.6745265,
-    "ast_hash": "42a6787d056e2ae4f724a86eeb5faa7f",
+    "mtime": 1794794338.9512072,
+    "seen": 1794794484.649231,
+    "ast_hash": "fd73e2eafc1efc61f1d7b88ac856a9d9",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/app.ts": {
-    "mtime": 1794735524.466091,
-    "seen": 1794735737.4876955,
-    "ast_hash": "5232d72ef84042fceabfc669d6bdd52b",
+    "mtime": 1794794362.3623435,
+    "seen": 1794794484.649238,
+    "ast_hash": "60a496991f046137e090abc4eb62128b",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/guide.ts": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/studio.ts": {
-    "mtime": 1794735524.6940908,
-    "seen": 1794735737.487701,
-    "ast_hash": "eaf2853c5b62480a3d32fafc6d92d176",
+    "mtime": 1794794357.7626235,
+    "seen": 1794794484.649243,
+    "ast_hash": "df5b85b5a3992840e8216de00aed40f3",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/textures.ts": {

@@ -349,25 +349,35 @@ svg {
   transition: width 0.5s var(--ease-out);
 }
 
-/* ---------- Parts list ---------- */
+/* ---------- Parts list (a <dialog>: non-modal beside the scene on wide screens, modal on phones) ---------- */
 .bom {
-  top: 76px;
-  right: 16px;
+  /* Reset the user-agent dialog box; the panel is placed like the other floating panels. */
+  inset: 76px 16px auto auto;
+  margin: 0;
+  color: inherit;
   width: 360px;
+  max-width: none;
   max-height: calc(100% - 176px);
   display: flex;
   flex-direction: column;
   padding: 16px 10px 12px;
-  transform: translateX(calc(100% + 32px));
-  visibility: hidden;
-  transition:
-    transform 0.35s var(--ease-out),
-    visibility 0.35s;
   z-index: 6;
+  transition-property: transform, opacity, display, overlay;
+  transition-duration: 0.35s;
+  transition-timing-function: var(--ease-out);
+  transition-behavior: allow-discrete;
 }
-.bom.open {
-  transform: none;
-  visibility: visible;
+.bom:not([open]) {
+  display: none;
+  transform: translateX(calc(100% + 32px));
+}
+@starting-style {
+  .bom[open] {
+    transform: translateX(calc(100% + 32px));
+  }
+}
+.bom::backdrop {
+  background: rgb(29 29 31 / 0.18);
 }
 .bom header {
   display: flex;
@@ -887,21 +897,20 @@ svg {
     padding: 14px;
   }
   .bom {
-    left: 12px;
-    right: 12px;
-    top: 64px;
-    bottom: 76px;
+    inset: 64px 12px 76px;
     width: auto;
+    height: auto; /* the UA gives dialogs height: fit-content; stretch between the insets instead */
     max-height: none;
+  }
+  .bom:not([open]) {
     transform: translateY(16px);
     opacity: 0;
-    transition:
-      transform 0.3s var(--ease-out),
-      opacity 0.3s,
-      visibility 0.3s;
   }
-  .bom.open {
-    opacity: 1;
+  @starting-style {
+    .bom[open] {
+      transform: translateY(16px);
+      opacity: 0;
+    }
   }
   .dock {
     bottom: 12px;
@@ -919,6 +928,7 @@ svg {
 }
 @media (prefers-reduced-motion: reduce) {
   .bom,
+  .bom:not([open]),
   .progress i {
     transition: none;
   }

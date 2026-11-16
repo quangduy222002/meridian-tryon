@@ -21,11 +21,11 @@ import '../../styles/assembly.css';
       <a class="brand" href="../">
         FORGE<span>Build guides</span>
       </a>
-      <div class="modes" role="tablist" aria-label="Mode">
-        <button type="button" role="tab" data-mode="guide" class="on" aria-selected="true">
+      <div class="modes" role="group" aria-label="Mode">
+        <button type="button" data-mode="guide" class="on" aria-pressed="true">
           Guide
         </button>
-        <button type="button" role="tab" data-mode="studio" aria-selected="false">
+        <button type="button" data-mode="studio" aria-pressed="false">
           Studio
         </button>
       </div>
@@ -76,16 +76,16 @@ import '../../styles/assembly.css';
 
     <aside class="studio" id="studio" aria-label="Studio" hidden></aside>
 
-    <aside class="bom" id="bom" aria-label="Parts list" aria-hidden="true">
+    <dialog class="bom" id="bom" aria-labelledby="bomTitle">
       <header>
-        <h2>Parts list</h2>
-        <button type="button" id="bomClose" aria-label="Close parts list">
+        <h2 id="bomTitle">Parts list</h2>
+        <button type="button" id="bomClose" aria-label="Close parts list" autofocus>
           ✕
         </button>
       </header>
       <ol id="bomList"></ol>
       <p class="bom-note">Tap a part to jump to the step that installs it.</p>
-    </aside>
+    </dialog>
 
     <div class="dock">
       <button type="button" id="prevBtn" class="icon" aria-label="Previous step">

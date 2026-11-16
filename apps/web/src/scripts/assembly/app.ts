@@ -432,6 +432,11 @@ void main() {
       const id = (li as HTMLElement).dataset.part!;
       li.classList.toggle('on', partsOf(s).includes(id));
     }
+    // Screen readers announce the step, not the raw timeline number.
+    scrub.setAttribute(
+      'aria-valuetext',
+      N() ? `Step ${cur + 1} of ${N()}: ${s?.title || 'Untitled step'}` : 'No steps',
+    );
     $('prevBtn').toggleAttribute('disabled', cur <= 0);
     $('nextBtn').toggleAttribute('disabled', cur >= N() - 1);
   };
@@ -682,13 +687,18 @@ void main() {
     $('xrayBtn').setAttribute('aria-pressed', String(xray));
     loop.invalidate();
   });
-  const bom = $('bom');
+  // Parts list: a native <dialog>. On wide screens it sits beside the 3D view (non-modal, so the scene stays
+  // usable); on phones it covers the view, so it opens modal and the browser makes the rest inert.
+  const bom = $<HTMLDialogElement>('bom');
   const setBom = (open: boolean) => {
-    bom.classList.toggle('open', open);
-    bom.setAttribute('aria-hidden', String(!open));
-    $('bomBtn').setAttribute('aria-expanded', String(open));
+    if (open === bom.open) return;
+    if (!open) bom.close();
+    else if (matchMedia('(min-width: 900px)').matches) bom.show();
+    else bom.showModal();
+    $('bomBtn').setAttribute('aria-expanded', String(bom.open));
   };
-  $('bomBtn').addEventListener('click', () => setBom(!bom.classList.contains('open')));
+  bom.addEventListener('close', () => $('bomBtn').setAttribute('aria-expanded', 'false'));
+  $('bomBtn').addEventListener('click', () => setBom(!bom.open));
   $('bomClose').addEventListener('click', () => setBom(false));
   $('bomList').addEventListener('click', (e) => {
     const li = (e.target as Element).closest<HTMLElement>('li[data-part]');
@@ -718,7 +728,7 @@ void main() {
     for (const b of document.querySelectorAll<HTMLElement>('[data-mode]')) {
       const on = b.dataset.mode === m;
       b.classList.toggle('on', on);
-      b.setAttribute('aria-selected', String(on));
+      b.setAttribute('aria-pressed', String(on));
     }
     setPlaying(false);
     if (m === 'studio') {

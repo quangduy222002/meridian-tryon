@@ -89,7 +89,7 @@ test('build guide steps through the guide and edits it in the studio', async ({ 
   await page.locator('#bomBtn').click();
   await page.locator('#bomList li[data-part=gpu] button').click();
   await expect(page.locator('#stepTitle')).toHaveText('Install the graphics card');
-  if (await page.locator('#bom.open').count()) await page.locator('#bomClose').click();
+  if (await page.locator('#bom[open]').count()) await page.locator('#bomClose').click();
   // Studio: rename the step and add a new one; the guide picks the change up.
   await page.locator('[data-mode=studio]').click();
   await expect(page.locator('#stTitle')).toHaveValue('Install the graphics card', { timeout: 30_000 });

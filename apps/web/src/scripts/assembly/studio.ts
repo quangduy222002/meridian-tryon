@@ -63,14 +63,14 @@ const TEMPLATE = `
       <button type="button" id="aiGo" class="primary">Generate step</button>
       <button type="button" id="aiKeyBtn" aria-expanded="false" aria-controls="aiKeyBox">API key</button>
     </div>
-    <div id="aiKeyBox" class="st-key" hidden>
+    <form id="aiKeyBox" class="st-key" hidden>
       <input id="aiKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-label="Anthropic API key" />
       <div class="st-row">
-        <button type="button" id="aiKeySave">Save key</button>
+        <button type="submit" id="aiKeySave">Save key</button>
         <button type="button" id="aiKeyForget">Forget</button>
       </div>
       <small>Your Anthropic API key stays in this browser and goes straight to Anthropic; usage is billed to it.</small>
-    </div>
+    </form>
     <p id="aiStatus" class="st-ai-status" aria-live="polite"></p>
   </section>
   <section>
@@ -526,7 +526,9 @@ export function startStudio(api: AssemblyApi) {
   };
   setKeyBox(false);
   $('aiKeyBtn').addEventListener('click', () => setKeyBox(keyBox.hidden));
-  $('aiKeySave').addEventListener('click', () => {
+  // A form, so Enter in the key field saves it too.
+  keyBox.addEventListener('submit', (e) => {
+    e.preventDefault();
     const v = $<HTMLInputElement>('aiKeyIn').value.trim();
     if (!v) return;
     apiKey = v;
