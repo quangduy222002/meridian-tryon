@@ -45,7 +45,7 @@ for (const p of pages3d) {
 
 test('portfolio links to every live demo', async ({ page }) => {
   await page.goto('');
-  for (const href of ['watch/', 'chair/', 'box/', 'assembly/', 'store/']) {
+  for (const href of ['watch/', 'chair/', 'box/', 'assembly/', 'room/', 'store/']) {
     await expect(page.locator(`a[href$="/${href}"]`).first()).toBeAttached();
   }
 });
@@ -246,6 +246,55 @@ test('room planner walks, estimates and shares', async ({ page, context }, info)
     await page.locator('#estimateBtn').click();
     await expect(page.locator('#estBody .est-totals')).toContainText('76.0 m²');
   }
+  expect(errors).toEqual([]);
+});
+
+test('room planner furnishes a room with AI', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Stand-in for the Anthropic API, which the page calls from the browser with the visitor's key.
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    const cors = {
+      'access-control-allow-origin': '*',
+      'access-control-allow-headers': '*',
+      'access-control-allow-methods': 'POST, OPTIONS',
+    };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const layout = {
+      items: [
+        { type: 'bed', x: 8.2, z: 1.15, rot: 0, color: '#e7dfd2' },
+        { type: 'desk', x: 9.62, z: 3.2, rot: 90, color: '#a87a4c' },
+      ],
+      summary: 'A bed against the top wall and a desk by the side wall.',
+    };
+    await route.fulfill({
+      status: 200,
+      headers: { ...cors, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        id: 'msg_test',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-opus-5-5',
+        content: [{ type: 'text', text: JSON.stringify(layout) }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+    });
+  });
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('#aiBtn').click();
+  await page.locator('#aiRoom').selectOption({ label: 'Bedroom · 15.1 m²' });
+  await page.locator('#aiPrompt').fill('A bedroom for two with a desk');
+  await page.locator('#aiGo').click();
+  await expect(page.locator('#aiKeyBox')).toBeVisible();
+  await page.locator('#aiKeyIn').fill('sk-ant-test');
+  await page.locator('#aiKeyBox button[type=submit]').click();
+  await page.locator('#aiGo').click();
+  await expect(page.locator('#aiDlg')).not.toBeVisible({ timeout: 30_000 });
+  await page.locator('#estimateBtn').click();
+  // The bedroom's nightstands, wardrobe, chair and old desk were replaced: one bed, one desk left there.
+  await expect(page.locator('#estBody')).not.toContainText('Nightstand');
   expect(errors).toEqual([]);
 });
 

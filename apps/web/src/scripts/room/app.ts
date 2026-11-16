@@ -33,7 +33,18 @@ import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, WALLS } from './catalog';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
-import { findRooms, len, roomName, roomStyle, samplePlan, wallEnds, type Plan, type Room } from './plan';
+import {
+  findRooms,
+  len,
+  pointInPoly,
+  roomName,
+  roomStyle,
+  samplePlan,
+  uid,
+  wallEnds,
+  type Plan,
+  type Room,
+} from './plan';
 import { estimate } from './estimate';
 import { Walker, solidsOf } from './walk';
 import { autosave, clearLinkHash, loadInitial, shareUrl } from './store';
@@ -400,6 +411,102 @@ export async function startRoomcraft(gl = true) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast('Snapshot saved');
+  });
+
+  /* ---------- Furnish with AI ---------- */
+  // One key for every demo on this site that talks to Claude (the Forge studio stored it first).
+  const KEYS = ['meridian.anthropicKey', 'forge.anthropicKey'];
+  const readKey = () => {
+    try {
+      for (const k of KEYS) {
+        const v = localStorage.getItem(k);
+        if (v) return v;
+      }
+    } catch {
+      // storage blocked
+    }
+    return '';
+  };
+  let apiKey = readKey();
+  const aiDlg = $<HTMLDialogElement>('aiDlg');
+  const aiStatus = $('aiStatus');
+  const keyBox = $<HTMLFormElement>('aiKeyBox');
+  const setKeyBox = (open: boolean) => {
+    keyBox.hidden = !open;
+    $('aiKeyBtn').setAttribute('aria-expanded', String(open));
+    $('aiKeyBtn').textContent = apiKey ? 'API key ✓' : 'API key';
+    if (open) $<HTMLInputElement>('aiKeyIn').focus();
+  };
+  $('aiBtn').addEventListener('click', () => {
+    if (!rooms.length) return toast('Draw a closed room first');
+    const selected = editor.sel?.kind === 'room' ? editor.sel.id : null;
+    const byArea = [...rooms].sort((a, b) => b.area - a.area);
+    $('aiRoom').innerHTML = byArea
+      .map(
+        (r) =>
+          `<option value="${esc(r.key)}" ${r.key === (selected ?? byArea[0]!.key) ? 'selected' : ''}>${esc(roomName(plan, r))} · ${r.area.toFixed(1)} m²</option>`,
+      )
+      .join('');
+    aiStatus.textContent = '';
+    setKeyBox(false);
+    aiDlg.showModal();
+  });
+  $('aiKeyBtn').addEventListener('click', () => setKeyBox(keyBox.hidden));
+  keyBox.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = $<HTMLInputElement>('aiKeyIn').value.trim();
+    if (!v) return;
+    apiKey = v;
+    try {
+      localStorage.setItem(KEYS[0]!, v);
+    } catch {
+      // Private mode: the key still works for this visit.
+    }
+    $<HTMLInputElement>('aiKeyIn').value = '';
+    setKeyBox(false);
+    aiStatus.textContent = 'Key saved in this browser.';
+  });
+  $('aiKeyForget').addEventListener('click', () => {
+    apiKey = '';
+    try {
+      for (const k of KEYS) localStorage.removeItem(k);
+    } catch {
+      // nothing stored
+    }
+    setKeyBox(false);
+    aiStatus.textContent = 'Key removed.';
+  });
+  $<HTMLFormElement>('aiForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const request = $<HTMLTextAreaElement>('aiPrompt').value.trim();
+    const room = rooms.find((r) => r.key === $<HTMLSelectElement>('aiRoom').value);
+    const go = $<HTMLButtonElement>('aiGo');
+    if (!request || !room || go.getAttribute('aria-disabled') === 'true') return;
+    if (!apiKey) {
+      aiStatus.textContent = 'Add your Anthropic API key to use the AI.';
+      return setKeyBox(true);
+    }
+    const replace = $<HTMLInputElement>('aiReplace').checked;
+    const inRoom = (x: number, z: number) => pointInPoly([x, z], room.poly);
+    const keep = replace ? [] : plan.items.filter((i) => inRoom(i.x, i.z));
+    go.setAttribute('aria-disabled', 'true');
+    aiDlg.classList.add('busy');
+    aiStatus.textContent = 'Arranging the room…';
+    try {
+      const { furnishRoom } = await import('./ai');
+      const out = await furnishRoom(apiKey, request, plan, room, keep);
+      if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z));
+      for (const it of out.items) plan.items.push({ id: uid('i'), ...it });
+      aiDlg.close();
+      editor.select({ kind: 'room', id: room.key });
+      host.commit(out.summary || `${roomName(plan, room)} furnished`);
+      showPane('three');
+    } catch (err) {
+      aiStatus.textContent = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+    } finally {
+      go.removeAttribute('aria-disabled');
+      aiDlg.classList.remove('busy');
+    }
   });
 
   /* ---------- Phones: one pane at a time ---------- */

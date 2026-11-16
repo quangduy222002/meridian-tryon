@@ -281,6 +281,33 @@ export function buildRoom(quality: Quality) {
   }
   hotspot('forge', 'PC build guide', 'Build guide', pc, new Vector3(0, 0.62, 0));
 
+  /* ---------- Architectural model on a plinth (home planner) ---------- */
+  const maquette = new Group();
+  maquette.position.set(2.35, 0, -1.25);
+  maquette.rotation.y = -0.5;
+  scene.add(maquette);
+  {
+    const plinth = mat('#ece8e1', { roughness: 0.8 });
+    const card = mat('#f7f5f1', { roughness: 0.9 });
+    const floorM = mat('#c9a57d', { roughness: 0.7 });
+    add(rbox(0.62, 0.62, 0.48, 0.01), plinth, 0, 0.31, 0, maquette);
+    add(new BoxGeometry(0.54, 0.008, 0.4), floorM, 0, 0.624, 0, maquette);
+    const wallH = 0.07;
+    const wall = (w: number, d: number, x: number, z: number) =>
+      add(new BoxGeometry(w, wallH, d), card, x, 0.62 + wallH / 2, z, maquette);
+    wall(0.54, 0.012, 0, -0.2);
+    wall(0.54, 0.012, 0, 0.2);
+    wall(0.012, 0.4, -0.27, 0);
+    wall(0.012, 0.4, 0.27, 0);
+    wall(0.012, 0.4, 0.07, 0);
+    wall(0.2, 0.012, 0.17, 0.05);
+    wall(0.34, 0.012, -0.1, 0.1);
+    const tiny = mat('#8a9a8c', { roughness: 0.9 });
+    add(new BoxGeometry(0.12, 0.025, 0.05), tiny, -0.12, 0.64, -0.05, maquette);
+    add(new BoxGeometry(0.09, 0.02, 0.11), mat('#e7dfd2'), 0.17, 0.64, -0.1, maquette);
+  }
+  hotspot('roomcraft', 'Home planner', 'Home planner', maquette, new Vector3(0, 0.9, 0));
+
   /* ---------- Wall shelf with ship model ---------- */
   const shelf = new Group();
   shelf.position.set(-S + 0.18, 1.95, 0.55);
@@ -452,5 +479,5 @@ export function buildRoom(quality: Quality) {
   // Small objects never cast a visible shadow at this scale; skipping them shortens the shadow pass.
   for (const g of [face, win, art]) g.traverse((o) => (o.castShadow = false));
 
-  return { scene, hotspots, face, hands, chair, boxes, pc, rack, screens, bulb, code, dust, half: S };
+  return { scene, hotspots, face, hands, chair, boxes, pc, maquette, rack, screens, bulb, code, dust, half: S };
 }

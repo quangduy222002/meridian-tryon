@@ -81,6 +81,12 @@ import '../../styles/room.css';
           </svg>
           <span>Snapshot</span>
         </button>
+        <button type="button" id="aiBtn" aria-label="Furnish with AI" title="Furnish a room with AI">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path>
+          </svg>
+          <span>AI</span>
+        </button>
         <span class="share-wrap">
           <button type="button" id="shareBtn" class="primary" aria-label="Share" title="Share a link to this plan">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -172,6 +178,54 @@ import '../../styles/room.css';
       </header>
       <div id="estBody"></div>
       <p class="note">Indicative supply-and-fit prices in USD, for comparing options — not a quote.</p>
+    </dialog>
+
+    <dialog id="aiDlg" class="sheet" aria-labelledby="aiTitle">
+      <header>
+        <h2 id="aiTitle">Furnish with AI</h2>
+        <form method="dialog">
+          <button aria-label="Close">✕</button>
+        </form>
+      </header>
+      <form id="aiForm" class="ai-form">
+        <label>
+          Room<select id="aiRoom"></select>
+        </label>
+        <label>
+          What should it be?
+          <textarea
+            id="aiPrompt"
+            rows="3"
+            required
+            placeholder="e.g. “A calm bedroom for two with a small desk by the window.”"
+          ></textarea>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="aiReplace" checked /> Replace the furniture already in this room
+        </label>
+        <div class="choices">
+          <button type="submit" class="primary" id="aiGo">
+            Furnish
+          </button>
+          <button type="button" id="aiKeyBtn" aria-expanded="false" aria-controls="aiKeyBox">
+            API key
+          </button>
+        </div>
+      </form>
+      <form id="aiKeyBox" class="ai-form" hidden>
+        <label>
+          Anthropic API key
+          <input id="aiKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" />
+        </label>
+        <div class="choices">
+          <button type="submit">Save key</button>
+          <button type="button" id="aiKeyForget">
+            Forget
+          </button>
+        </div>
+        <p>The key stays in this browser and goes straight to Anthropic; usage is billed to it.</p>
+      </form>
+      <p class="ai-status" id="aiStatus" aria-live="polite"></p>
     </dialog>
 
     <dialog id="newDlg" class="sheet small" aria-labelledby="newTitle">

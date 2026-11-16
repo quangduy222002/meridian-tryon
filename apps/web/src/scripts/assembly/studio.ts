@@ -36,6 +36,8 @@ const esc = (s: string) =>
 const pad = (n: number) => String(n).padStart(2, '0');
 const round = (n: number) => Math.round(n * 100) / 100;
 const KEY_STORE = 'forge.anthropicKey';
+/** Roomcraft saves the same key under the site-wide name; either works here. */
+const SHARED_KEY = 'meridian.anthropicKey';
 
 /** Side presets for either end of a move (directions from the installed position). */
 const SIDES: { id: string; label: string; v: Vec3 }[] = [
@@ -510,7 +512,7 @@ export function startStudio(api: AssemblyApi) {
   /* ---------- AI step builder ---------- */
   const readKey = () => {
     try {
-      return localStorage.getItem(KEY_STORE) ?? '';
+      return localStorage.getItem(KEY_STORE) ?? localStorage.getItem(SHARED_KEY) ?? '';
     } catch {
       return '';
     }

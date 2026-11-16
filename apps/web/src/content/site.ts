@@ -4,6 +4,7 @@ import chairImg from '../assets/projects/chair.jpg';
 import boxImg from '../assets/projects/box.jpg';
 import storeImg from '../assets/projects/store.jpg';
 import assemblyImg from '../assets/projects/assembly.jpg';
+import roomImg from '../assets/projects/room.jpg';
 
 export const UPWORK_URL = 'https://www.upwork.com/freelancers/~0199cc702afa884c91';
 
@@ -117,6 +118,21 @@ export const projects: Project[] = [
     image: assemblyImg,
     imageAlt: 'Forge 3D PC build guide with step card and timeline',
     href: 'assembly/',
+    cta: 'Open demo',
+    live: 'Live demo',
+  },
+  {
+    id: 'work-room',
+    shot: 'room',
+    side: 'left',
+    kind: 'Home planner',
+    title: 'Roomcraft',
+    sub: 'Draw it in 2D, walk it in 3D',
+    desc: 'Sketch walls, doors and windows and the home builds itself in 3D beside the plan: furnish it, pick floors and paint per room, follow the sun through the day, walk the rooms — then share the plan as a link with an area and cost estimate. An AI can furnish a room from one sentence.',
+    chips: ['2D ↔ 3D editor', 'Sun study', 'Walkthrough', 'AI layout'],
+    image: roomImg,
+    imageAlt: 'Roomcraft floor plan editor beside a 3D dollhouse view of the flat',
+    href: 'room/',
     cta: 'Open demo',
     live: 'Live demo',
   },
