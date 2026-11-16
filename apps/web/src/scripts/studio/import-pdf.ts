@@ -1,0 +1,121 @@
+/**
+ * PDF import with pdf.js: walks the page's drawing operators (tracking the transformation matrix through save /
+ * restore and form XObjects) to collect every stroke and fill outline as segments, reads the text layer, and renders
+ * the page to an image for the underlay. Loaded only when a PDF is opened.
+ */
+import * as pdfjs from 'pdfjs-dist';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { boundsOf, scaleFromDimensions, type Drawing, type Segment, type Text } from './drawing';
+
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+type M = [number, number, number, number, number, number];
+const mul = (m: M, n: number[]): M => [
+  m[0] * n[0]! + m[2] * n[1]!,
+  m[1] * n[0]! + m[3] * n[1]!,
+  m[0] * n[2]! + m[2] * n[3]!,
+  m[1] * n[2]! + m[3] * n[3]!,
+  m[0] * n[4]! + m[2] * n[5]! + m[4],
+  m[1] * n[4]! + m[3] * n[5]! + m[5],
+];
+
+export async function openPdf(data: ArrayBuffer) {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise;
+  return { pages: doc.numPages, doc };
+}
+
+/** Small preview of each page so the visitor can pick the sheet with the plan. */
+export async function pageThumb(doc: pdfjs.PDFDocumentProxy, n: number, width = 220) {
+  const page = await doc.getPage(n);
+  const vp = page.getViewport({ scale: 1 });
+  const scale = width / vp.width;
+  const v = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(v.width);
+  canvas.height = Math.round(v.height);
+  await page.render({ canvas, viewport: v }).promise;
+  return canvas.toDataURL('image/png');
+}
+
+export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: string): Promise<Drawing> {
+  const page = await doc.getPage(n);
+  const { OPS } = pdfjs;
+  const ops = await page.getOperatorList();
+  let ctm: M = [1, 0, 0, 1, 0, 0];
+  const stack: M[] = [];
+  const segs: Segment[] = [];
+  const at = (x: number, y: number): [number, number] => [
+    ctm[0] * x + ctm[2] * y + ctm[4],
+    ctm[1] * x + ctm[3] * y + ctm[5],
+  ];
+  for (let i = 0; i < ops.fnArray.length; i++) {
+    const fn = ops.fnArray[i];
+    const a = ops.argsArray[i] as unknown[];
+    if (fn === OPS.save) stack.push(ctm);
+    else if (fn === OPS.restore) ctm = stack.pop() ?? ctm;
+    else if (fn === OPS.transform) ctm = mul(ctm, a as number[]);
+    else if (fn === OPS.paintFormXObjectBegin) {
+      stack.push(ctm);
+      if (a[0]) ctm = mul(ctm, a[0] as number[]);
+    } else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
+    else if (fn === OPS.constructPath) {
+      const data = (a[1] as ArrayLike<number>[] | undefined)?.[0];
+      if (!data) continue;
+      let cur: [number, number] | null = null;
+      let start: [number, number] | null = null;
+      const push = (p: [number, number], curve = false) => {
+        if (cur && (p[0] !== cur[0] || p[1] !== cur[1]))
+          segs.push({ x1: cur[0], y1: cur[1], x2: p[0], y2: p[1], ...(curve ? { curve } : {}) });
+        cur = p;
+      };
+      for (let k = 0; k < data.length;) {
+        const op = data[k++];
+        if (op === 0) {
+          cur = at(data[k++]!, data[k++]!);
+          start = cur;
+        } else if (op === 1) push(at(data[k++]!, data[k++]!));
+        else if (op === 2) {
+          k += 4;
+          push(at(data[k++]!, data[k++]!), true);
+        } else if (op === 3) {
+          k += 2;
+          push(at(data[k++]!, data[k++]!), true);
+        } else if (op === 4 && start) push(start);
+      }
+    }
+  }
+  const content = await page.getTextContent();
+  const texts: Text[] = [];
+  for (const item of content.items) {
+    if (!('str' in item) || !item.str.trim()) continue;
+    const [a, b, c, d, e, f] = item.transform as number[];
+    texts.push({ str: item.str, x: e!, y: f!, h: Math.hypot(c!, d!), angle: Math.atan2(b!, a!) });
+  }
+
+  // Raster underlay at a resolution that stays crisp when zoomed in on one flat.
+  const vp = page.getViewport({ scale: 1 });
+  const scale = Math.min(4, 4096 / Math.max(vp.width, vp.height));
+  const v = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(v.width);
+  canvas.height = Math.round(v.height);
+  await page.render({ canvas, viewport: v }).promise;
+  const [vx0, vy0, vx1, vy1] = page.view as [number, number, number, number];
+
+  const drawing: Drawing = {
+    name,
+    kind: 'pdf',
+    segs,
+    texts,
+    bounds: boundsOf(segs),
+    mmPerUnit: null,
+    scaleNote: '',
+    image: { url: canvas.toDataURL('image/png'), x0: vx0, y0: vy0, x1: vx1, y1: vy1 },
+  };
+  const s = scaleFromDimensions(drawing);
+  if (s) {
+    drawing.mmPerUnit = s.mmPerUnit;
+    drawing.scaleNote = `from ${s.votes} dimensions`;
+  }
+  return drawing;
+}

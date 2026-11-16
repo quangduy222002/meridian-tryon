@@ -38,6 +38,8 @@ export interface EditorHost {
   preview(): void;
   selected(sel: Selection | null): void;
   toolChanged(tool: Tool): void;
+  /** Draws something under the plan (an imported drawing), in plan coordinates. */
+  underlay?(c: CanvasRenderingContext2D, X: (x: number) => number, Z: (z: number) => number, s: number): void;
   /** Where the visitor is standing in walk mode (plan metres, yaw in radians), if walking. */
   walker?(): { x: number; z: number; yaw: number } | null;
 }
@@ -648,6 +650,8 @@ export class PlanEditor {
       c.fillStyle = Math.abs(gz % 1) < 1e-6 || Math.abs((gz % 1) - 1) < 1e-6 ? '#e6dfd3' : '#f0ebe2';
       c.fillRect(0, Math.round(Z(gz)), W, 1);
     }
+
+    this.host.underlay?.(c, X, Z, s);
 
     // Rooms tinted with their floor finish
     for (const r of rooms) {

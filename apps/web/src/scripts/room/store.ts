@@ -5,6 +5,9 @@
 import { samplePlan, type Plan } from './plan';
 
 const KEY = 'roomcraft.plan';
+/** Pages that embed the workspace keep their own saved plan. */
+let key = KEY;
+export const useStorageKey = (k: string) => (key = k);
 const HASH = 'p=';
 
 const toB64 = (bytes: Uint8Array) => {
@@ -55,7 +58,7 @@ export async function loadInitial(): Promise<{ plan: Plan; from: 'link' | 'saved
     }
   }
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     const p: unknown = raw ? JSON.parse(raw) : null;
     if (isPlan(p)) return { plan: normalise(p), from: 'saved' };
   } catch {
@@ -70,7 +73,7 @@ export function autosave(p: Plan) {
   clearTimeout(timer);
   timer = window.setTimeout(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(p));
+      localStorage.setItem(key, JSON.stringify(p));
     } catch {
       // Private mode or full storage: the plan still works for this visit.
     }

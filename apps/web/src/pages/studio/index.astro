@@ -1,0 +1,143 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import RoomWorkspace from '../../components/RoomWorkspace.astro';
+import '../../styles/room.css';
+import '../../styles/studio.css';
+---
+
+<BaseLayout
+  title="Floorwise — import a floor plan, redesign it in 3D"
+  description="Bring a PDF or DXF floor plan, pick your flat out of the sheet, and get a clean editable plan with walls, doors and windows — then furnish it and see it in 3D. Concept demo built with Three.js."
+  themeColor="#f4f1ec"
+>
+  <RoomWorkspace
+    brand="Floorwise"
+    tagline="Import · Fix · Redesign"
+    heading="Floorwise — import your floor plan and redesign it"
+    stage="import"
+  >
+    <Fragment slot="actions">
+      <button
+        type="button"
+        id="drawingBtn"
+        aria-label="Show drawing"
+        title="Show the imported drawing under the plan"
+        aria-pressed="true"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 4h16v16H4zM4 9h16M9 4v16"></path>
+        </svg>
+        <span>Drawing</span>
+      </button>
+      <button type="button" id="reimportBtn" aria-label="Import" title="Import another drawing">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v12M8 11l4 4 4-4M5 21h14"></path>
+        </svg>
+        <span>Import</span>
+      </button>
+    </Fragment>
+
+    <section class="wiz" id="wiz" aria-labelledby="wizTitle">
+      <ol class="wiz-steps" aria-label="Progress">
+        <li data-step="import">Import</li>
+        <li data-step="select">Select your flat</li>
+        <li data-step="workspace">Fix &amp; furnish</li>
+      </ol>
+
+      <div class="wiz-import" id="stepImport">
+        <h2 id="wizTitle">Import a floor plan</h2>
+        <p>A PDF exported from your CAD program, or a DXF. Everything is read in your browser — nothing is uploaded.</p>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept=".pdf,.dxf,application/pdf" />
+          <b>Drop a PDF or DXF here</b>
+          <span>or click to choose a file</span>
+        </label>
+        <div class="wiz-row">
+          <button type="button" id="sampleBtn" class="btn-ink">
+            Try the sample: flat A.26 (PDF)
+          </button>
+          <button type="button" id="resumeBtn" class="btn-line" hidden>
+            Continue your last plan
+          </button>
+        </div>
+        <p class="wiz-tip">
+          Have a DWG? In AutoCAD use <em>Save As → DXF</em>, or <em>Plot → PDF</em>.
+        </p>
+        <div class="pages" id="pages" hidden></div>
+        <p class="wiz-status" id="importStatus" role="status"></p>
+      </div>
+
+      <div class="wiz-select" id="stepSelect" hidden>
+        <div class="sheet-wrap">
+          <canvas
+            id="sheet"
+            tabindex="0"
+            aria-label="The imported sheet. Drag a box around your flat; scroll or pinch to zoom."
+          ></canvas>
+          <div class="sheet-zoom" role="group" aria-label="Sheet zoom">
+            <button type="button" id="sheetIn" aria-label="Zoom in" title="Zoom in">
+              +
+            </button>
+            <button type="button" id="sheetOut" aria-label="Zoom out" title="Zoom out">
+              −
+            </button>
+            <button type="button" id="sheetFit" aria-label="Fit sheet" title="Fit sheet">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <aside class="wiz-panel">
+          <h2>Select your flat</h2>
+          <p>
+            Drag a box around <b>your flat only</b> — leave out neighbouring units, the title block and notes. Scroll or
+            pinch to zoom; drag with the right mouse button or two fingers to pan.
+          </p>
+          <dl class="scale">
+            <dt>Scale</dt>
+            <dd>
+              <output id="scaleOut">—</output>
+            </dd>
+          </dl>
+          <button type="button" id="calibrateBtn" class="btn-line">
+            Set the scale from a known length
+          </button>
+          <button type="button" id="detectBtn" class="btn-ink" aria-disabled="true">
+            Build the plan
+          </button>
+          <button type="button" id="backImport" class="btn-link">
+            Choose another file
+          </button>
+          <p class="wiz-status" id="selectStatus" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <dialog id="calDlg" class="sheet small" aria-labelledby="calTitle">
+      <h2 id="calTitle">How long is that line?</h2>
+      <p>Enter the real length between the two points you clicked.</p>
+      <form method="dialog" class="ai-form" id="calForm">
+        <label>
+          Length in millimetres
+          <input type="number" id="calMm" min="10" step="1" required />
+        </label>
+        <div class="choices">
+          <button value="ok" class="primary">
+            Set scale
+          </button>
+          <button value="" formnovalidate>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </dialog>
+  </RoomWorkspace>
+
+  <script>
+    import { hasWebGL } from '@meridian/three-core/support';
+    const gl = hasWebGL();
+    if (!gl) document.getElementById('viewer')?.classList.add('no-gl');
+    import('../../scripts/studio/app').then((m) => m.startStudio(gl)).catch((err: unknown) => console.error(err));
+  </script>
+</BaseLayout>

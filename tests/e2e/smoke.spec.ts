@@ -29,6 +29,7 @@ const pages3d = [
   { path: 'box/', name: 'box studio', ready: '#viewer.ready' },
   { path: 'assembly/', name: 'build guide', ready: '#viewer.ready' },
   { path: 'room/', name: 'room planner', ready: '#viewer.ready' },
+  { path: 'studio/', name: 'floor plan import', ready: '#viewer.ready' },
 ];
 
 for (const p of pages3d) {
@@ -295,6 +296,73 @@ test('room planner furnishes a room with AI', async ({ page }) => {
   await page.locator('#estimateBtn').click();
   // The bedroom's nightstands, wardrobe, chair and old desk were replaced: one bed, one desk left there.
   await expect(page.locator('#estBody')).not.toContainText('Nightstand');
+  expect(errors).toEqual([]);
+});
+
+/** Drags a selection box on the import sheet, in drawing units (y up). */
+async function boxOnSheet(page: Page, x0: number, y0: number, x1: number, y1: number) {
+  const sheet = page.locator('#sheet');
+  await expect(sheet).toHaveAttribute('data-view', /\d/);
+  const [s, ox, oy] = (await sheet.getAttribute('data-view'))!.split(' ').map(Number) as [number, number, number];
+  const bb = (await sheet.boundingBox())!;
+  const at = (x: number, y: number) => [bb.x + x * s + ox, bb.y - y * s + oy] as const;
+  await page.mouse.move(...at(x0, y1));
+  await page.mouse.down();
+  await page.mouse.move(...at((x0 + x1) / 2, (y0 + y1) / 2), { steps: 4 });
+  await page.mouse.move(...at(x1, y0), { steps: 4 });
+  await page.mouse.up();
+}
+
+test('floor plan import reads the sample PDF and builds walls from the selected flat', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('#sampleBtn').click();
+  // Two sheets: pick the first, which holds the wall plan.
+  await page.locator('#pages .page').first().click({ timeout: 60_000 });
+  await expect(page.locator('#stepSelect')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#detectBtn')).toHaveAttribute('aria-disabled', 'true');
+  // The flat sits at roughly x 55–455, y 90–485 pt on the sheet.
+  await boxOnSheet(page, 55, 90, 455, 485);
+  await expect(page.locator('#scaleOut')).toContainText('dimensions in your box');
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+  await expect(page.locator('.toast')).toContainText(/Found 1\d walls/);
+  await page.locator('#drawingBtn').click();
+  await expect(page.locator('#drawingBtn')).toHaveAttribute('aria-pressed', 'false');
+  await expectNoHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test('floor plan import reads a DXF in millimetres', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // A 6 × 4 m room drawn as 200 mm double-line walls on a WALL layer.
+  const rect = (x0: number, y0: number, x1: number, y1: number) =>
+    [
+      [x0, y0, x1, y0],
+      [x1, y0, x1, y1],
+      [x1, y1, x0, y1],
+      [x0, y1, x0, y0],
+    ].flatMap(([a, b, c, d]) => ['0', 'LINE', '8', 'WALL', '10', a, '20', b, '11', c, '21', d]);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...rect(0, 0, 6000, 4000),
+    ...rect(200, 200, 5800, 3800),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'room.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await expect(page.locator('#scaleOut')).toContainText('millimetres');
+  await boxOnSheet(page, -50, -50, 6050, 4050);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('Found 4 walls');
+  await expect(page.locator('.toast')).toContainText('1 closed rooms');
   expect(errors).toEqual([]);
 });
 

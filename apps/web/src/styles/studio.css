@@ -1,0 +1,292 @@
+/* Floorwise: the import steps shown over the Roomcraft workspace until a plan is built. */
+.rc > .panes {
+  grid-row: 2;
+  grid-column: 1;
+}
+#drawingBtn span,
+#reimportBtn span {
+  display: none;
+}
+.wiz {
+  grid-row: 2;
+  grid-column: 1;
+  z-index: 5;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--bg);
+}
+.rc[data-stage='workspace'] .wiz {
+  display: none;
+}
+.rc:not([data-stage='workspace']) .tools,
+.rc:not([data-stage='workspace']) .actions > :not(#reimportBtn):not(#drawingBtn) {
+  visibility: hidden;
+}
+.rc:not([data-stage='workspace']) #reimportBtn,
+.rc:not([data-stage='workspace']) #drawingBtn {
+  display: none;
+}
+.wiz-steps {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 12px 16px 0;
+  counter-reset: step;
+  font-size: 13px;
+  color: var(--mute);
+  overflow-x: auto;
+}
+.wiz-steps li {
+  counter-increment: step;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.wiz-steps li + li::before {
+  content: '';
+  width: 18px;
+  height: 1px;
+  background: var(--line);
+  margin-right: 2px;
+}
+
+.wiz-steps li::after {
+  content: counter(step);
+  order: -1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+.wiz-steps li[aria-current='step'] {
+  color: var(--text);
+  font-weight: 600;
+}
+.wiz-steps li[aria-current='step']::after {
+  background: var(--text);
+  color: var(--paper);
+  border-color: var(--text);
+}
+.wiz-steps li.done::after {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.wiz-import {
+  align-self: start;
+  justify-self: center;
+  width: min(640px, 100%);
+  padding: 32px 16px;
+  overflow-y: auto;
+  max-height: 100%;
+}
+.wiz-import h2,
+.wiz-panel h2 {
+  font: 400 30px/1.1 var(--serif);
+  margin: 0 0 8px;
+}
+.wiz-import p,
+.wiz-panel p {
+  color: var(--mute);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.drop {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 40px 16px;
+  border: 1.5px dashed #cfc7ba;
+  border-radius: var(--r);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.drop:hover,
+.drop.over,
+.drop:focus-within {
+  border-color: var(--accent);
+  background: #fff;
+}
+.drop input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.drop span {
+  color: var(--mute);
+  font-size: 13px;
+}
+.wiz-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.btn-ink,
+.btn-line,
+.btn-link {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.btn-ink {
+  background: var(--text);
+  color: var(--paper);
+}
+.btn-ink[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.btn-line {
+  border: 1px solid #d6cfc3;
+  background: var(--paper);
+}
+.btn-link {
+  text-decoration: underline;
+  color: var(--mute);
+  padding: 0;
+}
+.wiz-tip {
+  font-size: 13px;
+}
+.wiz-status {
+  min-height: 1.5em;
+  color: var(--text) !important;
+  font-size: 13px;
+}
+.pages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.pages[hidden] {
+  display: none;
+}
+.page {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 12px;
+}
+.page:hover {
+  border-color: var(--accent);
+}
+.page img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.wiz-select {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+}
+.wiz-select[hidden],
+.wiz-import[hidden] {
+  display: none;
+}
+.sheet-wrap {
+  position: relative;
+  min-height: 0;
+  margin: 12px 0 12px 12px;
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+#sheet {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+.sheet-zoom {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sheet-zoom button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 18px;
+}
+.wiz-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+.wiz-panel p {
+  margin: 0;
+}
+.scale {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0;
+}
+.scale dt {
+  font-size: 12px;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scale dd {
+  margin: 0;
+  font-weight: 500;
+}
+.ai-form input[type='number'] {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .wiz-select {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .sheet-wrap {
+    margin: 8px 8px 0;
+  }
+  .wiz-panel {
+    padding: 12px 16px;
+    max-height: 42vh;
+  }
+  .wiz-panel h2 {
+    font-size: 22px;
+  }
+}

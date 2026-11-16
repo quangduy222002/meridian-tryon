@@ -47,7 +47,7 @@ import {
 } from './plan';
 import { estimate } from './estimate';
 import { Walker, solidsOf } from './walk';
-import { autosave, clearLinkHash, loadInitial, shareUrl } from './store';
+import { autosave, clearLinkHash, loadInitial, shareUrl, useStorageKey } from './store';
 import { roomSpecs, type RoomTexture } from './textures';
 
 const DEG = Math.PI / 180;
@@ -62,9 +62,30 @@ const HINTS: Record<Tool, string> = {
   place: 'Click the plan to place it — it snaps against the nearest wall. Esc cancels.',
 };
 
-export async function startRoomcraft(gl = true) {
+export interface RoomcraftOptions {
+  /** localStorage key for this page's autosave. */
+  storageKey?: string;
+  /** Start from this plan instead of a shared link / saved plan / sample. */
+  plan?: Plan;
+  underlay?: EditorHost['underlay'];
+}
+
+/** What a page embedding the workspace can do with it. */
+export interface RoomcraftApi {
+  plan(): Plan;
+  rooms(): Room[];
+  /** Replaces the plan (undoable) and frames it. */
+  setPlan(p: Plan, message?: string): void;
+  /** Records an edit made to plan() from outside (undo, save, redraw, 3D). */
+  commit(message?: string): void;
+  redraw(): void;
+  select(sel: Selection | null): void;
+}
+
+export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Promise<RoomcraftApi> {
   const app = $('app');
-  const initial = await loadInitial();
+  if (opts.storageKey) useStorageKey(opts.storageKey);
+  const initial = opts.plan ? { plan: opts.plan, from: 'sample' as const } : await loadInitial();
   let plan: Plan = initial.plan;
   clearLinkHash();
   if (initial.from === 'link') toast('Opened a shared plan');
@@ -88,6 +109,7 @@ export async function startRoomcraft(gl = true) {
     renderInspector();
   };
   const host: EditorHost = {
+    underlay: opts.underlay,
     plan: () => plan,
     rooms: () => rooms,
     commit(message) {
@@ -532,6 +554,27 @@ export async function startRoomcraft(gl = true) {
     await three.start();
   }
   renderInspector();
+
+  return {
+    plan: () => plan,
+    rooms: () => rooms,
+    setPlan(p, message) {
+      undo.push(JSON.stringify(plan));
+      redo.length = 0;
+      plan = p;
+      last = JSON.stringify(plan);
+      editor.select(null);
+      syncHistory();
+      refresh();
+      autosave(plan);
+      three?.reframe();
+      requestAnimationFrame(() => editor.fit());
+      if (message) toast(message);
+    },
+    commit: (message) => host.commit(message),
+    redraw: () => editor.draw(),
+    select: (sel) => editor.select(sel),
+  };
 }
 
 /** The 3D side: sun, dollhouse cut-away, picking. */
