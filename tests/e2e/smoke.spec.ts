@@ -28,6 +28,7 @@ const pages3d = [
   { path: 'chair/', name: 'chair configurator', ready: '#viewer.ready' },
   { path: 'box/', name: 'box studio', ready: '#viewer.ready' },
   { path: 'assembly/', name: 'build guide', ready: '#viewer.ready' },
+  { path: 'room/', name: 'room planner', ready: '#viewer.ready' },
 ];
 
 for (const p of pages3d) {
@@ -178,6 +179,42 @@ test('studio edits both ends of a move and builds a step with AI', async ({ page
   expect(sentKey).toBe('Bearer sk-ant-test');
   await expect(page.locator('#stCount')).toHaveText('12');
   await expect(page.locator('#stTitle')).toHaveValue('Take the side panel off again');
+  expect(errors).toEqual([]);
+});
+
+test('room planner edits the plan in 2D and keeps undo', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const plan = page.locator('#plan');
+  const box = (await plan.boundingBox())!;
+  // Plan metres → canvas pixels, mirroring the editor's fit() for the 10 × 7.6 m sample flat.
+  const scale = Math.min((box.width - 112) / 10, (box.height - 112) / 7.6);
+  const at = (x: number, z: number) => ({
+    x: box.width / 2 + (x - 5) * scale,
+    y: box.height / 2 + (z - 3.8) * scale,
+  });
+  // An empty spot of bedroom floor selects the room; pick a walnut floor.
+  await plan.click({ position: at(7.3, 2.7) });
+  await expect(page.locator('#inspector')).toBeVisible();
+  await expect(page.locator('#inspector h2')).toContainText('m²');
+  await page.locator('#inspector [data-floor=walnut]').click();
+  await expect(page.locator('#inspector [data-floor=walnut]')).toHaveAttribute('aria-pressed', 'true');
+  // Place a plant from the catalogue.
+  await page.locator('#furnBtn').click();
+  await page.locator('#catGrid [data-type=plant]').click();
+  await expect(page.locator('#hint')).toContainText('plant');
+  await plan.click({ position: at(7.3, 2.7) });
+  await expect(page.locator('#inspector h2')).toContainText('Plant');
+  await page.locator('#inspector [data-act=rotr]').click();
+  // Draw a free-standing wall, then undo it.
+  await page.locator('[data-tool=wall]').click();
+  await plan.click({ position: at(2, 8.6) });
+  await plan.click({ position: at(5, 8.6) });
+  await plan.press('Enter');
+  await page.locator('[data-tool=select]').click();
+  await page.locator('#undoBtn').click();
+  await expect(page.locator('#undoBtn')).toHaveAttribute('aria-disabled', 'false');
   expect(errors).toEqual([]);
 });
 
