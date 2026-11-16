@@ -498,9 +498,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/app.ts": {
-    "mtime": 1794794362.3623435,
-    "seen": 1794794484.649238,
-    "ast_hash": "60a496991f046137e090abc4eb62128b",
+    "mtime": 1794803303.1878424,
+    "seen": 1794803418.143658,
+    "ast_hash": "d3ec0fcc5a6d4855c9989f43f752cacf",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/assembly/guide.ts": {

@@ -766,5 +766,9 @@ void main() {
   loop.start();
   viewer.classList.add('ready');
   if (new URLSearchParams(location.search).has('studio')) void setMode('studio');
-  else setTimeout(() => goto(0), 500);
+  // Play the first step after a beat — unless the visitor has already moved on.
+  else
+    setTimeout(() => {
+      if (cur === 0 && mode !== 'studio') goto(0);
+    }, 500);
 }
