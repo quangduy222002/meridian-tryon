@@ -34,6 +34,9 @@ import { FLOORS, FURNITURE, WALLS } from './catalog';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
 import { findRooms, len, roomName, roomStyle, samplePlan, wallEnds, type Plan, type Room } from './plan';
+import { estimate } from './estimate';
+import { Walker, solidsOf } from './walk';
+import { autosave, clearLinkHash, loadInitial, shareUrl } from './store';
 import { roomSpecs, type RoomTexture } from './textures';
 
 const DEG = Math.PI / 180;
@@ -50,7 +53,10 @@ const HINTS: Record<Tool, string> = {
 
 export async function startRoomcraft(gl = true) {
   const app = $('app');
-  let plan: Plan = samplePlan();
+  const initial = await loadInitial();
+  let plan: Plan = initial.plan;
+  clearLinkHash();
+  if (initial.from === 'link') toast('Opened a shared plan');
   let rooms: Room[] = findRooms(plan);
 
   /* ---------- Undo / redo ---------- */
@@ -83,6 +89,7 @@ export async function startRoomcraft(gl = true) {
       }
       syncHistory();
       refresh();
+      autosave(plan);
       if (message) toast(message);
     },
     preview() {
@@ -93,6 +100,7 @@ export async function startRoomcraft(gl = true) {
       three?.select(sel);
       renderInspector();
     },
+    walker: () => three?.walker() ?? null,
     toolChanged(tool) {
       for (const b of document.querySelectorAll<HTMLElement>('.tools [data-tool]'))
         b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
@@ -113,6 +121,7 @@ export async function startRoomcraft(gl = true) {
     editor.select(null);
     syncHistory();
     refresh();
+    autosave(plan);
   };
   $('undoBtn').addEventListener('click', () => history(undo, redo));
   $('redoBtn').addEventListener('click', () => history(redo, undo));
@@ -284,6 +293,115 @@ export async function startRoomcraft(gl = true) {
     }
   });
 
+  /* ---------- New plan ---------- */
+  const newDlg = $<HTMLDialogElement>('newDlg');
+  $('newBtn').addEventListener('click', () => newDlg.showModal());
+  newDlg.addEventListener('close', () => {
+    const choice = newDlg.returnValue;
+    newDlg.returnValue = '';
+    if (!choice) return;
+    undo.push(JSON.stringify(plan));
+    redo.length = 0;
+    plan =
+      choice === 'sample'
+        ? samplePlan()
+        : { nodes: [], walls: [], openings: [], items: [], rooms: {}, north: plan.north };
+    last = JSON.stringify(plan);
+    editor.select(null);
+    syncHistory();
+    refresh();
+    autosave(plan);
+    three?.reframe();
+    requestAnimationFrame(() => editor.fit());
+    showPane('plan');
+    if (choice === 'blank') editor.setTool('wall');
+  });
+
+  /* ---------- Estimate ---------- */
+  const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+  $('estimateBtn').addEventListener('click', () => {
+    const e = estimate(plan, rooms);
+    $('estBody').innerHTML = `<div class="est-totals">
+  <div><small>Floor area</small><b>${e.totalArea.toFixed(1)} m²</b></div>
+  <div><small>Finishes</small><b>${usd(e.finishes)}</b></div>
+  <div><small>Furniture</small><b>${usd(e.furnitureTotal)}</b></div>
+  <div><small>Total</small><b>${usd(e.total)}</b></div>
+</div>
+<div class="est-scroll"><table class="est">
+  <caption class="sr-only">Rooms, finishes and costs</caption>
+  <thead><tr><th scope="col">Room</th><th scope="col" class="n">Area</th><th scope="col">Floor</th><th scope="col">Walls</th><th scope="col" class="n">Cost</th></tr></thead>
+  <tbody>${e.rooms
+    .map(
+      (r) =>
+        `<tr><th scope="row">${esc(r.name)}</th><td class="n">${r.area.toFixed(1)} m²</td><td>${esc(r.floor.name)}<small>${usd(r.floor.cost)}</small></td><td>${esc(r.wall.name)}<small>${r.wallArea.toFixed(0)} m² · ${usd(r.wall.cost)}</small></td><td class="n">${usd(r.floor.cost + r.wall.cost)}</td></tr>`,
+    )
+    .join('')}</tbody>
+</table></div>
+<h3>Furniture, doors and windows</h3>
+<div class="est-scroll"><table class="est">
+  <tbody>${e.furniture
+    .map(
+      (f) =>
+        `<tr><th scope="row">${esc(f.name)}</th><td class="n">× ${f.qty}</td><td class="n">${usd(f.cost)}</td></tr>`,
+    )
+    .join('')}
+  <tr><th scope="row">Doors and windows</th><td class="n">${e.openings.doors} + ${e.openings.windows}</td><td class="n">${usd(e.openings.cost)}</td></tr></tbody>
+  <tfoot><tr><td>Total</td><td></td><td class="n">${usd(e.total)}</td></tr></tfoot>
+</table></div>`;
+    $<HTMLDialogElement>('estimate').showModal();
+  });
+
+  /* ---------- Share: native share sheet on phones, else copy the link ---------- */
+  const shareTip = document.querySelector<HTMLElement>('.share-tip')!;
+  let tipTimer = 0;
+  /** The bubble is the visible feedback and the live region, for success and failure alike. */
+  const report = (msg: string) => {
+    clearTimeout(tipTimer);
+    shareTip.textContent = '';
+    requestAnimationFrame(() => (shareTip.textContent = msg));
+    tipTimer = window.setTimeout(() => (shareTip.textContent = ''), 2200);
+  };
+  $('shareBtn').addEventListener('click', async () => {
+    const url = await shareUrl(plan);
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ title: 'My Roomcraft plan', url });
+        return;
+      } catch (err) {
+        if ((err as DOMException).name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      report('Link copied');
+    } catch {
+      report('Copy failed');
+    }
+  });
+
+  /* ---------- Snapshot ---------- */
+  $('snapBtn').addEventListener('click', async () => {
+    if (!three) return toast('3D needs WebGL');
+    showPane('three');
+    const blob = await three.snapshot();
+    if (!blob) return toast('Could not take the picture');
+    const file = new File([blob], 'roomcraft.png', { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ files: [file], title: 'Roomcraft' });
+        return;
+      } catch {
+        // Cancelled or unsupported: download instead.
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'roomcraft.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('Snapshot saved');
+  });
+
   /* ---------- Phones: one pane at a time ---------- */
   const showPane = (pane: 'plan' | 'three') => {
     if (app.dataset.pane === pane) return;
@@ -408,12 +526,54 @@ async function setupThree(
     redraw2d(); // the plan's north arrow
   });
 
-  /* ---------- Dollhouse cut-away ---------- */
-  let mode: 'orbit' | 'dollhouse' = 'dollhouse';
+  /* ---------- Walking ---------- */
+  let solids = solidsOf(getPlan());
+  const walker = new Walker(
+    camera,
+    canvas,
+    $('joy'),
+    () => solids,
+    () => loop.invalidate(),
+    () => setMode('dollhouse'),
+  );
+  let walkerMoved = false; // looking around without walking still turns the 2D marker
+  canvas.addEventListener('pointermove', () => mode === 'walk' && (walkerMoved = true));
+  /** Starts in the largest room, looking towards the middle of the home. */
+  const enterWalk = () => {
+    const rooms = getRooms();
+    const big = [...rooms].sort((a, b) => b.area - a.area)[0];
+    const [x, z] = big?.centroid ?? [house.bounds.cx, house.bounds.cz];
+    const { cx, cz } = house.bounds;
+    const yaw = Math.atan2(-(cx - x), -(cz - z) || -1);
+    walker.enter(x, z, Number.isFinite(yaw) ? yaw : 0);
+  };
+
+  /* ---------- View modes: orbit, dollhouse cut-away, walk ---------- */
+  let mode: 'orbit' | 'dollhouse' | 'walk' = 'dollhouse';
   const setMode = (m: typeof mode) => {
+    const was = mode;
     mode = m;
     for (const b of document.querySelectorAll<HTMLElement>('[data-view]'))
       b.setAttribute('aria-pressed', String(b.dataset.view === m));
+    viewer.classList.toggle('walking', m === 'walk');
+    house.setCeilings(m === 'walk');
+    if (m === 'walk' && was !== 'walk') {
+      controls.enabled = false;
+      camera.fov = 68;
+      camera.updateProjectionMatrix();
+      solids = solidsOf(getPlan());
+      enterWalk();
+      redraw2d();
+      canvas.focus({ preventScroll: true });
+    } else if (m !== 'walk' && was === 'walk') {
+      walker.exit();
+      redraw2d();
+      controls.enabled = true;
+      camera.fov = 38;
+      camera.updateProjectionMatrix();
+      frame();
+    }
+    renderer.shadowMap.needsUpdate = true;
     loop.invalidate();
   };
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-view]'))
@@ -443,7 +603,9 @@ async function setupThree(
   const loop = new RenderLoop(
     (dt) => {
       const cutting = cutWalls(dt);
-      const moving = controls.update(dt);
+      const moving = mode === 'walk' ? walker.update(dt) : controls.update(dt);
+      if (mode === 'walk' && (moving || walkerMoved)) redraw2d();
+      walkerMoved = false;
       renderer.render(scene, camera);
       return cutting || moving;
     },
@@ -495,9 +657,26 @@ async function setupThree(
         frame();
         framed = true;
       }
-      if (rebuilt) updateSun();
+      if (rebuilt) {
+        updateSun();
+        solids = solidsOf(p);
+      }
       renderer.shadowMap.needsUpdate = true;
       loop.invalidate();
+    },
+    walker: () => walker.pose,
+    /** Frame the whole home again after the plan is replaced. */
+    reframe() {
+      touched = false;
+      framed = false;
+      if (mode === 'walk') setMode('dollhouse');
+    },
+    /** Renders a frame and reads it back as a PNG (in the same task, before the buffer is cleared). */
+    snapshot() {
+      return new Promise<Blob | null>((resolve) => {
+        renderer.render(scene, camera);
+        canvas.toBlob(resolve, 'image/png');
+      });
     },
     select(sel: Selection | null) {
       house.select(getPlan(), sel?.kind === 'item' ? sel.id : null);

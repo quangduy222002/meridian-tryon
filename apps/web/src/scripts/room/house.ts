@@ -57,6 +57,9 @@ export class House {
   private structure = new Group();
   private furniture = new Group();
   private structureSig = '';
+  private ceilings: Mesh[] = [];
+  private showCeilings = false;
+  private readonly ceilingMat = new MeshStandardMaterial({ color: '#f6f3ee', roughness: 0.95 });
   private finishMats = new Map<string, MeshStandardMaterial>();
   private readonly cap = new MeshStandardMaterial({ color: '#3d3833', roughness: 0.9 });
   private readonly exterior = new MeshStandardMaterial({ color: '#f3efe8', roughness: 0.92 });
@@ -110,6 +113,7 @@ export class House {
     });
     this.structure.clear();
     this.walls = [];
+    this.ceilings = [];
     const nodes = nodeMap(p);
 
     /* Floors and the shadow-only roof */
@@ -127,6 +131,17 @@ export class House {
       roof.position.y = WALL_HEIGHT;
       roof.castShadow = true;
       this.structure.add(roof);
+      // Visible ceiling, only while walking through the rooms (faces down).
+      const ceiling = new Mesh(
+        new ShapeGeometry(new Shape(r.poly.map(([x, z]) => ({ x, y: z }) as never))),
+        this.ceilingMat,
+      );
+      ceiling.rotation.x = Math.PI / 2;
+      ceiling.position.y = WALL_HEIGHT - 0.002;
+      ceiling.receiveShadow = true;
+      ceiling.visible = this.showCeilings;
+      this.ceilings.push(ceiling);
+      this.structure.add(ceiling);
     }
 
     /* Walls */
@@ -232,6 +247,11 @@ export class House {
       box(width - 2 * f, h - f, 0.012, this.glass, 0, y);
     }
     return o;
+  }
+
+  setCeilings(on: boolean) {
+    this.showCeilings = on;
+    for (const c of this.ceilings) c.visible = on;
   }
 
   /** Adds, removes and moves furniture; rebuilds an item only when its type or colour changes. */

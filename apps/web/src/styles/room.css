@@ -136,6 +136,32 @@ svg {
   font-size: 13px;
   font-weight: 600;
 }
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.share-wrap {
+  position: relative;
+}
+.share-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+.share-tip:not(:empty) {
+  opacity: 1;
+}
 .actions .primary {
   background: var(--text);
   border-color: var(--text);
@@ -422,6 +448,178 @@ svg {
   width: 100%;
 }
 
+/* ---------- Walk mode ---------- */
+.walk-hint,
+.joy {
+  display: none;
+}
+.three.walking .walk-hint {
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  padding: 7px 12px;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.9);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: #4a4640;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.three.walking .sun {
+  display: none;
+}
+.three.walking .joy {
+  display: block;
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.55);
+  border: 1px solid var(--line);
+  touch-action: none;
+}
+.joy i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0.75;
+}
+@media (pointer: fine) {
+  .three.walking .joy {
+    display: none;
+  }
+}
+
+/* ---------- Dialogs ---------- */
+.sheet {
+  margin: auto;
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 40px);
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 30px 80px rgb(60 40 10 / 0.25);
+}
+.sheet.small {
+  width: min(400px, calc(100vw - 24px));
+}
+.sheet::backdrop {
+  background: rgb(29 29 31 / 0.3);
+}
+.sheet header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.sheet h2 {
+  font: 400 26px var(--serif);
+}
+.sheet header button {
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  border-radius: 8px;
+  color: var(--mute);
+}
+.sheet p {
+  color: var(--mute);
+  font-size: 13px;
+  margin: 6px 0 14px;
+}
+.sheet .note {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+}
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choices button {
+  min-block-size: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+.choices .primary {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+.est-scroll {
+  overflow-x: auto;
+}
+.est {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.est th,
+.est td {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.est thead th {
+  font: 500 10.5px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.est .n {
+  text-align: right;
+  white-space: nowrap;
+}
+.est small {
+  display: block;
+  color: var(--mute);
+  font-size: 11.5px;
+}
+.est tfoot td {
+  font-weight: 700;
+  border-bottom: none;
+}
+.est-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.est-totals div {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.est-totals small {
+  display: block;
+  font: 500 10.5px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.est-totals b {
+  font: 400 24px var(--serif);
+}
+.est h3 {
+  margin: 16px 0 4px;
+  font-size: 13px;
+}
+
 /* ---------- Furniture catalogue (popover) ---------- */
 .catalog {
   position: fixed;
@@ -527,6 +725,12 @@ svg {
   }
   .actions {
     margin-left: auto;
+  }
+  .actions button span {
+    display: none;
+  }
+  .actions button {
+    padding: 0 10px;
   }
   .panes {
     grid-template-columns: 1fr;

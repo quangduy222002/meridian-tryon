@@ -38,6 +38,8 @@ export interface EditorHost {
   preview(): void;
   selected(sel: Selection | null): void;
   toolChanged(tool: Tool): void;
+  /** Where the visitor is standing in walk mode (plan metres, yaw in radians), if walking. */
+  walker?(): { x: number; z: number; yaw: number } | null;
 }
 
 const INK = '#2a2622';
@@ -834,6 +836,27 @@ export class PlanEditor {
         c.stroke();
         c.globalAlpha = 1;
       }
+    }
+
+    // "You are here" while walking in 3D: a dot and the direction of view.
+    const me = this.host.walker?.();
+    if (me) {
+      const fx = -Math.sin(me.yaw);
+      const fz = -Math.cos(me.yaw);
+      const a0 = Math.atan2(fz, fx);
+      c.beginPath();
+      c.moveTo(X(me.x), Z(me.z));
+      c.arc(X(me.x), Z(me.z), 1.6 * s, a0 - 0.55, a0 + 0.55);
+      c.closePath();
+      c.fillStyle = 'rgba(226, 98, 43, 0.18)';
+      c.fill();
+      c.beginPath();
+      c.arc(X(me.x), Z(me.z), 6, 0, Math.PI * 2);
+      c.fillStyle = ACCENT;
+      c.fill();
+      c.strokeStyle = '#fff';
+      c.lineWidth = 2;
+      c.stroke();
     }
 
     // North arrow

@@ -218,6 +218,37 @@ test('room planner edits the plan in 2D and keeps undo', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('room planner walks, estimates and shares', async ({ page, context }, info) => {
+  const errors = watchErrors(page);
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // Estimate
+  await page.locator('#estimateBtn').click();
+  await expect(page.locator('#estimate')).toBeVisible();
+  await expect(page.locator('#estBody')).toContainText('Bathroom');
+  await expect(page.locator('#estBody .est-totals')).toContainText('76.0 m²');
+  await page.keyboard.press('Escape');
+  // Walk through the 3D view and leave again
+  if (info.project.name === 'mobile') await page.locator('[data-show=three]').click();
+  await page.locator('[data-view=walk]').click();
+  await expect(page.locator('#viewer')).toHaveClass(/walking/);
+  await page.locator('[data-view=dollhouse]').click();
+  await expect(page.locator('#viewer')).not.toHaveClass(/walking/);
+  // Share copies a link that reopens the same plan
+  if (info.project.name !== 'mobile') {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('#shareBtn').click();
+    await expect(page.locator('.share-tip')).toHaveText('Link copied');
+    const url = await page.evaluate(() => navigator.clipboard.readText());
+    expect(url).toContain('#p=');
+    await page.goto(url);
+    await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+    await page.locator('#estimateBtn').click();
+    await expect(page.locator('#estBody .est-totals')).toContainText('76.0 m²');
+  }
+  expect(errors).toEqual([]);
+});
+
 test('storefront boots', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('store/');

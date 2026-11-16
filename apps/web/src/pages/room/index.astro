@@ -62,7 +62,35 @@ import '../../styles/room.css';
           </button>
         </div>
       </div>
-      <div class="actions" id="actions"></div>
+      <div class="actions">
+        <button type="button" id="newBtn" aria-label="New" title="New plan">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3h8l4 4v14H6zM14 3v4h4M12 11v6M9 14h6"></path>
+          </svg>
+          <span>New</span>
+        </button>
+        <button type="button" id="estimateBtn" aria-label="Estimate" title="Areas and cost estimate">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 3h14v18H5zM8 7h8M8 11h2M12 11h2M8 15h2M12 15h4"></path>
+          </svg>
+          <span>Estimate</span>
+        </button>
+        <button type="button" id="snapBtn" aria-label="Snapshot" title="Save a picture of the 3D view">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+        <span class="share-wrap">
+          <button type="button" id="shareBtn" class="primary" aria-label="Share" title="Share a link to this plan">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"></path>
+            </svg>
+            <span>Share</span>
+          </button>
+          <span class="share-tip" role="status"></span>
+        </span>
+      </div>
     </header>
 
     <main class="panes">
@@ -101,6 +129,15 @@ import '../../styles/room.css';
           <button type="button" data-view="dollhouse" aria-pressed="false">
             Dollhouse
           </button>
+          <button type="button" data-view="walk" aria-pressed="false">
+            Walk
+          </button>
+        </div>
+        <p class="walk-hint" id="walkHint">
+          Drag to look · WASD or arrows to walk · Shift to hurry · Esc to leave
+        </p>
+        <div class="joy" id="joy" aria-hidden="true">
+          <i></i>
         </div>
         <div class="sun">
           <label for="hour">
@@ -125,6 +162,29 @@ import '../../styles/room.css';
         3D
       </button>
     </nav>
+
+    <dialog id="estimate" class="sheet" aria-labelledby="estTitle">
+      <header>
+        <h2 id="estTitle">Areas &amp; estimate</h2>
+        <form method="dialog">
+          <button aria-label="Close estimate">✕</button>
+        </form>
+      </header>
+      <div id="estBody"></div>
+      <p class="note">Indicative supply-and-fit prices in USD, for comparing options — not a quote.</p>
+    </dialog>
+
+    <dialog id="newDlg" class="sheet small" aria-labelledby="newTitle">
+      <h2 id="newTitle">Start a new plan?</h2>
+      <p>Your current plan is replaced; undo still brings it back.</p>
+      <form method="dialog" class="choices">
+        <button value="blank" class="primary">
+          Blank plan
+        </button>
+        <button value="sample">Sample flat</button>
+        <button value="">Cancel</button>
+      </form>
+    </dialog>
 
     <div popover id="catalog" class="catalog" role="dialog" aria-labelledby="catalogTitle">
       <header>
