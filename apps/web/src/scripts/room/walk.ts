@@ -57,8 +57,8 @@ export class Walker {
 
   constructor(
     private readonly camera: PerspectiveCamera,
-    private readonly surface: HTMLElement,
-    private readonly stick: HTMLElement,
+    surface: HTMLElement,
+    stick: HTMLElement,
     private readonly solids: () => Solid[],
     private readonly onChange: () => void,
     private readonly onExit: () => void,

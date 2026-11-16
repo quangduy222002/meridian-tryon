@@ -546,15 +546,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/room/index.astro": {
-    "mtime": 1794797304.3852804,
-    "seen": 1794797575.2301943,
-    "ast_hash": "e028745a1f7a7688513aea5602626cbe",
+    "mtime": 1794799127.1963117,
+    "seen": 1794799151.4111912,
+    "ast_hash": "5a944c76b376155eb14cecbf34cf51b2",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794797326.553478,
-    "seen": 1794797575.230227,
-    "ast_hash": "c0173db2647a21f64174cdd757b99cdd",
+    "mtime": 1794799127.1971135,
+    "seen": 1794799151.411283,
+    "ast_hash": "13934639ce62f19eff2b25554c58ec2c",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/walk.ts": {
-    "mtime": 1794796955.514835,
-    "seen": 1794797032.9851587,
-    "ast_hash": "4546b9cfb4973d11db66bd2b5dc1543a",
+    "mtime": 1794799127.1977057,
+    "seen": 1794799151.4113033,
+    "ast_hash": "8875715f4e8a9271605309933441d677",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/ai.ts": {

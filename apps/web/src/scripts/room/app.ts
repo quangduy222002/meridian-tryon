@@ -800,8 +800,12 @@ async function setupThree(
   };
 }
 
-/** Roving tab stop for the toolbar where the browser has no native `focusgroup`. */
+/**
+ * Arrow-key navigation for the toolbar: native `focusgroup` where the browser has it (set here because Astro's
+ * attribute types don't know it yet), otherwise a roving tab stop.
+ */
 function rovingToolbar(bar: HTMLElement) {
+  bar.setAttribute('focusgroup', 'toolbar wrap');
   if ('focusGroup' in HTMLElement.prototype) return;
   const items = [...bar.querySelectorAll<HTMLButtonElement>('button')];
   items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));

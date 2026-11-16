@@ -1,7 +1,7 @@
 # Graph Report - meridian-tryon  (2026-11-16)
 
 ## Corpus Check
-- 101 files · ~73,259 words
+- 101 files · ~73,272 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 13 file(s) not represented in the graph (top: .css 8, (none) 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `14535f82`
+- Built from commit: `8c99eda6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -70,10 +70,10 @@
   CLAUDE.md → packages/three-core/src/loop.ts
 - `Layout` --references--> `ScrollDirector`  [INFERRED]
   CLAUDE.md → packages/three-core/src/scroll-director.ts
-- `Layout` --references--> `bakeStudio()`  [INFERRED]
-  CLAUDE.md → packages/three-core/src/environment.ts
 - `3D work: performance comes first` --references--> `getQuality()`  [INFERRED]
   CLAUDE.md → packages/three-core/src/quality.ts
+- `3D work: performance comes first` --references--> `precompile()`  [INFERRED]
+  CLAUDE.md → packages/three-core/src/renderer.ts
 
 ## Import Cycles
 - None detected.
