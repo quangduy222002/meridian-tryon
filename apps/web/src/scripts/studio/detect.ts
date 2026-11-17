@@ -3,11 +3,13 @@
  *
  * 1. Keep horizontal and vertical lines; merge pieces that continue each other.
  * 2. A wall is two parallel lines 6–65 cm apart with nothing parallel between them, whose band is hatched
- *    (cut walls are hatched on architectural plans; dimension and extension lines aren't). DXF files carry no
- *    hatch strokes, so there wall layers ("WALL", "TUONG", …) count instead.
+ *    (cut walls are hatched on architectural plans; dimension and extension lines aren't). Concrete, drawn with
+ *    sparse hatch, counts when the band is a closed block. DXF files carry no hatch strokes, so there wall layers
+ *    ("WALL", "TUONG", …) count instead.
  * 3. Pieces on one line join up; gaps of a door's or window's width become openings (an arc nearby means a door,
- *    glazing lines inside the gap a window).
- * 4. Ends snap to the walls they run into, so corners and T-junctions share nodes and rooms close.
+ *    glazing lines inside the gap a window). Short cross-cuts inside a wall's body are dropped.
+ * 4. Ends snap to the walls they run into, so corners and T-junctions share nodes and rooms close; where a facade
+ *    changes thickness, the offset centre lines are joined by a short cross piece.
  * It is a heuristic: the result is meant to be checked and fixed in the plan editor (or by the AI clean-up).
  */
 import { splitWall, tidy, uid, type Opening, type Plan, type PlanNode, type Wall } from '../room/plan';
@@ -109,6 +111,24 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     return L / ((b - a) * (c1 - c0));
   };
 
+  /**
+   * Cast concrete is drawn with sparse diagonals and aggregate marks, far below brick hatch density. Such a band
+   * still counts as wall when it is a closed block — both ends capped by a line straight across — holding a real
+   * pattern (several strokes). A rectangle with one or two diagonals (a beam, a shaft, a shower tray) is not.
+   */
+  const concreteBlock = (o: 'H' | 'V', c0: number, c1: number, a: number, b: number) => {
+    let n = 0;
+    for (const h of hatch) {
+      const along = o === 'H' ? h.x : h.y;
+      const across = o === 'H' ? h.y : h.x;
+      if (along > a && along < b && across > c0 && across < c1) n++;
+    }
+    if (n < 4 || hatchDensity(o, c0, c1, a, b) < 0.002) return false;
+    const cross = o === 'H' ? VM : HM;
+    const capped = (at: number) => cross.some((r) => Math.abs(r.c - at) < 20 && r.a <= c0 + 20 && r.b >= c1 - 20);
+    return capped(a) && capped(b);
+  };
+
   const pair = (list: Line[], o: 'H' | 'V') => {
     const out: WallPiece[] = [];
     // Hatched blocks up to 1 m thick are columns and service shafts: keep them as thick walls.
@@ -136,7 +156,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         );
         if (between) continue;
         if (hatched) {
-          if (hatchDensity(o, p.c, q.c, a, b) < 0.01) continue;
+          if (hatchDensity(o, p.c, q.c, a, b) < 0.01 && !concreteBlock(o, p.c, q.c, a, b)) continue;
         } else if (layered && !(WALL_LAYER.test(p.layer ?? '') && WALL_LAYER.test(q.layer ?? ''))) continue;
         out.push({ o, c: (p.c + q.c) / 2, a, b, t: gap });
       }
@@ -175,6 +195,8 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     b: number;
     t: number;
     holes: { a: number; b: number; kind: Opening['kind']; flip: number }[];
+    /** A short connector added where a wall changes thickness; kept however short it is. */
+    joint?: boolean;
   }
   const runs: Run[] = [];
   pieces.sort((p, q) => (p.o === q.o ? p.c - q.c || p.a - q.a : p.o < q.o ? -1 : 1));
@@ -215,24 +237,51 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     r.b = Math.max(r.b, p.b);
     r.c = (r.c + p.c) / 2;
   }
+  /*
+   * Cross lines inside a hatched wall (block ends, joints between materials) pair up into short "walls" running
+   * across it. They sit wholly inside a longer perpendicular wall's body: drop them, or the walls that meet there
+   * snap to them instead of to each other and the room doesn't close.
+   */
+  const inside = (p: Run, q: Run) =>
+    p.o !== q.o &&
+    q.b - q.a > Math.max(1000, (p.b - p.a) * 2) &&
+    p.a >= q.c - q.t / 2 - 20 &&
+    p.b <= q.c + q.t / 2 + 20 &&
+    p.c - p.t / 2 >= q.a - 20 &&
+    p.c + p.t / 2 <= q.b + 20;
+  const crossCuts = runs.filter((p) => !p.holes.length && runs.some((q) => inside(p, q)));
+  for (const p of crossCuts) runs.splice(runs.indexOf(p), 1);
+
   // A glazing band continuing a wall line (or bridging to it) becomes wall with a window across the band.
-  for (const g of glazing) {
-    const covered = runs.some((r) => r.o === g.o && Math.abs(r.c - g.c) < 60 && g.a >= r.a - 50 && g.b <= r.b + 50);
-    if (covered) continue;
-    const near = runs.find(
-      (r) => r.o === g.o && Math.abs(r.c - g.c) < 60 && (Math.abs(g.a - r.b) < 400 || Math.abs(r.a - g.b) < 400),
-    );
-    if (near) {
+  // Attaching one band lengthens the wall, which can bring the next band within reach: repeat until nothing changes,
+  // so the result doesn't depend on the order the bands were found in.
+  const pending = new Set(glazing);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const g of pending) {
+      const covered = runs.some((r) => r.o === g.o && Math.abs(r.c - g.c) < 60 && g.a >= r.a - 50 && g.b <= r.b + 50);
+      if (covered) {
+        pending.delete(g);
+        continue;
+      }
+      const near = runs.find(
+        (r) => r.o === g.o && Math.abs(r.c - g.c) < 60 && (Math.abs(g.a - r.b) < 400 || Math.abs(r.a - g.b) < 400),
+      );
+      // A band on its own is usually dimension or extension lines, not a window: leave it.
+      if (!near) continue;
       near.holes.push({ a: Math.max(g.a, near.b), b: g.b <= near.a ? near.a : g.b, kind: 'window', flip: 1 });
       if (g.b <= near.a) near.holes[near.holes.length - 1]!.a = g.a;
       near.a = Math.min(near.a, g.a);
       near.b = Math.max(near.b, g.b);
+      pending.delete(g);
+      changed = true;
     }
-    // A band on its own is usually dimension or extension lines, not a window: skip it.
   }
 
   /* ---------- Snap ends onto the walls they meet ---------- */
   const reach = (r: Run, s: Run) => r.t / 2 + s.t / 2 + 150;
+  /** Ends already landed on a wall; the gap-closing pass below must not drag them onto another one. */
+  const snapped = new Set<string>();
   for (const r of runs) {
     for (const end of ['a', 'b'] as const) {
       const pos = r[end];
@@ -244,7 +293,10 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         const d = Math.abs(s.c - pos);
         if (d < reach(r, s) && (!best || d < best.d)) best = { v: s.c, d };
       }
-      if (best) r[end] = best.v;
+      if (best) {
+        r[end] = best.v;
+        snapped.add(`${runs.indexOf(r)}${end}`);
+      }
     }
   }
   // Perpendicular walls whose spans stop short of each other's lines (an L corner drawn with a gap): extend.
@@ -252,12 +304,36 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     for (const s of runs) {
       if (r.o === s.o) continue;
       for (const e of ['a', 'b'] as const)
-        if (Math.abs(s[e] - r.c) < reach(r, s) && s.c >= r.a - reach(r, s) && s.c <= r.b + reach(r, s)) {
+        if (
+          !snapped.has(`${runs.indexOf(s)}${e}`) &&
+          Math.abs(s[e] - r.c) < reach(r, s) &&
+          s.c >= r.a - reach(r, s) &&
+          s.c <= r.b + reach(r, s)
+        ) {
           s[e] = r.c;
           if (s.c < r.a) r.a = s.c;
           if (s.c > r.b) r.b = s.c;
         }
     }
+  // Where a facade changes thickness (a concrete block meeting a brick wall), the two pieces' centre lines are offset.
+  // Meet them at a common point and join the lines with a short cross piece, so the outline stays one closed loop.
+  const joints: Run[] = [];
+  for (const r of runs)
+    for (const s of runs) {
+      if (r === s || r.o !== s.o || r.joint || s.joint) continue;
+      const off = Math.abs(r.c - s.c);
+      if (off < 10 || off > (r.t + s.t) / 2 + 30 || Math.abs(r.b - s.a) > 150) continue;
+      const at = (r.b + s.a) / 2;
+      const lo = Math.min(r.c, s.c);
+      const hi = Math.max(r.c, s.c);
+      // Already joined by a perpendicular wall through that point.
+      const joined = runs.some((x) => x.o !== r.o && Math.abs(x.c - at) < 60 && x.a <= lo + 20 && x.b >= hi - 20);
+      if (joined) continue;
+      r.b = at;
+      s.a = at;
+      joints.push({ o: r.o === 'H' ? 'V' : 'H', c: at, a: lo, b: hi, t: Math.min(r.t, s.t), holes: [], joint: true });
+    }
+  runs.push(...joints);
 
   /* ---------- Build the plan (metres, z down, origin at the region's top-left) ---------- */
   const ox = region.x0 * k;
@@ -274,7 +350,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   };
   for (const r of runs) {
     const L = r.b - r.a;
-    if (L < 250) continue;
+    if (L < (r.joint ? 10 : 250)) continue;
     const [ax, az] = toPlan(r.o, r.c, r.a);
     const [bx, bz] = toPlan(r.o, r.c, r.b);
     const w: Wall = { id: uid('w'), a: nodeAt(ax, az).id, b: nodeAt(bx, bz).id, thick: Math.round(r.t / 10) / 100 };

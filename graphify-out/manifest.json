@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794882951.6685002,
-    "seen": 1794883115.722015,
-    "ast_hash": "5f5c30ee979c78d3ff68e59e3b514372",
+    "mtime": 1794883931.949965,
+    "seen": 1794884089.462075,
+    "ast_hash": "bac06962a06c5ccdd95039865c984023",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1794882750.3260543,
-    "seen": 1794883115.721995,
-    "ast_hash": "32db5cb1aa2814728197d4cbfc33520c",
+    "mtime": 1794883932.7006476,
+    "seen": 1794884089.462052,
+    "ast_hash": "ffa17fd014be41e98d093b4c8c68246d",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {

@@ -1,7 +1,7 @@
 # Graph Report - portfolio  (2026-11-17)
 
 ## Corpus Check
-- 109 files · ~82,697 words
+- 109 files · ~83,402 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 14 file(s) not represented in the graph (top: .css 9, (none) 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `53e1166f`
+- Built from commit: `f53774a1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -69,20 +69,20 @@
 4. `startStudio()` - 27 edges
 5. `$` - 27 edges
 6. `Plan` - 24 edges
-7. `startStudio()` - 20 edges
-8. `Vec2` - 20 edges
+7. `Vec2` - 20 edges
+8. `startStudio()` - 20 edges
 9. `SheetView` - 19 edges
 10. `startBoxStudio()` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Layout` --references--> `RenderLoop`  [INFERRED]
   CLAUDE.md → packages/three-core/src/loop.ts
+- `Performance rules for 3D` --references--> `RenderLoop`  [INFERRED]
+  README.md → packages/three-core/src/loop.ts
 - `Layout` --references--> `ScrollDirector`  [INFERRED]
   CLAUDE.md → packages/three-core/src/scroll-director.ts
-- `Layout` --references--> `generateTextures()`  [INFERRED]
-  CLAUDE.md → packages/three-core/src/textures.ts
-- `3D work: performance comes first` --references--> `exposeTextureWorker()`  [INFERRED]
-  CLAUDE.md → packages/three-core/src/textures.ts
+- `Performance rules for 3D` --references--> `getQuality()`  [INFERRED]
+  README.md → packages/three-core/src/quality.ts
 - `3D work: performance comes first` --references--> `generateTextures()`  [INFERRED]
   CLAUDE.md → packages/three-core/src/textures.ts
 

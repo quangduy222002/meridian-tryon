@@ -332,12 +332,14 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   await page.locator('#pages .page').first().click({ timeout: 60_000 });
   await expect(page.locator('#stepSelect')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('#detectBtn')).toHaveAttribute('aria-disabled', 'true');
-  // The flat sits at roughly x 55–455, y 90–485 pt on the sheet.
-  await boxOnSheet(page, 55, 90, 455, 485);
+  // The whole flat sits at roughly x 52–530, y 85–488 pt on the sheet.
+  await boxOnSheet(page, 52, 85, 530, 488);
   await expect(page.locator('#scaleOut')).toContainText('dimensions in your box');
   await page.locator('#detectBtn').click();
   await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
-  await expect(page.locator('.toast')).toContainText(/Found 1\d walls/);
+  // The outline must close: living space, bathroom, service shaft and balcony. The concrete blocks (sparse hatch),
+  // the window at the top of the facade and the steps where the facade changes thickness all have to be found.
+  await expect(page.locator('.toast')).toContainText(/Found 2\d walls, 10 doors and windows, 4 closed rooms/);
   await page.locator('#drawingBtn').click();
   await expect(page.locator('#drawingBtn')).toHaveAttribute('aria-pressed', 'false');
   await expectNoHorizontalScroll(page);
