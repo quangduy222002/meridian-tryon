@@ -687,7 +687,16 @@ export class PlanEditor {
         c.fill();
       };
       const sel = this.sel?.kind === 'wall' && this.sel.id === w.id;
-      quad(-t, L + t, sel ? ACCENT : INK);
+      if (w.rail) {
+        // Railing: a light band with the handrail line along it.
+        quad(-t, L + t, sel ? ACCENT : '#cfc8bc');
+        c.strokeStyle = sel ? '#fbf9f5' : INK;
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(X(a[0] - ux * t), Z(a[1] - uz * t));
+        c.lineTo(X(b[0] + ux * t), Z(b[1] + uz * t));
+        c.stroke();
+      } else quad(-t, L + t, sel ? ACCENT : INK);
       for (const o of p.openings.filter((x) => x.wall === w.id)) {
         const s0 = o.t * L - o.width / 2;
         const s1 = o.t * L + o.width / 2;

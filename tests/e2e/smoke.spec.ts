@@ -339,12 +339,21 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
   // The outline must close: living space, bathroom, service shaft and balcony. The concrete blocks (sparse hatch),
   // the window at the top of the facade and the steps where the facade changes thickness all have to be found.
-  await expect(page.locator('.toast')).toContainText(/Found 2\d walls, 10 doors and windows, 4 closed rooms/);
+  await expect(page.locator('.toast')).toContainText(/Found 2\d walls, 9 doors and windows, 4 closed rooms/);
   // No label on this sheet: the balcony is recognised by being reached through glazing only.
   await expect(page.locator('.toast')).toContainText('named: Balcony');
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? ''))
     .toContain('"name":"Balcony"');
+  // Its open front is a railing, not a wall.
+  expect(
+    await page.evaluate(
+      () =>
+        (JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}').walls ?? []).filter(
+          (w: { rail?: boolean }) => w.rail,
+        ).length,
+    ),
+  ).toBe(1);
   // You step onto it through a sliding glass door (one tall opening), not a window.
   expect(
     await page.evaluate(

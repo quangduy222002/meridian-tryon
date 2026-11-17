@@ -40,7 +40,7 @@ export function estimate(p: Plan, rooms: Room[]): Estimate {
   for (const w of p.walls) {
     const a = nodes.get(w.a);
     const b = nodes.get(w.b);
-    if (!a || !b) continue;
+    if (!a || !b || w.rail) continue;
     const L = len([a.x, a.z], [b.x, b.z]);
     if (L < 0.01) continue;
     const holes = p.openings

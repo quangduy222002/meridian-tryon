@@ -18,6 +18,8 @@ export interface Wall {
   a: string;
   b: string;
   thick: number;
+  /** A balcony railing rather than a wall: glass between a kerb and a handrail, RAIL_HEIGHT high, no openings. */
+  rail?: boolean;
 }
 
 export type OpeningKind = 'door' | 'window';
@@ -76,6 +78,7 @@ export interface Room {
 
 const DEG = Math.PI / 180;
 export const WALL_HEIGHT = 2.7;
+export const RAIL_HEIGHT = 1.1;
 export const DOOR_HEIGHT = 2.1;
 export const WINDOW_SILL = 0.9;
 export const WINDOW_TOP = 2.1;

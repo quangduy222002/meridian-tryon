@@ -22,6 +22,7 @@ import { FLOORS, FURNITURE, WALLS, type Finish } from './catalog';
 import { buildFurniture } from './furniture';
 import {
   DOOR_HEIGHT,
+  RAIL_HEIGHT,
   WALL_HEIGHT,
   WINDOW_SILL,
   WINDOW_TOP,
@@ -43,6 +44,8 @@ export interface WallView {
   /** Current cut-away amount, 0 (full height) to 1 (cut down). */
   cut: number;
   openings: Group[];
+  /** A balcony railing (never cut away). */
+  rail?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -65,6 +68,7 @@ export class House {
   private readonly exterior = new MeshStandardMaterial({ color: '#f3efe8', roughness: 0.92 });
   private readonly frame = new MeshStandardMaterial({ color: '#f7f5f1', roughness: 0.5 });
   private readonly leaf = new MeshStandardMaterial({ color: '#c8a77e', roughness: 0.55 });
+  private readonly metal = new MeshStandardMaterial({ color: '#4a4744', roughness: 0.4, metalness: 0.6 });
   private readonly glass = new MeshStandardMaterial({
     color: '#bcd3dc',
     roughness: 0.05,
@@ -175,7 +179,21 @@ export class House {
       g.position.set(mid[0], 0, mid[1]);
       g.rotation.y = Math.atan2(-dz, dx);
       this.structure.add(g);
-      const view: WallView = { id: w.id, group: g, mid, normal: n, cut: 0, openings: [] };
+      const view: WallView = {
+        id: w.id,
+        group: g,
+        mid,
+        normal: n,
+        cut: 0,
+        openings: [],
+        ...(w.rail ? { rail: true } : {}),
+      };
+
+      if (w.rail) {
+        this.railing(g, -endA - L / 2, L / 2 + endB, w.thick);
+        this.walls.push(view);
+        continue;
+      }
 
       // Solid stretches between openings, plus the pieces below windows and above doors and windows.
       const ops = p.openings
@@ -297,6 +315,27 @@ export class House {
       box(width - 2 * f, h - f, 0.012, this.glass, 0, y);
     }
     return o;
+  }
+
+  /** Balcony railing from x0 to x1 in the wall's local space: a kerb, glass panes between posts, a handrail. */
+  private railing(g: Group, x0: number, x1: number, thick: number) {
+    const L = x1 - x0;
+    if (L < 0.01) return;
+    const mid = (x0 + x1) / 2;
+    const add = (w: number, h: number, d: number, m: Material, x: number, y: number) => {
+      const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+      mesh.position.set(x, y, 0);
+      mesh.castShadow = m !== this.glass;
+      mesh.receiveShadow = true;
+      g.add(mesh);
+    };
+    const kerb = 0.1;
+    add(L, kerb, Math.max(thick, 0.08), this.exterior, mid, kerb / 2);
+    add(L, 0.05, 0.07, this.metal, mid, RAIL_HEIGHT - 0.025);
+    const bays = Math.max(1, Math.round(L / 1.2));
+    for (let i = 0; i <= bays; i++)
+      add(0.04, RAIL_HEIGHT - kerb, 0.04, this.metal, x0 + 0.02 + ((L - 0.04) * i) / bays, (RAIL_HEIGHT + kerb) / 2);
+    add(L - 0.04, RAIL_HEIGHT - kerb - 0.1, 0.012, this.glass, mid, (RAIL_HEIGHT + kerb - 0.05) / 2);
   }
 
   setCeilings(on: boolean) {

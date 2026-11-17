@@ -238,14 +238,14 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
       const w = p.walls.find((x) => x.id === sel.id);
       if (w) {
         const L = len(...wallEnds(p, w));
-        html = `<h2>Wall<small>${L.toFixed(2)} m</small></h2>
+        html = `<h2>${w.rail ? 'Railing' : 'Wall'}<small>${L.toFixed(2)} m</small></h2>
 <div class="row" role="group" aria-label="Thickness">${[0.1, 0.15, 0.2, 0.25]
           .map(
             (t) =>
               `<button type="button" class="btn" data-thick="${t}" aria-pressed="${Math.abs(w.thick - t) < 0.001}">${t * 100} cm</button>`,
           )
           .join('')}</div>
-<div class="row"><button type="button" class="btn danger" data-act="del">Delete wall</button></div>`;
+<div class="row"><button type="button" class="btn" data-act="rail">${w.rail ? 'Make it a wall' : 'Make it a railing'}</button><button type="button" class="btn danger" data-act="del">Delete</button></div>`;
       }
     } else if (sel?.kind === 'node') {
       html = `<h2>Corner</h2><div class="row"><button type="button" class="btn danger" data-act="del">Delete corner and its walls</button></div>`;
@@ -303,6 +303,15 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     } else if (b.dataset.color) {
       const it = p.items.find((i) => i.id === sel.id);
       if (it) it.color = b.dataset.color;
+    } else if (act === 'rail') {
+      const w = p.walls.find((x) => x.id === sel.id);
+      if (!w) return;
+      if (w.rail) delete w.rail;
+      else {
+        w.rail = true;
+        // A railing has no doors or windows.
+        p.openings = p.openings.filter((o) => o.wall !== w.id);
+      }
     } else if (b.dataset.thick) {
       const w = p.walls.find((x) => x.id === sel.id);
       if (w) w.thick = Number(b.dataset.thick);
@@ -751,7 +760,8 @@ async function setupThree(
     for (const w of house.walls) {
       const front = (w.mid[0] - cx) * view.x + (w.mid[1] - cz) * view.z > r * 0.08;
       const facing = Math.abs(w.normal[0] * view.x + w.normal[1] * view.z) > 0.3;
-      const goal = mode === 'dollhouse' && front && facing ? 1 : 0;
+      // Railings are already low enough to see over.
+      const goal = mode === 'dollhouse' && front && facing && !w.rail ? 1 : 0;
       const next = reduce ? goal : damp(w.cut, goal, 8, dt);
       if (Math.abs(next - w.cut) > 1e-4) {
         w.cut = Math.abs(next - goal) < 0.002 ? goal : next;

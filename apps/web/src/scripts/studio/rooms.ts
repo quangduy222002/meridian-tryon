@@ -4,7 +4,7 @@
  *    it sits in.
  * 2. Without a label, a balcony is recognised by how it is reached: a small space on the outside of the flat that
  *    you step onto through glazing (a sliding door or a glass wall), never through a hinged door. Bedrooms, baths and
- *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door.
+ *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door, its open front a railing.
  * 3. Without either, the fixtures drawn in it (see symbols.ts): a WC or a shower makes a bathroom, a hob a kitchen.
  * Names are written to plan.rooms like a name the visitor typed, so they can be changed in the room inspector.
  */
@@ -89,9 +89,17 @@ export function nameRooms(plan: Plan, d: Drawing, region: Region, found: FoundSy
 
   for (const [key, name] of names) plan.rooms[key] = { ...plan.rooms[key], name };
 
-  // You walk onto a balcony: the glazing between it and the flat is a glass door from the floor, not a window.
+  // You walk onto a balcony: the glazing between it and the flat is a glass door from the floor, not a window. Its open
+  // front (an outside edge drawn with glazing or as a thin line) is a railing, not a wall; solid side walls stay.
   for (const r of rooms) {
     if (names.get(r.key) !== 'Balcony') continue;
+    for (const w of wallsOf(r)) {
+      if (uses.get(w.id) !== 1) continue;
+      const glazed = plan.openings.some((o) => o.wall === w.id && o.kind === 'window');
+      if (!glazed && w.thick > 0.12) continue;
+      w.rail = true;
+      plan.openings = plan.openings.filter((o) => o.wall !== w.id);
+    }
     const ids = new Set(
       wallsOf(r)
         .filter((w) => uses.get(w.id) === 2)

@@ -328,7 +328,7 @@ export async function startStudio(gl: boolean) {
     const rooms = findRooms(res.plan).length;
     setStage('workspace');
     toast(
-      `Found ${count(res.walls, 'wall', 'walls')}, ${count(res.openings, 'door or window', 'doors and windows')}${
+      `Found ${count(res.walls, 'wall', 'walls')}, ${count(res.plan.openings.length, 'door or window', 'doors and windows')}${
         rooms ? `, ${count(rooms, 'closed room', 'closed rooms')}` : ''
       }${furnished ? `, ${count(furnished, 'fixture', 'fixtures')}` : ''}${
         named.length ? ` · named: ${named.join(', ')}` : ''
