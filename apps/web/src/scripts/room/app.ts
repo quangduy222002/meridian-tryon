@@ -36,6 +36,7 @@ import { createLook } from './look';
 import {
   findRooms,
   len,
+  nodeMap,
   pointInPoly,
   roomName,
   roomStyle,
@@ -44,6 +45,7 @@ import {
   wallEnds,
   type Plan,
   type Room,
+  type Vec2,
 } from './plan';
 import { estimate } from './estimate';
 import { Walker, solidsOf } from './walk';
@@ -706,15 +708,40 @@ async function setupThree(
   const sunDir = new Vector3();
   const warm = new Color('#ffb067');
   const white = new Color('#fff0dc');
+  /**
+   * Which way the home faces, for the orientation readout: the balcony's open side when there is a balcony (what
+   * people describe a flat by), else the front of the plan (its bottom edge).
+   */
+  const facing = (p: Plan): { label: string; dir: Vec2 } => {
+    const nodes = nodeMap(p);
+    for (const r of getRooms()) {
+      if (roomName(p, r) !== 'Balcony') continue;
+      let sum: Vec2 = [0, 0];
+      r.nodes.forEach((id, i) => {
+        const a = nodes.get(id)!;
+        const b = nodes.get(r.nodes[(i + 1) % r.nodes.length]!)!;
+        const w = p.walls.find((x) => (x.a === a.id && x.b === b.id) || (x.a === b.id && x.b === a.id));
+        if (!w?.rail) return;
+        const L = Math.hypot(b.x - a.x, b.z - a.z);
+        let n: Vec2 = [-(b.z - a.z) / L, (b.x - a.x) / L];
+        if (pointInPoly([(a.x + b.x) / 2 + n[0] * 0.3, (a.z + b.z) / 2 + n[1] * 0.3], r.poly)) n = [-n[0], -n[1]];
+        sum = [sum[0] + n[0] * L, sum[1] + n[1] * L];
+      });
+      if (Math.hypot(...sum) > 0.01) return { label: 'Balcony', dir: sum };
+    }
+    return { label: 'Front', dir: [0, 1] };
+  };
   const updateSun = () => {
     const p = getPlan();
-    p.north = Number(northIn.value);
     const h = Number(hourIn.value);
     const hh = Math.floor(h);
     $('hourOut').textContent = `${String(hh).padStart(2, '0')}:${String(Math.round((h - hh) * 60)).padStart(2, '0')}`;
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    // The front of the plan (its bottom edge) faces the compass point opposite north.
-    $('northOut').textContent = `${dirs[Math.round(((p.north + 180) % 360) / 45) % 8]}`;
+    // A direction at plan bearing β (clockwise from "up") points to compass bearing β − north.
+    const f = facing(p);
+    const bearingOf = (Math.atan2(f.dir[0], -f.dir[1]) / DEG - p.north + 720) % 360;
+    $('northLabel').textContent = f.label;
+    $('northOut').textContent = dirs[Math.round(bearingOf / 45) % 8]!;
     const azimuth = 90 + ((h - 6) / 12) * 180; // east at 6:00, south at noon, west at 18:00
     const elev = Math.max(4, Math.sin((Math.PI * (h - 6)) / 12) * 72) * DEG;
     const bearing = (azimuth + p.north) * DEG; // clockwise from "up" on the plan
@@ -738,6 +765,7 @@ async function setupThree(
   };
   hourIn.addEventListener('input', updateSun);
   northIn.addEventListener('input', () => {
+    getPlan().north = Number(northIn.value);
     updateSun();
     redraw2d(); // the plan's north arrow
   });
@@ -869,6 +897,8 @@ async function setupThree(
   return {
     sync() {
       const p = getPlan();
+      // The slider follows the plan (a new or reopened plan brings its own orientation).
+      if (Number(northIn.value) !== (p.north ?? 0)) northIn.value = String(p.north ?? 0);
       const rebuilt = house.syncStructure(p, getRooms());
       house.syncItems(p);
       if (rebuilt && !framed && house.walls.length) {

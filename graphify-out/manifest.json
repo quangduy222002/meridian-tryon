@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794915350.20581,
-    "seen": 1794915614.828895,
-    "ast_hash": "24e7d677bb3a9fee5e008a7a3fa453ad",
+    "mtime": 1794916053.9568205,
+    "seen": 1794916083.583772,
+    "ast_hash": "f43aeab6b8c97451131b77b786c6dcda",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794913682.9978945,
-    "seen": 1794914082.064485,
-    "ast_hash": "a33bb23fa9ba9a98e2cc1ff6be5cc023",
+    "mtime": 1794915826.6734283,
+    "seen": 1794916083.5837371,
+    "ast_hash": "484c5d997ac499b8cb86412cfb71b29e",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/RoomWorkspace.astro": {
-    "mtime": 1794910554.124204,
-    "seen": 1794911065.889514,
-    "ast_hash": "e2c511be1923e845f75a089388a349bc",
+    "mtime": 1794915826.6714964,
+    "seen": 1794916083.5837052,
+    "ast_hash": "b2a5cd4ae6d0da1f27688d1f39ef7706",
     "semantic_hash": ""
   },
   "apps/web/src/pages/studio/index.astro": {
@@ -714,9 +714,9 @@
     "semantic_hash": ""
   },
   "docs/demo-clip.md": {
-    "mtime": 1794912647.1727462,
-    "seen": 1794914082.064524,
-    "ast_hash": "4cc4ae9c733781f30d56b21b6c97b7fe",
+    "mtime": 1794915654.4779222,
+    "seen": 1794916083.583776,
+    "ast_hash": "0ef88d9911b8c1a8c5123a80cad57b88",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -346,6 +346,9 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   // The service shaft (a crossed-out box with no opening) is a duct in the bathroom's corner: its thin sides go, and the
   // room behind one door that now holds it is the bathroom.
   await expect(page.locator('.toast')).toContainText('Balcony, Bathroom');
+  // The orientation readout names the way the balcony looks out: east on this sheet (north is up).
+  await expect(page.locator('#northLabel')).toHaveText('Balcony');
+  await expect(page.locator('#northOut')).toHaveText('E');
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? ''))
     .toContain('"name":"Balcony"');
