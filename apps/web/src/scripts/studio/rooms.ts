@@ -6,11 +6,12 @@
  *    you step onto through glazing (a sliding door or a glass wall), never through a hinged door. Bedrooms, baths and
  *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door, its open front a railing.
  * 3. Without either, the fixtures drawn in it (see symbols.ts): a WC or a shower makes a bathroom, a hob a kitchen.
- * 4. Still unnamed, by how the room is built: a service shaft is a tiny closed box with no door or window; a bathroom
- *    is a small room behind a single hinged door, beside a shaft (its pipes run there) or lit only by a small window.
+ * 4. Still unnamed, by how the room is built: a service shaft is a tiny closed box with no door or window, a duct in a
+ *    bathroom's corner, so its thin sides towards that room are removed; a bathroom is a small room behind a single
+ *    hinged door that holds a shaft (its pipes run there) or is lit only by a small window.
  * Names are written to plan.rooms like a name the visitor typed, so they can be changed in the room inspector.
  */
-import { findRooms, nodeMap, pointInPoly, type Plan, type Room } from '../room/plan';
+import { findRooms, nodeMap, pointInPoly, tidy, type Plan, type Room } from '../room/plan';
 import type { Drawing, Region } from './drawing';
 import { SYMBOL_ROOM, type FoundSymbol } from './symbols';
 
@@ -39,7 +40,7 @@ export function labelOf(text: string): string | null {
 /** Fills plan.rooms names from labels and the balcony rule. Returns the names it gave, by room key. */
 export function nameRooms(plan: Plan, d: Drawing, region: Region, found: FoundSymbol[] = []): Map<string, string> {
   const k = d.mmPerUnit ?? 1;
-  const rooms = findRooms(plan);
+  let rooms = findRooms(plan);
   const names = new Map<string, string>();
 
   // 1. Labels: the text's middle, in plan metres (same mapping as detectWalls: origin at the region's top-left).
@@ -90,20 +91,60 @@ export function nameRooms(plan: Plan, d: Drawing, region: Region, found: FoundSy
   }
 
   // 4. Shafts, then the bathrooms beside them or with only a small window (bedrooms and living rooms have larger ones).
+  // A service shaft drawn as a small closed box (usually crossed out) is a duct in the corner of a bathroom, not a room:
+  // its thin sides towards that room are not built walls. Drop them, so the floor runs through, and remember where the
+  // shaft was: the room that now holds it is the bathroom.
   const openingsOf = (r: Room) => {
     const ids = new Set(wallsOf(r).map((w) => w.id));
     return plan.openings.filter((o) => ids.has(o.wall));
   };
   const shafts = rooms.filter((r) => !names.has(r.key) && r.area < 1.5 && !openingsOf(r).length);
-  for (const r of shafts) names.set(r.key, 'Shaft');
-  const shaftWalls = new Set(shafts.flatMap((r) => wallsOf(r).map((w) => w.id)));
+  const shaftSpots: [number, number][] = [];
+  for (const shaft of shafts) {
+    const mine = new Set(wallsOf(shaft).map((w) => w.id));
+    // The neighbour it opens into: the small room sharing the most of its sides (never the living space).
+    let host: { r: Room; len: number } | null = null;
+    for (const r of rooms) {
+      if (r === shaft || r.area > 15) continue;
+      const len = wallsOf(r)
+        .filter((w) => mine.has(w.id) && w.thick <= 0.12)
+        .reduce((t, w) => t + length(w.id), 0);
+      if (len > 0 && (!host || len > host.len)) host = { r, len };
+    }
+    if (!host) {
+      names.set(shaft.key, 'Shaft');
+      continue;
+    }
+    const drop = new Set(
+      wallsOf(host.r)
+        .filter((w) => mine.has(w.id) && w.thick <= 0.12)
+        .map((w) => w.id),
+    );
+    plan.walls = plan.walls.filter((w) => !drop.has(w.id));
+    shaftSpots.push(shaft.centroid);
+  }
+  if (shaftSpots.length) {
+    tidy(plan);
+    // Keys of the rooms around the shafts changed: carry the names given so far over to the new faces.
+    const before = rooms.map((r) => ({ r, name: names.get(r.key) }));
+    names.clear();
+    rooms = findRooms(plan);
+    for (const { r, name } of before)
+      if (name) {
+        const now = rooms.find((x) => pointInPoly(r.centroid, x.poly) && Math.abs(x.area - r.area) < 0.01);
+        if (now) names.set(now.key, name);
+      }
+    uses.clear();
+    for (const r of rooms) for (const w of wallsOf(r)) uses.set(w.id, (uses.get(w.id) ?? 0) + 1);
+  }
+  const holdsShaft = (r: Room) => shaftSpots.some((q) => pointInPoly(q, r.poly));
   for (const r of rooms) {
-    if (names.has(r.key) || r.area < 1.8 || r.area > 7) continue;
+    if (names.has(r.key) || r.area < 1.8 || r.area > 8) continue;
     const ops = openingsOf(r);
     const doors = ops.filter((o) => o.kind === 'door');
     const windows = ops.filter((o) => o.kind === 'window');
     if (doors.length !== 1 || windows.some((o) => o.tall || o.width > 0.9)) continue;
-    if (windows.length || wallsOf(r).some((w) => shaftWalls.has(w.id))) names.set(r.key, 'Bathroom');
+    if (windows.length || holdsShaft(r)) names.set(r.key, 'Bathroom');
   }
 
   for (const [key, name] of names) plan.rooms[key] = { ...plan.rooms[key], name };
