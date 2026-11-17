@@ -3,9 +3,16 @@
   grid-row: 2;
   grid-column: 1;
 }
-#drawingBtn span,
-#reimportBtn span {
-  display: none;
+/* Their words only show where the full toolbar fits them; the icons keep their accessible names. */
+@media (max-width: 1599px) {
+  #drawingBtn span,
+  #reimportBtn span {
+    display: none;
+  }
+}
+#drawingBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .wiz {
   grid-row: 2;
@@ -26,6 +33,13 @@
 .rc:not([data-stage='workspace']) #reimportBtn,
 .rc:not([data-stage='workspace']) #drawingBtn {
   display: none;
+}
+/* On small screens the hidden toolbar would still take up two rows: drop it until there's a plan. */
+@media (max-width: 899px) {
+  .rc:not([data-stage='workspace']) .tools,
+  .rc:not([data-stage='workspace']) .actions {
+    display: none;
+  }
 }
 .wiz-steps {
   display: flex;
@@ -145,6 +159,16 @@
 .btn-ink {
   background: var(--text);
   color: var(--paper);
+}
+[aria-busy='true'] {
+  cursor: progress;
+}
+.pages[aria-busy='true'] .page {
+  opacity: 0.6;
+}
+.btn-line[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .btn-ink[aria-disabled='true'] {
   opacity: 0.35;

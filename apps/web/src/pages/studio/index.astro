@@ -29,7 +29,7 @@ import '../../styles/studio.css';
         </svg>
         <span>Drawing</span>
       </button>
-      <button type="button" id="reimportBtn" aria-label="Import" title="Import another drawing">
+      <button type="button" id="reimportBtn" aria-label="Import" title="Import another drawing or go back to the steps">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3v12M8 11l4 4 4-4M5 21h14"></path>
         </svg>
@@ -72,7 +72,7 @@ import '../../styles/studio.css';
           <canvas
             id="sheet"
             tabindex="0"
-            aria-label="The imported sheet. Drag a box around your flat; scroll or pinch to zoom."
+            aria-label="The imported sheet. Drag a box around your flat; scroll or pinch to zoom. With the keyboard: arrows pan, plus and minus zoom, Enter selects what is in view."
           ></canvas>
           <div class="sheet-zoom" role="group" aria-label="Sheet zoom">
             <button type="button" id="sheetIn" aria-label="Zoom in" title="Zoom in">
@@ -100,7 +100,7 @@ import '../../styles/studio.css';
               <output id="scaleOut">—</output>
             </dd>
           </dl>
-          <button type="button" id="calibrateBtn" class="btn-line">
+          <button type="button" id="calibrateBtn" class="btn-line" aria-pressed="false">
             Set the scale from a known length
           </button>
           <button type="button" id="detectBtn" class="btn-ink" aria-disabled="true">

@@ -25,6 +25,8 @@ export interface Project {
   href?: string;
   cta?: string;
   live?: string;
+  /** A second demo that belongs to the same project, shown as a secondary button. */
+  more?: { href: string; label: string };
   extra?: { title: string; desc: string; chips: string[] };
   note?: string;
 }
@@ -128,13 +130,14 @@ export const projects: Project[] = [
     kind: 'Home planner',
     title: 'Roomcraft',
     sub: 'Draw it in 2D, walk it in 3D',
-    desc: 'Sketch walls, doors and windows and the home builds itself in 3D beside the plan: furnish it, pick floors and paint per room, follow the sun through the day, walk the rooms — then share the plan as a link with an area and cost estimate. An AI can furnish a room from one sentence.',
-    chips: ['2D ↔ 3D editor', 'Sun study', 'Walkthrough', 'AI layout'],
+    desc: 'Sketch walls, doors and windows and the home builds itself in 3D beside the plan: furnish it, pick floors and paint per room, follow the sun through the day, walk the rooms — then share the plan as a link with an area and cost estimate. An AI can furnish a room from one sentence. Already have drawings? Floorwise reads a PDF or DXF floor plan in the browser and rebuilds your flat as an editable plan.',
+    chips: ['2D ↔ 3D editor', 'Sun study', 'Walkthrough', 'AI layout', 'PDF / DXF import'],
     image: roomImg,
     imageAlt: 'Roomcraft floor plan editor beside a 3D dollhouse view of the flat',
     href: 'room/',
     cta: 'Open demo',
     live: 'Live demo',
+    more: { href: 'studio/', label: 'Import a floor plan' },
   },
 ];
 

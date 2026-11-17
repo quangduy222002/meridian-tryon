@@ -46,7 +46,7 @@ for (const p of pages3d) {
 
 test('portfolio links to every live demo', async ({ page }) => {
   await page.goto('');
-  for (const href of ['watch/', 'chair/', 'box/', 'assembly/', 'room/', 'store/']) {
+  for (const href of ['watch/', 'chair/', 'box/', 'assembly/', 'room/', 'studio/', 'store/']) {
     await expect(page.locator(`a[href$="/${href}"]`).first()).toBeAttached();
   }
 });
@@ -300,6 +300,15 @@ test('room planner furnishes a room with AI', async ({ page }) => {
 });
 
 /** Drags a selection box on the import sheet, in drawing units (y up). */
+/** Page coordinates of a point on the sheet, in drawing units. */
+async function sheetPoint(page: Page, x: number, y: number) {
+  const sheet = page.locator('#sheet');
+  await expect(sheet).toHaveAttribute('data-view', /\d/);
+  const [s, ox, oy] = (await sheet.getAttribute('data-view'))!.split(' ').map(Number) as [number, number, number];
+  const bb = (await sheet.boundingBox())!;
+  return [bb.x + x * s + ox, bb.y - y * s + oy] as const;
+}
+
 async function boxOnSheet(page: Page, x0: number, y0: number, x1: number, y1: number) {
   const sheet = page.locator('#sheet');
   await expect(sheet).toHaveAttribute('data-view', /\d/);
@@ -362,7 +371,64 @@ test('floor plan import reads a DXF in millimetres', async ({ page }) => {
   await boxOnSheet(page, -50, -50, 6050, 4050);
   await page.locator('#detectBtn').click();
   await expect(page.locator('.toast')).toContainText('Found 4 walls');
-  await expect(page.locator('.toast')).toContainText('1 closed rooms');
+  await expect(page.locator('.toast')).toContainText('1 closed room —');
+  expect(errors).toEqual([]);
+});
+
+test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // A 6 × 4 m room on a WALL layer, drawn in centimetres but saved without units (so it's read as millimetres).
+  const rect = (x0: number, y0: number, x1: number, y1: number) =>
+    [
+      [x0, y0, x1, y0],
+      [x1, y0, x1, y1],
+      [x1, y1, x0, y1],
+      [x0, y1, x0, y0],
+    ].flatMap(([a, b, c, d]) => ['0', 'LINE', '8', 'WALL', '10', a, '20', b, '11', c, '21', d]);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...rect(0, 0, 600, 400),
+    ...rect(20, 20, 580, 380),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page.locator('#file').setInputFiles({ name: 'cm.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+
+  // Calibration can be cancelled with Escape.
+  const cal = page.locator('#calibrateBtn');
+  await cal.click();
+  await expect(cal).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#sheet').press('Escape');
+  await expect(cal).toHaveAttribute('aria-pressed', 'false');
+
+  // Set the scale from the 600-unit top edge = 6000 mm (the zoom buttons sit over the bottom-right corner).
+  await cal.click();
+  await page.mouse.click(...(await sheetPoint(page, 0, 400)));
+  await expect(page.locator('#selectStatus')).toContainText('other end');
+  await page.mouse.click(...(await sheetPoint(page, 600, 400)));
+  await page.locator('#calMm').fill('6000');
+  await page.locator('#calForm button[value=ok]').click();
+  await expect(page.locator('#scaleOut')).toContainText('set by you');
+
+  // Enter takes what is in view; a new box afterwards keeps the hand-set scale.
+  await page.locator('#sheetFit').click();
+  await page.locator('#sheet').press('Enter');
+  await expect(page.locator('#detectBtn')).toHaveAttribute('aria-disabled', 'false');
+  await boxOnSheet(page, -5, -5, 605, 405);
+  await expect(page.locator('#scaleOut')).toContainText('set by you');
+
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('Found 4 walls');
+  await expect(page.locator('#drawingBtn')).toBeEnabled();
+
+  // Import again, then go back to the open plan as it was.
+  await page.locator('#reimportBtn').click();
+  await expect(page.locator('#resumeBtn')).toHaveText('Back to your plan');
+  await page.locator('#resumeBtn').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+  await expect(page.locator('#drawingBtn')).toBeEnabled();
   expect(errors).toEqual([]);
 });
 

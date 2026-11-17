@@ -11,13 +11,18 @@ import { detectWalls } from './detect';
 type Stage = 'import' | 'select' | 'workspace';
 const STORE = 'floorwise.plan';
 const emptyPlan = (): Plan => ({ nodes: [], walls: [], openings: [], items: [], rooms: {}, north: 0 });
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export async function startStudio(gl: boolean) {
   const app = $('app');
   let drawing: Drawing | null = null;
   let region: Region | null = null;
+  /** The scale was set by hand: a new selection box must not overwrite it. */
+  let scaleByHand = false;
   /** The region and scale the current plan was built from, for the underlay. */
   let built: { d: Drawing; r: Region; k: number } | null = null;
+  /** A plan is open in the workspace this visit, so "back" can return to it as it is. */
+  let inWorkspace = false;
   let underlayOn = true;
   let underlayImg: HTMLImageElement | null = null;
 
@@ -61,22 +66,36 @@ export async function startStudio(gl: boolean) {
       else li.removeAttribute('aria-current');
     }
     if (s === 'select') requestAnimationFrame(() => sheet.fit());
+    if (s === 'import') syncResume();
+    if (s !== 'select') sheet.cancelCalibration();
+    if (s === 'workspace') {
+      inWorkspace = true;
+      // The drawing toggle only means something when the plan came from a drawing this visit.
+      $<HTMLButtonElement>('drawingBtn').disabled = !built;
+    }
   };
 
-  // A plan from last time can be picked up again (the drawing itself isn't kept).
-  try {
-    if (localStorage.getItem(STORE)) $('resumeBtn').hidden = false;
-  } catch {
-    // storage blocked
-  }
+  // A plan from last time can be picked up again (the drawing itself isn't kept); after a build this visit,
+  // "back" returns to the open plan with its drawing underneath.
+  const syncResume = () => {
+    const btn = $('resumeBtn');
+    let saved = false;
+    try {
+      saved = !!localStorage.getItem(STORE);
+    } catch {
+      // storage blocked
+    }
+    btn.hidden = !inWorkspace && !saved;
+    btn.textContent = inWorkspace ? 'Back to your plan' : 'Continue your last plan';
+  };
   $('resumeBtn').addEventListener('click', () => {
+    if (inWorkspace) return setStage('workspace');
     try {
       const p = JSON.parse(localStorage.getItem(STORE) ?? 'null') as Plan | null;
-      if (p?.walls) {
-        built = null;
-        api.setPlan(p, 'Your last plan');
-        setStage('workspace');
-      }
+      if (!p?.walls) throw new Error('no plan');
+      built = null;
+      api.setPlan(p, 'Your last plan');
+      setStage('workspace');
     } catch {
       toast('Could not read the saved plan');
     }
@@ -90,7 +109,6 @@ export async function startStudio(gl: boolean) {
 
   /* ---------- Import ---------- */
   const status = $('importStatus');
-  let pdfDoc: Awaited<ReturnType<typeof import('./import-pdf').openPdf>>['doc'] | null = null;
   const openFile = async (name: string, data: ArrayBuffer) => {
     status.textContent = `Reading ${name}…`;
     $('pages').hidden = true;
@@ -98,10 +116,11 @@ export async function startStudio(gl: boolean) {
       if (/\.dxf$/i.test(name)) {
         const { readDxf } = await import('./import-dxf');
         useDrawing(readDxf(new TextDecoder().decode(data), name));
+      } else if (!/\.pdf$/i.test(name) && new TextDecoder().decode(data.slice(0, 5)) !== '%PDF-') {
+        status.textContent = 'That isn’t a PDF or DXF. A DWG has to be saved as DXF or plotted to PDF first.';
       } else {
         const pdf = await import('./import-pdf');
         const { pages, doc } = await pdf.openPdf(data);
-        pdfDoc = doc;
         if (pages === 1) return useDrawing(await pdf.readPdfPage(doc, 1, name));
         // Several sheets: let the visitor pick the one with the plan.
         status.textContent = `${pages} sheets — pick the one with your floor plan.`;
@@ -114,8 +133,17 @@ export async function startStudio(gl: boolean) {
           b.className = 'page';
           b.innerHTML = `<span>Sheet ${n}</span>`;
           b.addEventListener('click', async () => {
+            if (box.getAttribute('aria-busy') === 'true') return;
+            box.setAttribute('aria-busy', 'true');
             status.textContent = `Reading sheet ${n}…`;
-            useDrawing(await pdf.readPdfPage(pdfDoc!, n, `${name} · sheet ${n}`));
+            try {
+              useDrawing(await pdf.readPdfPage(doc, n, `${name} · sheet ${n}`));
+            } catch (err) {
+              console.error(err);
+              status.textContent = `Sheet ${n} could not be read. Try another sheet or file.`;
+            } finally {
+              box.removeAttribute('aria-busy');
+            }
           });
           box.append(b);
           void pdf.pageThumb(doc, n).then((url) => {
@@ -133,8 +161,10 @@ export async function startStudio(gl: boolean) {
   };
   const useDrawing = (d: Drawing) => {
     sheet.unfit();
+    sheet.cancelCalibration();
     drawing = d;
     region = null;
+    scaleByHand = false;
     status.textContent = '';
     if (!d.segs.length) {
       status.textContent = 'No lines found — this looks like a scanned PDF. Vector PDFs and DXF files work.';
@@ -153,7 +183,10 @@ export async function startStudio(gl: boolean) {
     setStage('select');
   };
   $<HTMLInputElement>('file').addEventListener('change', async (e) => {
-    const f = (e.target as HTMLInputElement).files?.[0];
+    const input = e.target as HTMLInputElement;
+    const f = input.files?.[0];
+    // Clear it so choosing the same file again (after fixing it, say) still fires a change.
+    input.value = '';
     if (f) await openFile(f.name, await f.arrayBuffer());
   });
   const drop = $('drop');
@@ -161,7 +194,10 @@ export async function startStudio(gl: boolean) {
     e.preventDefault();
     drop.classList.add('over');
   });
-  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('dragleave', (e) => {
+    // Moving over the label's own text fires dragleave too: only clear when the pointer really leaves.
+    if (!drop.contains(e.relatedTarget as Node | null)) drop.classList.remove('over');
+  });
   drop.addEventListener('drop', async (e) => {
     e.preventDefault();
     drop.classList.remove('over');
@@ -169,9 +205,20 @@ export async function startStudio(gl: boolean) {
     if (f) await openFile(f.name, await f.arrayBuffer());
   });
   $('sampleBtn').addEventListener('click', async () => {
+    const btn = $<HTMLButtonElement>('sampleBtn');
+    if (btn.getAttribute('aria-busy') === 'true') return;
+    btn.setAttribute('aria-busy', 'true');
     status.textContent = 'Downloading the sample…';
-    const res = await fetch(new URL('A26.pdf', location.href.replace(/[^/]*$/, '')));
-    await openFile('A.26.pdf', await res.arrayBuffer());
+    try {
+      const res = await fetch(new URL('A26.pdf', location.href.replace(/[^/]*$/, '')));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await openFile('A.26.pdf', await res.arrayBuffer());
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'The sample could not be downloaded. Check your connection and try again.';
+    } finally {
+      btn.removeAttribute('aria-busy');
+    }
   });
   $('backImport').addEventListener('click', () => setStage('import'));
 
@@ -192,10 +239,18 @@ export async function startStudio(gl: boolean) {
     const ready = !!drawing?.mmPerUnit && !!region;
     $('detectBtn').setAttribute('aria-disabled', String(!ready));
     $('selectStatus').textContent = !region
-      ? 'Drag a box around your flat.'
+      ? 'Drag a box around your flat (or press Enter on the sheet to take what’s in view).'
       : !drawing?.mmPerUnit
         ? 'Set the scale first.'
         : 'Ready — build the plan.';
+  };
+  const calBtn = $('calibrateBtn');
+  const calLabel = calBtn.textContent!.trim();
+  const syncCalibrate = (on: boolean) => {
+    calBtn.textContent = on ? 'Cancel setting the scale' : calLabel;
+    calBtn.setAttribute('aria-pressed', String(on));
+    if (on) $('selectStatus').textContent = 'Click the two ends of a line whose length you know (e.g. a dimension).';
+    else syncDetect();
   };
 
   const sheet = new SheetView($<HTMLCanvasElement>('sheet'), {
@@ -204,8 +259,9 @@ export async function startStudio(gl: boolean) {
     region: () => region,
     setRegion(r) {
       region = r;
-      // Scale from the dimensions inside the box is the most reliable when the sheet mixes several scales.
-      if (drawing && r) {
+      // Scale from the dimensions inside the box is the most reliable when the sheet mixes several scales —
+      // unless the visitor has set it by hand.
+      if (drawing && r && !scaleByHand) {
         const local = scaleFromDimensions(drawing, r);
         if (local) {
           drawing.mmPerUnit = local.mmPerUnit;
@@ -214,6 +270,10 @@ export async function startStudio(gl: boolean) {
         }
       }
       syncDetect();
+    },
+    calibrating: syncCalibrate,
+    firstPoint() {
+      $('selectStatus').textContent = 'Now click the other end of the line.';
     },
     calibrated(dist) {
       const dlg = $<HTMLDialogElement>('calDlg');
@@ -227,9 +287,10 @@ export async function startStudio(gl: boolean) {
           if (dlg.returnValue === 'ok' && mm > 0 && drawing) {
             drawing.mmPerUnit = mm / dist;
             drawing.scaleNote = 'set by you';
+            scaleByHand = true;
             updateScale();
-            syncDetect();
           }
+          syncDetect();
         },
         { once: true },
       );
@@ -238,24 +299,33 @@ export async function startStudio(gl: boolean) {
   $('sheetIn').addEventListener('click', () => sheet.zoom(1.25));
   $('sheetOut').addEventListener('click', () => sheet.zoom(0.8));
   $('sheetFit').addEventListener('click', () => sheet.fit());
-  $('calibrateBtn').addEventListener('click', () => {
-    sheet.calibrating = true;
-    $('selectStatus').textContent = 'Click the two ends of a line whose length you know (e.g. a dimension).';
+  calBtn.addEventListener('click', () => {
+    if (sheet.isCalibrating) sheet.cancelCalibration();
+    else sheet.startCalibration();
+    $('sheet').focus();
   });
 
   $('detectBtn').addEventListener('click', () => {
-    if ($('detectBtn').getAttribute('aria-disabled') === 'true' || !drawing || !region || !drawing.mmPerUnit) return;
+    if ($('detectBtn').getAttribute('aria-disabled') === 'true' || !drawing || !region || !drawing.mmPerUnit) {
+      // Say what's missing instead of doing nothing.
+      syncDetect();
+      return;
+    }
     const res = detectWalls(drawing, region);
     if (!res.walls) {
       $('selectStatus').textContent = 'No walls found in that box. Try a slightly larger box, or check the scale.';
       return;
     }
     built = { d: drawing, r: region, k: drawing.mmPerUnit };
+    underlayOn = true;
+    $('drawingBtn').setAttribute('aria-pressed', 'true');
     api.setPlan(res.plan);
     const rooms = findRooms(res.plan).length;
     setStage('workspace');
     toast(
-      `Found ${res.walls} walls, ${res.openings} doors and windows${rooms ? `, ${rooms} closed rooms` : ''} — check them against the drawing.`,
+      `Found ${count(res.walls, 'wall', 'walls')}, ${count(res.openings, 'door or window', 'doors and windows')}${
+        rooms ? `, ${count(rooms, 'closed room', 'closed rooms')}` : ''
+      } — check them against the drawing.`,
       5000,
     );
   });
@@ -270,13 +340,19 @@ interface SheetHost {
   image(): HTMLImageElement | null;
   region(): Region | null;
   setRegion(r: Region | null): void;
+  /** Calibration mode switched on or off. */
+  calibrating(on: boolean): void;
+  /** The first calibration point is down. */
+  firstPoint(): void;
   /** Two calibration points picked: their distance in drawing units. */
   calibrated(dist: number): void;
 }
 
 /** Shows the whole sheet (PDF raster or DXF lines); drag draws the selection box, wheel / pinch zooms. */
 class SheetView {
-  calibrating = false;
+  private calibrating = false;
+  /** Pointer position in canvas pixels, for the calibration guide line. */
+  private hover: { x: number; y: number } | null = null;
   /** Set once the current drawing has been framed, so the exposed view transform is meaningful. */
   private fitted = false;
   private s = 1;
@@ -336,7 +412,53 @@ class SheetView {
         this.draw();
       } else if (e.key === '+' || e.key === '=') this.zoom(1.25);
       else if (e.key === '-') this.zoom(0.8);
+      else if (e.key === 'Escape' && this.calibrating) {
+        e.preventDefault();
+        this.cancelCalibration();
+      } else if (e.key === 'Enter' && !this.calibrating) {
+        // Keyboard selection: pan and zoom so the flat fills the view, then take what's visible.
+        e.preventDefault();
+        this.selectView();
+      }
     });
+    canvas.addEventListener('pointerleave', () => {
+      if (!this.calibrating) return;
+      this.hover = null;
+      this.draw();
+    });
+  }
+
+  get isCalibrating() {
+    return this.calibrating;
+  }
+
+  startCalibration() {
+    this.calibrating = true;
+    this.cal = [];
+    this.host.calibrating(true);
+    this.draw();
+  }
+
+  cancelCalibration() {
+    if (!this.calibrating) return;
+    this.calibrating = false;
+    this.cal = [];
+    this.hover = null;
+    this.host.calibrating(false);
+    this.draw();
+  }
+
+  /** Selects the part of the drawing currently in view (inset a little, so the frame edge isn't included). */
+  private selectView() {
+    const d = this.host.drawing();
+    const r = this.canvas.getBoundingClientRect();
+    if (!d || !r.width) return;
+    const inset = 12;
+    const a = this.toDrawing(inset, inset);
+    const b = this.toDrawing(r.width - inset, r.height - inset);
+    const box = { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+    this.host.setRegion(box);
+    this.draw();
   }
 
   /** Drawing units → canvas pixels (y flips: drawings have y up). */
@@ -392,11 +514,14 @@ class SheetView {
     if (this.calibrating && e.button === 0) {
       const q = this.toDrawing(p.x, p.y);
       this.cal.push(q);
+      if (this.cal.length === 1) this.host.firstPoint();
       if (this.cal.length === 2) {
         const [a, b] = this.cal as [{ x: number; y: number }, { x: number; y: number }];
         this.cal = [];
         this.calibrating = false;
+        this.hover = null;
         const dist = Math.hypot(b.x - a.x, b.y - a.y);
+        this.host.calibrating(false);
         if (dist > 0) this.host.calibrated(dist);
       }
       this.draw();
@@ -410,6 +535,10 @@ class SheetView {
     const p = this.local(e);
     const prev = this.pointers.get(e.pointerId);
     if (prev) this.pointers.set(e.pointerId, p);
+    if (this.calibrating && this.cal.length === 1 && !this.pinch) {
+      this.hover = p;
+      this.draw();
+    }
     if (this.pinch && this.pointers.size === 2) {
       const [a, b] = [...this.pointers.values()];
       const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
@@ -504,6 +633,18 @@ class SheetView {
       c.lineWidth = 2;
       c.setLineDash([6, 4]);
       c.strokeRect(x, y, w, h);
+      c.setLineDash([]);
+    }
+    const first = this.cal[0];
+    if (first && this.hover) {
+      // Guide line from the first point to the pointer while picking the second.
+      c.strokeStyle = '#e2622b';
+      c.lineWidth = 1.5;
+      c.setLineDash([4, 3]);
+      c.beginPath();
+      c.moveTo(this.X(first.x), this.Y(first.y));
+      c.lineTo(this.hover.x, this.hover.y);
+      c.stroke();
       c.setLineDash([]);
     }
     for (const q of this.cal) {

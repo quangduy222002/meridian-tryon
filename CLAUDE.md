@@ -9,7 +9,8 @@
 
 ## Layout
 
-- `apps/web` — Astro + TypeScript + three.js: portfolio (`/`), `/watch/`, `/chair/`, `/box/`, `/assembly/` (PC build guide + studio), `/room/` (2D plan → 3D home planner).
+- `apps/web` — Astro + TypeScript + three.js: portfolio (`/`), `/watch/`, `/chair/`, `/box/`, `/assembly/` (PC build guide + studio), `/room/` (2D plan → 3D home planner),
+  `/studio/` (Floorwise: import a PDF/DXF floor plan, detect walls, then edit it in the shared Roomcraft workspace).
   - `src/scripts/<page>/` holds each page's scene and UI; `src/content/site.ts` holds portfolio copy.
 - `apps/store` — Vite + React storefront, built into `apps/web/dist/store`.
 - `packages/three-core` (`@meridian/three-core`) — the shared 3D runtime for both apps: quality tiers, adaptive

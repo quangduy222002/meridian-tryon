@@ -136,10 +136,22 @@ svg {
   font-size: 13px;
   font-weight: 600;
 }
-.actions button {
+.actions button,
+.actions .action-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.actions .action-link {
+  min-block-size: 36px;
+  padding: 0 13px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
 }
 .share-wrap {
   position: relative;
@@ -788,10 +800,12 @@ svg {
   .actions {
     margin-left: auto;
   }
-  .actions button span {
+  .actions button span,
+  .actions .action-link span {
     display: none;
   }
-  .actions button {
+  .actions button,
+  .actions .action-link {
     padding: 0 10px;
   }
   .panes {
@@ -862,10 +876,12 @@ svg {
 }
 /* Mid-size screens: the action buttons keep their icons and accessible names, the words go first. */
 @media (min-width: 900px) and (max-width: 1380px) {
-  .actions button span {
+  .actions button span,
+  .actions .action-link span {
     display: none;
   }
-  .actions button {
+  .actions button,
+  .actions .action-link {
     padding: 0 10px;
   }
 }

@@ -61,6 +61,11 @@ const pad = (n: number) => String(n).padStart(2, '0');
           <a class="btn btn-primary btn-sm" href={href} data-cursor>
             {p.cta} →
           </a>
+          {p.more && (
+            <a class="btn btn-ghost btn-sm" href={withBase(p.more.href)} data-cursor>
+              {p.more.label}
+            </a>
+          )}
         </div>
       )}
       {p.note && <span class="nda">{p.note}</span>}
