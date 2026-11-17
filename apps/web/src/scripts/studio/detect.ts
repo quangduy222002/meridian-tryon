@@ -63,7 +63,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   const H: Line[] = [];
   const V: Line[] = [];
   const hatch: { x: number; y: number; L: number }[] = [];
-  const curves: { x: number; y: number }[] = [];
+  const curves: { x: number; y: number; L: number }[] = [];
   const angTol = Math.tan((1.5 * Math.PI) / 180);
   for (const s of segs) {
     const x1 = s.x1 * k;
@@ -74,7 +74,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     const dy = Math.abs(y2 - y1);
     const L = Math.hypot(dx, dy);
     if (s.curve) {
-      curves.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
+      curves.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2, L });
       continue;
     }
     if (L < 30) continue;
@@ -223,7 +223,9 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         return along > lo - 50 && along < hi + 50 && Math.abs(across - p.c) < reach;
       };
       const arcs = curves.filter((cv) => inGap(cv.x, cv.y, gap + 100));
-      const door = arcs.length >= 3;
+      // A swing is a quarter circle as wide as the gap: as many short pieces in a DXF, a single Bézier (one chord,
+      // about 1.4 × the width) in a PDF. Its length tells, whatever it was cut into.
+      const door = arcs.reduce((s, cv) => s + cv.L, 0) >= gap * 0.8;
       // Which side the swing is on decides the leaf's flip.
       const side = arcs.reduce((s, cv) => s + ((p.o === 'H' ? cv.y : cv.x) - p.c), 0);
       const panes = (p.o === 'H' ? HM : VM).filter((l) => Math.abs(l.c - p.c) < p.t / 2 && l.a < hi && l.b > lo).length;

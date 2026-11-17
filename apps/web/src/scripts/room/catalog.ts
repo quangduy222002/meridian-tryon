@@ -100,6 +100,7 @@ export const ROOM_DEFAULTS: Record<string, { floor: string; wall: string }> = {
   Bathroom: { floor: 'tile', wall: 'zellige' },
   Kitchen: { floor: 'terrazzo', wall: 'chalk' },
   Bedroom: { floor: 'oak', wall: 'sand' },
+  Balcony: { floor: 'tile', wall: 'plaster' },
 };
 
 /** Furniture rough price, for the estimate. */

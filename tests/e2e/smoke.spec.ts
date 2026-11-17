@@ -340,6 +340,11 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   // The outline must close: living space, bathroom, service shaft and balcony. The concrete blocks (sparse hatch),
   // the window at the top of the facade and the steps where the facade changes thickness all have to be found.
   await expect(page.locator('.toast')).toContainText(/Found 2\d walls, 10 doors and windows, 4 closed rooms/);
+  // No label on this sheet: the balcony is recognised by being reached through glazing only.
+  await expect(page.locator('.toast')).toContainText('named: Balcony');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? ''))
+    .toContain('"name":"Balcony"');
   await page.locator('#drawingBtn').click();
   await expect(page.locator('#drawingBtn')).toHaveAttribute('aria-pressed', 'false');
   await expectNoHorizontalScroll(page);
@@ -363,6 +368,8 @@ test('floor plan import reads a DXF in millimetres', async ({ page }) => {
     ...['0', 'SECTION', '2', 'ENTITIES'],
     ...rect(0, 0, 6000, 4000),
     ...rect(200, 200, 5800, 3800),
+    // A room label, as Vietnamese plans write it.
+    ...['0', 'TEXT', '8', 'TEXT', '10', '2600', '20', '2000', '40', '250', '1', 'P. NGỦ'],
     ...['0', 'ENDSEC', '0', 'EOF'],
   ].join('\n');
   await page
@@ -373,7 +380,7 @@ test('floor plan import reads a DXF in millimetres', async ({ page }) => {
   await boxOnSheet(page, -50, -50, 6050, 4050);
   await page.locator('#detectBtn').click();
   await expect(page.locator('.toast')).toContainText('Found 4 walls');
-  await expect(page.locator('.toast')).toContainText('1 closed room —');
+  await expect(page.locator('.toast')).toContainText('1 closed room · named: Bedroom');
   expect(errors).toEqual([]);
 });
 

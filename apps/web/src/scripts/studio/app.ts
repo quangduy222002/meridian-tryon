@@ -7,6 +7,7 @@ import { startRoomcraft, type RoomcraftApi, type RoomcraftOptions } from '../roo
 import { findRooms, type Plan } from '../room/plan';
 import { inRegion, scaleFromDimensions, type Drawing, type Region } from './drawing';
 import { detectWalls } from './detect';
+import { nameRooms } from './rooms';
 
 type Stage = 'import' | 'select' | 'workspace';
 const STORE = 'floorwise.plan';
@@ -316,6 +317,7 @@ export async function startStudio(gl: boolean) {
       $('selectStatus').textContent = 'No walls found in that box. Try a slightly larger box, or check the scale.';
       return;
     }
+    const named = [...new Set(nameRooms(res.plan, drawing, region).values())];
     built = { d: drawing, r: region, k: drawing.mmPerUnit };
     underlayOn = true;
     $('drawingBtn').setAttribute('aria-pressed', 'true');
@@ -325,7 +327,7 @@ export async function startStudio(gl: boolean) {
     toast(
       `Found ${count(res.walls, 'wall', 'walls')}, ${count(res.openings, 'door or window', 'doors and windows')}${
         rooms ? `, ${count(rooms, 'closed room', 'closed rooms')}` : ''
-      } — check them against the drawing.`,
+      }${named.length ? ` · named: ${named.join(', ')}` : ''} — check them against the drawing.`,
       5000,
     );
   });
