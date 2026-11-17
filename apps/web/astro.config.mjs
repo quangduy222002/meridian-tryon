@@ -1,10 +1,15 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
-// Served from GitHub Pages under /meridian-tryon/.
+// Served from GitHub Pages under /meridian-tryon/. ARTIFACT=1 builds a copy for a claude.ai Artifact instead (see
+// scripts/artifact.mjs): served from an unknown path, so every asset URL is relative.
+const artifact =
+  /** @type {{ process?: { env: Record<string, string | undefined> } }} */ (globalThis).process?.env.ARTIFACT === '1';
+
 export default defineConfig({
   site: 'https://quangduy222002.github.io',
-  base: '/meridian-tryon',
+  base: artifact ? '/' : '/meridian-tryon',
+  ...(artifact ? { outDir: './dist-artifact' } : {}),
   trailingSlash: 'always',
   build: { format: 'directory', inlineStylesheets: 'auto' },
   prefetch: { defaultStrategy: 'hover' },
@@ -24,5 +29,12 @@ export default defineConfig({
       },
     },
     worker: { format: 'es' },
+    ...(artifact
+      ? {
+          experimental: {
+            renderBuiltUrl: (_file, { hostType }) => (hostType === 'html' ? undefined : { relative: true }),
+          },
+        }
+      : {}),
   },
 });

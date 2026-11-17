@@ -2,6 +2,7 @@
  * Roomcraft: a 2D floor-plan editor beside a live 3D model of the same plan. Every edit goes through commit(), which
  * records undo, re-detects rooms and syncs the 3D house; drags call preview() so the 3D view follows the pointer.
  */
+import { hostClaude, type HostSample } from '../../lib/claude-host';
 import {
   Color,
   DirectionalLight,
@@ -474,6 +475,12 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     return '';
   };
   let apiKey = readKey();
+  // Inside a claude.ai Artifact the viewer's own Claude answers: no key to ask for.
+  let hostAi: HostSample | null = null;
+  void hostClaude().then((s) => {
+    hostAi = s;
+    if (s) $('aiKeyBtn').hidden = true;
+  });
   const aiDlg = $<HTMLDialogElement>('aiDlg');
   const aiStatus = $('aiStatus');
   const keyBox = $<HTMLFormElement>('aiKeyBox');
@@ -493,7 +500,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
           `<option value="${esc(r.key)}" ${r.key === (selected ?? byArea[0]!.key) ? 'selected' : ''}>${esc(roomName(plan, r))} · ${r.area.toFixed(1)} m²</option>`,
       )
       .join('');
-    aiStatus.textContent = '';
+    aiStatus.textContent = hostAi ? 'Uses your Claude account.' : '';
     setKeyBox(false);
     aiDlg.showModal();
   });
@@ -528,7 +535,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     const room = rooms.find((r) => r.key === $<HTMLSelectElement>('aiRoom').value);
     const go = $<HTMLButtonElement>('aiGo');
     if (!request || !room || go.getAttribute('aria-disabled') === 'true') return;
-    if (!apiKey) {
+    if (!hostAi && !apiKey) {
       aiStatus.textContent = 'Add your Anthropic API key to use the AI.';
       return setKeyBox(true);
     }
@@ -540,7 +547,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     aiStatus.textContent = 'Arranging the room…';
     try {
       const { furnishRoom } = await import('./ai');
-      const out = await furnishRoom(apiKey, request, plan, room, keep);
+      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep);
       if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z));
       for (const it of out.items) plan.items.push({ id: uid('i'), ...it });
       aiDlg.close();

@@ -18,6 +18,10 @@
   `@meridian/three-core/math` and the WebGL check from `/support` in code that runs before first paint.
 - Each page is standalone: same-named functions on different pages are not related.
 
+- `npm run artifact` packs `/studio/` as a claude.ai Artifact (`apps/web/dist-artifact/publish/`, relative URLs, no
+  document skeleton). There "Furnish with AI" uses the viewer's own Claude through the `sample` capability
+  (`src/lib/claude-host.ts`) instead of an API key; publish the folder with `capabilities: {sample: {}}`.
+
 ## 3D work: performance comes first
 
 - Never import `three` from code that runs before first paint; load 3D with dynamic `import()` or from the page's

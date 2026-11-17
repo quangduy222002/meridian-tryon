@@ -1,9 +1,9 @@
 /**
  * AI furnishing: describe a room ("bedroom for two with a desk") and Claude lays out furniture from the catalogue
- * inside that room. Runs in the browser with the visitor's own Anthropic API key (no server), and loads only when
- * someone presses "Furnish".
+ * inside that room. Runs in the browser, on the viewer's own Claude account when the page is a claude.ai Artifact,
+ * else with the visitor's own Anthropic API key (no server either way). Loads only when someone presses "Furnish".
  */
-import Anthropic from '@anthropic-ai/sdk';
+import { hostFailure, type HostSample } from '../../lib/claude-host';
 import { FURNITURE } from './catalog';
 import { nodeMap, pointInPoly, roomName, type Item, type Plan, type Room, type Vec2 } from './plan';
 
@@ -108,10 +108,27 @@ function keepInside(it: AiItem, room: Room) {
   }
 }
 
-/** Asks Claude for a layout. Throws an Error whose message is safe to show. */
-export async function furnishRoom(apiKey: string, request: string, p: Plan, room: Room, keep: Item[]) {
+type Layout = { items: AiItem[]; summary: string };
+
+/** Through the host's Claude (claude.ai Artifact): the same brief, with the JSON shape spelled out. */
+async function askHost(sample: HostSample, request: string, p: Plan, room: Room, keep: Item[]): Promise<Layout> {
+  const prompt = `${systemPrompt(p, room, keep)}
+
+The request: ${request}
+
+Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": number, "rot": 0 | 90 | 180 | 270, "color": string}], "summary": string}.`;
+  try {
+    return await sample.json<Layout>(prompt);
+  } catch (err) {
+    throw new Error(hostFailure(err), { cause: err });
+  }
+}
+
+/** Through the Anthropic API with the visitor's key. */
+async function askApi(apiKey: string, request: string, p: Plan, room: Room, keep: Item[]): Promise<Layout> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-  let res: Anthropic.Beta.BetaMessage;
+  let res: Awaited<ReturnType<typeof client.beta.messages.create>>;
   try {
     res = await client.beta.messages.create({
       model: 'claude-opus-5-5',
@@ -122,6 +139,7 @@ export async function furnishRoom(apiKey: string, request: string, p: Plan, room
       output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
       system: systemPrompt(p, room, keep),
       messages: [{ role: 'user', content: request }],
+      stream: false,
     });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError)
@@ -140,12 +158,23 @@ export async function furnishRoom(apiKey: string, request: string, p: Plan, room
   if (res.stop_reason === 'max_tokens') throw new Error('The answer was cut off. Try a simpler request.');
   const text = res.content.find((b) => b.type === 'text');
   if (!text || text.type !== 'text') throw new Error('The model returned no layout. Try again.');
-  let out: { items: AiItem[]; summary: string };
   try {
-    out = JSON.parse(text.text) as { items: AiItem[]; summary: string };
+    return JSON.parse(text.text) as Layout;
   } catch {
     throw new Error('The model returned an unreadable layout. Try again.');
   }
+}
+
+/**
+ * Asks Claude for a layout — through the host page's Claude when given one, else the Anthropic API with a key.
+ * Throws an Error whose message is safe to show.
+ */
+export async function furnishRoom(brain: string | HostSample, request: string, p: Plan, room: Room, keep: Item[]) {
+  const out =
+    typeof brain === 'string'
+      ? await askApi(brain, request, p, room, keep)
+      : await askHost(brain, request, p, room, keep);
+  if (!out || !Array.isArray(out.items)) throw new Error('The model returned no layout. Try again.');
   const items = (out.items ?? [])
     .filter((i) => FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
     .map((i) => {

@@ -8,6 +8,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '**/dist-artifact/**',
       '**/.astro/**',
       '**/node_modules/**',
       'graphify-out/**',

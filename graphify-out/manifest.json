@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794882795.0806623,
-    "seen": 1794883115.722016,
-    "ast_hash": "856867503004e0855a2dbd91ec7c077b",
+    "mtime": 1794908481.2848628,
+    "seen": 1794908699.195353,
+    "ast_hash": "79ea3580c70ea4a2ace7245bf0ca0800",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "apps/web/astro.config.mjs": {
-    "mtime": 1794879915.7692533,
-    "seen": 1794883115.7219572,
-    "ast_hash": "e55968863ca676a4837af1940da22823",
+    "mtime": 1794908519.4016144,
+    "seen": 1794908699.195285,
+    "ast_hash": "8386fc2814f99abaee0b590f5be962af",
     "semantic_hash": ""
   },
   "apps/web/package.json": {
@@ -306,21 +306,21 @@
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
-    "mtime": 1794879915.7903626,
-    "seen": 1794883115.722003,
-    "ast_hash": "36cf3c35f3c6b1cb60a0cad9a82fd8e5",
+    "mtime": 1794908518.7158537,
+    "seen": 1794908699.195338,
+    "ast_hash": "7a5e73f10f7850a8dd6ca0765a65ff94",
     "semantic_hash": ""
   },
   "eslint.config.js": {
-    "mtime": 1794879915.7904503,
-    "seen": 1794883115.722004,
-    "ast_hash": "57d5081889bcf16a7a3848fd5cf421bf",
+    "mtime": 1794908518.7159762,
+    "seen": 1794908699.195339,
+    "ast_hash": "daf93207f53c79a9445aff81232a9c03",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1794879915.7952201,
-    "seen": 1794883115.722004,
-    "ast_hash": "c3882a400ff4301d5ce276da6dffb37d",
+    "mtime": 1794908468.9588788,
+    "seen": 1794908699.195339,
+    "ast_hash": "ee88574e2ab7b40d4414a6a4adf24eac",
     "semantic_hash": ""
   },
   "playwright.config.ts": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794896072.7022846,
-    "seen": 1794896290.5268,
-    "ast_hash": "49012345bc44fe61f49f32ef63b3fcd2",
+    "mtime": 1794908115.2613685,
+    "seen": 1794908699.195319,
+    "ast_hash": "5d5b591afd78c4dab3ed4b12adc2ef48",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/ai.ts": {
-    "mtime": 1794879915.786441,
-    "seen": 1794883115.721986,
-    "ast_hash": "4ecbdeb8a33ca9ecf8ee129644afe07c",
+    "mtime": 1794908481.284464,
+    "seen": 1794908699.195318,
+    "ast_hash": "20db44941d6e5cc47a187bd44860adef",
     "semantic_hash": ""
   },
   "apps/web/src/components/RoomWorkspace.astro": {
@@ -672,9 +672,9 @@
     "semantic_hash": ""
   },
   ".claude/launch.json": {
-    "mtime": 1794882398.1095836,
-    "seen": 1794883115.721938,
-    "ast_hash": "7ea34e53c1ef9ec4cb989a86379a1fbf",
+    "mtime": 1794907431.403466,
+    "seen": 1794908699.195265,
+    "ast_hash": "d7fa5d684c97f05d1f2a76838dd5b243",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/rooms.ts": {
@@ -687,6 +687,18 @@
     "mtime": 1794894735.4541912,
     "seen": 1794895665.402255,
     "ast_hash": "3e5f3e1f8648bbe3cb3006220b444f39",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/claude-host.ts": {
+    "mtime": 1794908481.284194,
+    "seen": 1794908699.1952908,
+    "ast_hash": "5e668e7fc147d33bba0f9a5551591677",
+    "semantic_hash": ""
+  },
+  "scripts/artifact.mjs": {
+    "mtime": 1794908537.6863248,
+    "seen": 1794908699.195349,
+    "ast_hash": "601f5d8c9561291cf9010ba3602c5ac8",
     "semantic_hash": ""
   },
   "package-lock.json": {
