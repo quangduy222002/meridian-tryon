@@ -73,15 +73,15 @@
 
 - **Thao tác:**
   1. Workspace hiện ra: mặt bằng 2D bên trái (đè lên bản vẽ gốc), 3D bên phải. Thông báo nổi:
-     `Found 25 walls, 9 doors and windows, 4 closed rooms · named: Balcony, Shaft, Bathroom — check them against the drawing.`
+     `Found 23 walls, 9 doors and windows, 3 closed rooms · named: Balcony, Bathroom — check them against the drawing.`
      Giữ khung hình đủ lâu để đọc.
-  2. Lăn chuột phóng to 2D vào góc trên: các nhãn **Bathroom 3.9 m²** và **Shaft 0.6 m²**, cung mở cửa phòng tắm.
+  2. Lăn chuột phóng to 2D vào góc trên: nhãn **Bathroom 4.5 m²** (hộp kỹ thuật ở góc đã gộp vào phòng tắm, không còn vách), cung mở cửa phòng tắm.
   3. Bấm nút "Drawing" (biểu tượng khung, cạnh nút "Import") để tắt bản vẽ gốc → còn mặt bằng sạch.
 - **Chữ trên hình:** `Walls, doors, windows and rooms — detected and named`
 - **EN:** "Walls, doors and windows are detected from the drawing itself. Rooms are named from labels, fixtures, or
-  how they're built: a small room beside the service shaft is the bathroom."
+  how they're built: the small room that holds the service shaft is the bathroom."
 - **VI:** "Tường, cửa đi, cửa sổ được nhận ra từ chính bản vẽ. Phòng được đặt tên theo nhãn chữ, thiết bị, hoặc cách bố
-  trí: phòng nhỏ cạnh hộp kỹ thuật là nhà vệ sinh."
+  trí: phòng nhỏ có hộp kỹ thuật là nhà vệ sinh."
 
 ### Cảnh 5 — Ký hiệu kiến trúc và ban công (0:34–0:44)
 
