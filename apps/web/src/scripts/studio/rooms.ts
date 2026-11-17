@@ -4,7 +4,7 @@
  *    it sits in.
  * 2. Without a label, a balcony is recognised by how it is reached: a small space on the outside of the flat that
  *    you step onto through glazing (a sliding door or a glass wall), never through a hinged door. Bedrooms, baths and
- *    stores always have a hinged door; shafts have no opening at all.
+ *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door.
  * Names are written to plan.rooms like a name the visitor typed, so they can be changed in the room inspector.
  */
 import { findRooms, nodeMap, pointInPoly, type Plan, type Room } from '../room/plan';
@@ -75,5 +75,16 @@ export function nameRooms(plan: Plan, d: Drawing, region: Region): Map<string, s
   }
 
   for (const [key, name] of names) plan.rooms[key] = { ...plan.rooms[key], name };
+
+  // You walk onto a balcony: the glazing between it and the flat is a glass door from the floor, not a window.
+  for (const r of rooms) {
+    if (names.get(r.key) !== 'Balcony') continue;
+    const ids = new Set(
+      wallsOf(r)
+        .filter((w) => uses.get(w.id) === 2)
+        .map((w) => w.id),
+    );
+    for (const o of plan.openings) if (o.kind === 'window' && ids.has(o.wall) && o.width >= 0.6) o.tall = true;
+  }
   return names;
 }

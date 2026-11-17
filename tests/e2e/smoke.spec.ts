@@ -345,6 +345,15 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? ''))
     .toContain('"name":"Balcony"');
+  // You step onto it through a sliding glass door (one tall opening), not a window.
+  expect(
+    await page.evaluate(
+      () =>
+        (JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}').openings ?? []).filter(
+          (o: { tall?: boolean }) => o.tall,
+        ).length,
+    ),
+  ).toBe(1);
   await page.locator('#drawingBtn').click();
   await expect(page.locator('#drawingBtn')).toHaveAttribute('aria-pressed', 'false');
   await expectNoHorizontalScroll(page);

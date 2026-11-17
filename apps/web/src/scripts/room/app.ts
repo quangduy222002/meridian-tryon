@@ -231,9 +231,9 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     } else if (sel?.kind === 'opening') {
       const o = p.openings.find((x) => x.id === sel.id);
       if (o)
-        html = `<h2>${o.kind === 'door' ? 'Door' : 'Window'}<small>${(o.width * 100).toFixed(0)} cm</small></h2>
-<label>Width<input type="range" data-act="width" min="0.6" max="2.4" step="0.05" value="${o.width}" /></label>
-<div class="row">${o.kind === 'door' ? '<button type="button" class="btn" data-act="flip">Flip swing</button>' : ''}<button type="button" class="btn danger" data-act="del">Delete</button></div>`;
+        html = `<h2>${o.kind === 'door' ? 'Door' : o.tall ? 'Glass door' : 'Window'}<small>${(o.width * 100).toFixed(0)} cm</small></h2>
+<label>Width<input type="range" data-act="width" min="0.6" max="3.6" step="0.05" value="${o.width}" /></label>
+<div class="row">${o.kind === 'door' ? '<button type="button" class="btn" data-act="flip">Flip swing</button>' : `<button type="button" class="btn" data-act="tall">${o.tall ? 'Make it a window' : 'Make it a glass door'}</button>`}<button type="button" class="btn danger" data-act="del">Delete</button></div>`;
     } else if (sel?.kind === 'wall') {
       const w = p.walls.find((x) => x.id === sel.id);
       if (w) {
@@ -285,6 +285,11 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     if (act === 'flip') {
       const o = p.openings.find((x) => x.id === sel.id);
       if (o) o.flip = -(o.flip ?? 1);
+    } else if (act === 'tall') {
+      const o = p.openings.find((x) => x.id === sel.id);
+      if (!o) return;
+      if (o.tall) delete o.tall;
+      else o.tall = true;
     } else if (b.dataset.color) {
       const it = p.items.find((i) => i.id === sel.id);
       if (it) it.color = b.dataset.color;

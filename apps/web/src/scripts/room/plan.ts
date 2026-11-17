@@ -31,6 +31,8 @@ export interface Opening {
   width: number;
   /** Doors: which side the leaf swings to (1 or -1). */
   flip?: number;
+  /** Windows: glazed from the floor to door height, a sliding glass door (onto a balcony, say). */
+  tall?: boolean;
 }
 
 export interface Item {

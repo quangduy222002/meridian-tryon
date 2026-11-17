@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794884300.4669807,
-    "seen": 1794884473.7597911,
-    "ast_hash": "23e638cb7126caf7d950a2fa0f94f6ad",
+    "mtime": 1794893651.5534146,
+    "seen": 1794893794.131577,
+    "ast_hash": "fb9277e6838f25ef96ca197e19895f5e",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794879915.7866075,
-    "seen": 1794883115.721987,
-    "ast_hash": "33c4757d418d1305ab79c10e9ded8593",
+    "mtime": 1794893443.4645424,
+    "seen": 1794893794.131546,
+    "ast_hash": "d4136a365b0073b022cde615780befe7",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/editor2d.ts": {
-    "mtime": 1794879915.7868412,
-    "seen": 1794883115.7219882,
-    "ast_hash": "6c0fbc54220a1d4de26a1c95920d480f",
+    "mtime": 1794893458.4934847,
+    "seen": 1794893794.131548,
+    "ast_hash": "4904cc213f824912f58a0301d3bbedd5",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/furniture.ts": {
@@ -576,15 +576,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
-    "mtime": 1794879915.7871087,
-    "seen": 1794883115.7219899,
-    "ast_hash": "c447fd33e90dda96ef4b558e8789a993",
+    "mtime": 1794893443.4634633,
+    "seen": 1794893794.1315498,
+    "ast_hash": "9425e1744a04300eb720cfbef30d35bb",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
-    "mtime": 1794879915.7871966,
-    "seen": 1794883115.7219908,
-    "ast_hash": "16902b2a16a406a364911c6684d56f19",
+    "mtime": 1794893443.4627311,
+    "seen": 1794893794.131551,
+    "ast_hash": "ed26d97e74a8cd9173b2fdd1af09516d",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/textures.ts": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/estimate.ts": {
-    "mtime": 1794879915.7869222,
-    "seen": 1794883115.7219892,
-    "ast_hash": "9a6c60773f268d2d3d3b8df8770b0758",
+    "mtime": 1794893443.4638655,
+    "seen": 1794893794.131549,
+    "ast_hash": "d7cdb8155fec78b43003e3ea49ea0584",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/store.ts": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1794884262.8996027,
-    "seen": 1794884473.759767,
-    "ast_hash": "3047b380c05ffa0b152623050a4ab77e",
+    "mtime": 1794893443.4622731,
+    "seen": 1794893794.131555,
+    "ast_hash": "f6ae640cf3ee374648f877fc1b1b6d78",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {
@@ -678,9 +678,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/rooms.ts": {
-    "mtime": 1794884301.3343778,
-    "seen": 1794884473.7597702,
-    "ast_hash": "63b0bdbc228bfc801b07b7a6f22089bf",
+    "mtime": 1794893483.1039984,
+    "seen": 1794893794.131558,
+    "ast_hash": "ecdaccbaa0e14665dcdd19e7866c269d",
     "semantic_hash": ""
   },
   "package-lock.json": {

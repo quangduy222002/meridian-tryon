@@ -45,7 +45,7 @@ export function estimate(p: Plan, rooms: Room[]): Estimate {
     if (L < 0.01) continue;
     const holes = p.openings
       .filter((o) => o.wall === w.id)
-      .reduce((s, o) => s + o.width * (o.kind === 'door' ? DOOR_HEIGHT : WINDOW_TOP - WINDOW_SILL), 0);
+      .reduce((s, o) => s + o.width * (o.kind === 'door' || o.tall ? DOOR_HEIGHT : WINDOW_TOP - WINDOW_SILL), 0);
     const net = Math.max(0, L * WALL_HEIGHT - holes);
     const mid: Vec2 = [(a.x + b.x) / 2, (a.z + b.z) / 2];
     const n: Vec2 = [-(b.z - a.z) / L, (b.x - a.x) / L];

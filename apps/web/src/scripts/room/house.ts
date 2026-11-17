@@ -145,6 +145,7 @@ export class House {
     }
 
     /* Walls */
+    const ends = wallReach(p, nodes);
     let minX = Infinity;
     let maxX = -Infinity;
     let minZ = Infinity;
@@ -160,7 +161,8 @@ export class House {
       const dx = b.x - a.x;
       const dz = b.z - a.z;
       const L = Math.hypot(dx, dz);
-      if (L < 0.05) continue;
+      if (L < 0.005) continue;
+      const [endA, endB] = ends.get(w.id) ?? [0, 0];
       const mid: Vec2 = [(a.x + b.x) / 2, (a.z + b.z) / 2];
       const n: Vec2 = [-dz / L, dx / L];
       const side = (s: number) => {
@@ -189,16 +191,19 @@ export class House {
         m.castShadow = m.receiveShadow = true;
         g.add(m);
       };
-      let cursor = -w.thick / 2; // walls overlap at corners so joints stay closed
+      let cursor = -endA;
       for (const { o, s, e } of ops) {
         piece(cursor, s, 0, WALL_HEIGHT);
-        const top = o.kind === 'door' ? DOOR_HEIGHT : WINDOW_TOP;
-        if (o.kind === 'window') piece(s, e, 0, WINDOW_SILL);
+        const glassDoor = o.kind === 'window' && !!o.tall;
+        const top = o.kind === 'door' || glassDoor ? DOOR_HEIGHT : WINDOW_TOP;
+        if (o.kind === 'window' && !glassDoor) piece(s, e, 0, WINDOW_SILL);
         piece(s, e, top, WALL_HEIGHT);
-        view.openings.push(this.opening(g, o.kind, (s + e) / 2 - L / 2, e - s, w.thick, o.flip ?? 1));
+        view.openings.push(
+          this.opening(g, glassDoor ? 'glass' : o.kind, (s + e) / 2 - L / 2, e - s, w.thick, o.flip ?? 1),
+        );
         cursor = e;
       }
-      piece(cursor, L + w.thick / 2, 0, WALL_HEIGHT);
+      piece(cursor, L + endB, 0, WALL_HEIGHT);
       this.walls.push(view);
     }
     if (Number.isFinite(minX)) {
@@ -211,8 +216,11 @@ export class House {
     return true;
   }
 
-  /** Door (frame + leaf ajar) or window (frame, sill, glass) filling an opening, in the wall's local space. */
-  private opening(g: Group, kind: 'door' | 'window', x: number, width: number, thick: number, flip: number) {
+  /**
+   * Door (frame + leaf ajar), window (frame, sill, glass) or glass door (frame and two sliding glazed panels, one
+   * slid half open) filling an opening, in the wall's local space.
+   */
+  private opening(g: Group, kind: 'door' | 'window' | 'glass', x: number, width: number, thick: number, flip: number) {
     const o = new Group();
     o.position.x = x;
     g.add(o);
@@ -237,6 +245,25 @@ export class House {
       leaf.position.set((-flip * (width - 2 * f)) / 2, (DOOR_HEIGHT - f) / 2, 0);
       leaf.castShadow = leaf.receiveShadow = true;
       hinge.add(leaf);
+    } else if (kind === 'glass') {
+      const h = DOOR_HEIGHT;
+      for (const s of [-1, 1]) box(f, h, d, this.frame, (s * (width - f)) / 2, h / 2);
+      box(width, f, d, this.frame, 0, h - f / 2);
+      box(width, 0.02, d, this.frame, 0, 0.01);
+      // Two panels on parallel tracks; the second is slid a third of the way over the first.
+      const pw = (width - 2 * f) / 2 + 0.03;
+      const slide = pw / 3;
+      for (const [px, pz] of [
+        [-(width - 2 * f) / 2 + pw / 2, -0.025],
+        [(width - 2 * f) / 2 - pw / 2 - slide, 0.025],
+      ] as const) {
+        const ph = h - f - 0.02;
+        const py = 0.02 + ph / 2;
+        for (const s of [-1, 1]) box(0.04, ph, 0.035, this.frame, px + (s * (pw - 0.04)) / 2, py, pz);
+        box(pw, 0.05, 0.035, this.frame, px, 0.02 + 0.025, pz);
+        box(pw, 0.04, 0.035, this.frame, px, h - f - 0.02, pz);
+        box(pw - 0.08, ph - 0.09, 0.01, this.glass, px, py, pz);
+      }
     } else {
       const h = WINDOW_TOP - WINDOW_SILL;
       const y = WINDOW_SILL + h / 2;
@@ -296,6 +323,61 @@ export class House {
     this.selection.position.set(it.x, 0, it.z);
     this.selection.rotation.y = -it.rot * DEG;
   }
+}
+
+/**
+ * How far each wall reaches past its two nodes, so joints are closed without two walls sharing a face (overlapping
+ * coplanar faces flicker). At each node one wall runs through: a straight continuation (both stop flush at the node)
+ * or, at a corner, the thickest wall, which reaches across the others. The other walls stop at its face.
+ */
+export function wallReach(p: Plan, nodes: Map<string, { x: number; z: number }>): Map<string, [number, number]> {
+  type End = { id: string; end: 0 | 1; t: number; dx: number; dz: number; L: number };
+  const at = new Map<string, End[]>();
+  const out = new Map<string, [number, number]>();
+  for (const w of p.walls) {
+    const a = nodes.get(w.a);
+    const b = nodes.get(w.b);
+    if (!a || !b) continue;
+    const L = Math.hypot(b.x - a.x, b.z - a.z);
+    if (L < 0.005) continue;
+    const dx = (b.x - a.x) / L;
+    const dz = (b.z - a.z) / L;
+    out.set(w.id, [0, 0]);
+    const add = (n: string, e: End) => at.set(n, [...(at.get(n) ?? []), e]);
+    add(w.a, { id: w.id, end: 0, t: w.thick, dx, dz, L });
+    add(w.b, { id: w.id, end: 1, t: w.thick, dx: -dx, dz: -dz, L });
+  }
+  const set = (e: End, v: number) => (out.get(e.id)![e.end] = Math.max(v, -e.L / 2));
+  for (const list of at.values()) {
+    if (list.length < 2) continue;
+    const dot = (e: End, f: End) => e.dx * f.dx + e.dz * f.dz;
+    // A straight run through the node (the thickest such pair), else the thickest (then longest) wall.
+    let through: End[] = [];
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++)
+        if (dot(list[i]!, list[j]!) < -0.97) {
+          const pair = [list[i]!, list[j]!];
+          if (!through.length || Math.min(...pair.map((e) => e.t)) > Math.min(...through.map((e) => e.t)))
+            through = pair;
+        }
+    if (!through.length) {
+      const main = [...list].sort((e, f) => f.t - e.t || f.L - e.L)[0]!;
+      let reach = 0;
+      for (const e of list)
+        if (e !== main) reach = Math.max(reach, e.t / 2 / Math.max(0.5, Math.abs(main.dx * e.dz - main.dz * e.dx)));
+      set(main, Math.min(reach, 0.6));
+      through = [main];
+    }
+    const face = Math.min(...through.map((e) => e.t)) / 2;
+    const ref = through[0]!;
+    for (const e of list) {
+      if (through.includes(e)) continue;
+      const sin = Math.max(0.2, Math.abs(ref.dx * e.dz - ref.dz * e.dx));
+      const cos = Math.abs(dot(ref, e));
+      set(e, Math.min(0, -face / sin + (e.t / 2) * (cos / sin)));
+    }
+  }
+  return out;
 }
 
 /** Box UVs in metres (u along the wall, v up), offset so texture runs on across pieces of the same wall. */

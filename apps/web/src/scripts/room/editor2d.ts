@@ -717,13 +717,21 @@ export class PlanEditor {
         const osel = this.sel?.kind === 'opening' && this.sel.id === o.id;
         c.strokeStyle = osel ? ACCENT : INK;
         c.lineWidth = osel ? 2 : 1;
-        if (o.kind === 'window') {
-          for (const k of [-0.35, 0, 0.35]) {
-            c.beginPath();
-            c.moveTo(X(a[0] + ux * s0 + nx * t * k), Z(a[1] + uz * s0 + nz * t * k));
-            c.lineTo(X(a[0] + ux * s1 + nx * t * k), Z(a[1] + uz * s1 + nz * t * k));
-            c.stroke();
-          }
+        const line = (u0: number, u1: number, k: number) => {
+          c.beginPath();
+          c.moveTo(X(a[0] + ux * u0 + nx * t * k), Z(a[1] + uz * u0 + nz * t * k));
+          c.lineTo(X(a[0] + ux * u1 + nx * t * k), Z(a[1] + uz * u1 + nz * t * k));
+          c.stroke();
+        };
+        if (o.kind === 'window' && o.tall) {
+          // Glass door: two overlapping sliding panels on parallel tracks.
+          const m = (s0 + s1) / 2;
+          const lap = Math.min(0.08, (s1 - s0) / 6);
+          c.lineWidth += 1.5;
+          line(s0, m + lap, -0.3);
+          line(m - lap, s1, 0.3);
+        } else if (o.kind === 'window') {
+          for (const k of [-0.35, 0, 0.35]) line(s0, s1, k);
         } else {
           // Leaf and swing arc, hinged at one jamb, opening to the flip side.
           const f = o.flip ?? 1;

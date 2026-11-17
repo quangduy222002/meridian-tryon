@@ -7,7 +7,8 @@
  *    sparse hatch, counts when the band is a closed block. DXF files carry no hatch strokes, so there wall layers
  *    ("WALL", "TUONG", …) count instead.
  * 3. Pieces on one line join up; gaps of a door's or window's width become openings (an arc nearby means a door,
- *    glazing lines inside the gap a window). Short cross-cuts inside a wall's body are dropped.
+ *    glazing lines inside the gap a window). Short cross-cuts inside a wall's body, and frame lines along one,
+ *    are dropped.
  * 4. Ends snap to the walls they run into, so corners and T-junctions share nodes and rooms close; where a facade
  *    changes thickness, the offset centre lines are joined by a short cross piece.
  * It is a heuristic: the result is meant to be checked and fixed in the plan editor (or by the AI clean-up).
@@ -279,6 +280,18 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       changed = true;
     }
   }
+
+  // A door or window frame drawn just inside a wall pairs up into a thin "wall" lying along it (it would stand in the
+  // opening and flicker against the wall's face): drop a plain run that lies within a longer parallel wall's body.
+  const along = (p: Run, q: Run) =>
+    p !== q &&
+    p.o === q.o &&
+    !p.joint &&
+    q.b - q.a > p.b - p.a &&
+    Math.abs(p.c - q.c) < (p.t + q.t) / 2 &&
+    Math.min(p.b, q.b) - Math.max(p.a, q.a) >= (p.b - p.a) * 0.8;
+  const frames = runs.filter((p) => !p.holes.length && runs.some((q) => along(p, q)));
+  for (const p of frames) runs.splice(runs.indexOf(p), 1);
 
   /* ---------- Snap ends onto the walls they meet ---------- */
   const reach = (r: Run, s: Run) => r.t / 2 + s.t / 2 + 150;
