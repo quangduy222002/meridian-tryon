@@ -64,8 +64,8 @@ export class House {
   private showCeilings = false;
   private readonly ceilingMat = new MeshStandardMaterial({ color: '#f6f3ee', roughness: 0.95 });
   private finishMats = new Map<string, MeshStandardMaterial>();
-  private readonly cap = new MeshStandardMaterial({ color: '#3d3833', roughness: 0.9 });
-  private readonly exterior = new MeshStandardMaterial({ color: '#f3efe8', roughness: 0.92 });
+  private readonly cap = new MeshStandardMaterial({ color: '#2a303b', roughness: 0.9 });
+  private readonly exterior = new MeshStandardMaterial({ color: '#eef0f3', roughness: 0.92 });
   private readonly frame = new MeshStandardMaterial({ color: '#f7f5f1', roughness: 0.5 });
   private readonly leaf = new MeshStandardMaterial({ color: '#c8a77e', roughness: 0.55 });
   private readonly metal = new MeshStandardMaterial({ color: '#4a4744', roughness: 0.4, metalness: 0.6 });
@@ -81,7 +81,7 @@ export class House {
   private readonly roofMat = new MeshStandardMaterial({ colorWrite: false, depthWrite: false, side: DoubleSide });
   private readonly selection = new LineLoop(
     new BufferGeometry(),
-    new LineBasicMaterial({ color: '#e2622b', depthTest: false }),
+    new LineBasicMaterial({ color: '#2563eb', depthTest: false }),
   );
 
   constructor(private readonly tex: Record<RoomTexture, Texture>) {

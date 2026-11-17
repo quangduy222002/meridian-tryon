@@ -40,7 +40,7 @@ export async function startStudio(gl: boolean) {
       const top = Z(mz(d.image.y1));
       c.drawImage(underlayImg, left, top, X(mx(d.image.x1)) - left, Z(mz(d.image.y0)) - top);
     } else {
-      c.strokeStyle = '#5b544c';
+      c.strokeStyle = '#475467';
       c.lineWidth = 0.7;
       c.beginPath();
       for (const s of d.segs) {
@@ -598,7 +598,7 @@ class SheetView {
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     // Exposes the view transform (drawing units → CSS px) for tests and tooling.
     if (this.fitted) this.canvas.dataset.view = `${this.s} ${this.ox} ${this.oy}`;
-    c.fillStyle = '#ece6dc';
+    c.fillStyle = '#e4e8ee';
     c.fillRect(0, 0, W, H);
     const d = this.host.drawing();
     if (!d) return;
@@ -615,7 +615,7 @@ class SheetView {
       c.fillStyle = '#fff';
       const b = d.bounds;
       c.fillRect(this.X(b.x0), this.Y(b.y1), (b.x1 - b.x0) * this.s, (b.y1 - b.y0) * this.s);
-      c.strokeStyle = '#2a2622';
+      c.strokeStyle = '#1d2433';
       c.lineWidth = 0.6;
       c.beginPath();
       for (const s of d.segs) {
@@ -631,12 +631,12 @@ class SheetView {
       const y = this.Y(r.y1);
       const w = (r.x1 - r.x0) * this.s;
       const h = (r.y1 - r.y0) * this.s;
-      c.fillStyle = 'rgba(29, 29, 31, 0.42)';
+      c.fillStyle = 'rgba(16, 24, 40, 0.38)';
       c.beginPath();
       c.rect(0, 0, W, H);
       c.rect(x, y, w, h);
       c.fill('evenodd');
-      c.strokeStyle = '#e2622b';
+      c.strokeStyle = '#2563eb';
       c.lineWidth = 2;
       c.setLineDash([6, 4]);
       c.strokeRect(x, y, w, h);
@@ -645,7 +645,7 @@ class SheetView {
     const first = this.cal[0];
     if (first && this.hover) {
       // Guide line from the first point to the pointer while picking the second.
-      c.strokeStyle = '#e2622b';
+      c.strokeStyle = '#2563eb';
       c.lineWidth = 1.5;
       c.setLineDash([4, 3]);
       c.beginPath();
@@ -655,7 +655,7 @@ class SheetView {
       c.setLineDash([]);
     }
     for (const q of this.cal) {
-      c.fillStyle = '#e2622b';
+      c.fillStyle = '#2563eb';
       c.beginPath();
       c.arc(this.X(q.x), this.Y(q.y), 5, 0, Math.PI * 2);
       c.fill();

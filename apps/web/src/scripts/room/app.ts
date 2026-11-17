@@ -630,16 +630,16 @@ async function setupThree(
   });
 
   const scene = new Scene();
-  scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#ddd5c8');
+  scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#dde1e7');
   scene.environmentIntensity = 0.55;
-  const hemi = new HemisphereLight('#fff6ea', '#b9ab98', 0.7);
+  const hemi = new HemisphereLight('#f7f9fc', '#b7bec8', 0.7);
   const sun = new DirectionalLight('#fff4e5', 2.6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   scene.add(hemi, sun, sun.target);
-  const ground = new Mesh(new PlaneGeometry(200, 200), new MeshStandardMaterial({ color: '#e7e0d4', roughness: 1 }));
+  const ground = new Mesh(new PlaneGeometry(200, 200), new MeshStandardMaterial({ color: '#e3e7ec', roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.002;
   ground.receiveShadow = true;

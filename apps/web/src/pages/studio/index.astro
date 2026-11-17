@@ -8,7 +8,7 @@ import '../../styles/studio.css';
 <BaseLayout
   title="Floorwise — import a floor plan, redesign it in 3D"
   description="Bring a PDF or DXF floor plan, pick your flat out of the sheet, and get a clean editable plan with walls, doors and windows — then furnish it and see it in 3D. Concept demo built with Three.js."
-  themeColor="#f4f1ec"
+  themeColor="#ffffff"
 >
   <RoomWorkspace
     brand="Floorwise"
@@ -46,15 +46,18 @@ import '../../styles/studio.css';
 
       <div class="wiz-import" id="stepImport">
         <h2 id="wizTitle">Import a floor plan</h2>
-        <p>A PDF exported from your CAD program, or a DXF. Everything is read in your browser — nothing is uploaded.</p>
+        <p>
+          Bring a PDF exported from your CAD program, or a DXF. Floorwise finds the walls, doors and windows and turns
+          them into a plan you can edit, furnish and walk through in 3D.
+        </p>
         <label class="drop" id="drop">
           <input type="file" id="file" accept=".pdf,.dxf,application/pdf" />
           <b>Drop a PDF or DXF here</b>
-          <span>or click to choose a file</span>
+          <span>or click to choose a file · PDF or DXF, read in your browser</span>
         </label>
         <div class="wiz-row">
-          <button type="button" id="sampleBtn" class="btn-ink">
-            Try the sample: flat A.26 (PDF)
+          <button type="button" id="sampleBtn" class="btn-line">
+            Open the sample plan · Flat A.26
           </button>
           <button type="button" id="resumeBtn" class="btn-line" hidden>
             Continue your last plan

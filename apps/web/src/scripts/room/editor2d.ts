@@ -45,8 +45,8 @@ export interface EditorHost {
   walker?(): { x: number; z: number; yaw: number } | null;
 }
 
-const INK = '#2a2622';
-const ACCENT = '#e2622b';
+const INK = '#1d2433';
+const ACCENT = '#2563eb';
 const GRID = 0.5;
 const DRAG_PX = 4;
 const DEG = Math.PI / 180;
@@ -614,18 +614,18 @@ export class PlanEditor {
     const X = (x: number) => x * s + this.ox;
     const Z = (z: number) => z * s + this.oy;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    c.fillStyle = '#fbf9f5';
+    c.fillStyle = '#ffffff';
     c.fillRect(0, 0, W, H);
 
     // Grid: 50 cm minor, 1 m major
     const [gx0, gz0] = this.toPlan(0, 0);
     const [gx1, gz1] = this.toPlan(W, H);
     for (let gx = Math.floor(gx0 / GRID) * GRID; gx <= gx1; gx += GRID) {
-      c.fillStyle = Math.abs(gx % 1) < 1e-6 || Math.abs((gx % 1) - 1) < 1e-6 ? '#e6dfd3' : '#f0ebe2';
+      c.fillStyle = Math.abs(gx % 1) < 1e-6 || Math.abs((gx % 1) - 1) < 1e-6 ? '#e3e7ed' : '#f1f3f6';
       c.fillRect(Math.round(X(gx)), 0, 1, H);
     }
     for (let gz = Math.floor(gz0 / GRID) * GRID; gz <= gz1; gz += GRID) {
-      c.fillStyle = Math.abs(gz % 1) < 1e-6 || Math.abs((gz % 1) - 1) < 1e-6 ? '#e6dfd3' : '#f0ebe2';
+      c.fillStyle = Math.abs(gz % 1) < 1e-6 || Math.abs((gz % 1) - 1) < 1e-6 ? '#e3e7ed' : '#f1f3f6';
       c.fillRect(0, Math.round(Z(gz)), W, 1);
     }
 
@@ -638,8 +638,9 @@ export class PlanEditor {
       c.beginPath();
       r.poly.forEach(([x, z], i) => (i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))));
       c.closePath();
-      c.globalAlpha = selected ? 0.55 : 0.32;
-      c.fillStyle = FLOORS[st.floor]?.color ?? '#e7dfd2';
+      // A faint hint of the floor finish; the selected room gets the accent wash instead.
+      c.globalAlpha = selected ? 0.1 : 0.16;
+      c.fillStyle = selected ? ACCENT : (FLOORS[st.floor]?.color ?? '#d9dde3');
       c.fill();
       c.globalAlpha = 1;
       if (selected) {
@@ -689,8 +690,8 @@ export class PlanEditor {
       const sel = this.sel?.kind === 'wall' && this.sel.id === w.id;
       if (w.rail) {
         // Railing: a light band with the handrail line along it.
-        quad(-t, L + t, sel ? ACCENT : '#cfc8bc');
-        c.strokeStyle = sel ? '#fbf9f5' : INK;
+        quad(-t, L + t, sel ? ACCENT : '#c9d0da');
+        c.strokeStyle = sel ? '#ffffff' : INK;
         c.lineWidth = 1.5;
         c.beginPath();
         c.moveTo(X(a[0] - ux * t), Z(a[1] - uz * t));
@@ -700,7 +701,7 @@ export class PlanEditor {
       for (const o of p.openings.filter((x) => x.wall === w.id)) {
         const s0 = o.t * L - o.width / 2;
         const s1 = o.t * L + o.width / 2;
-        quad(s0, s1, '#fbf9f5');
+        quad(s0, s1, '#ffffff');
         const osel = this.sel?.kind === 'opening' && this.sel.id === o.id;
         c.strokeStyle = osel ? ACCENT : INK;
         c.lineWidth = osel ? 2 : 1;
@@ -761,7 +762,7 @@ export class PlanEditor {
         if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
         c.rotate(ang);
         c.font = '500 10.5px "Geist Mono", ui-monospace, monospace';
-        c.fillStyle = sel ? ACCENT : '#8a857c';
+        c.fillStyle = sel ? ACCENT : '#667085';
         c.textAlign = 'center';
         c.textBaseline = 'middle';
         c.fillText(`${L.toFixed(2)} m`, 0, 0);
@@ -778,7 +779,7 @@ export class PlanEditor {
       c.fillStyle = INK;
       c.fillText(roomName(p, r), X(cx), Z(cz) - 8);
       c.font = '500 11px "Geist Mono", ui-monospace, monospace';
-      c.fillStyle = '#6f685f';
+      c.fillStyle = '#667085';
       c.fillText(`${r.area.toFixed(1)} m²`, X(cx), Z(cz) + 9);
     }
 
@@ -899,7 +900,7 @@ export class PlanEditor {
     const d = def.d * s;
     c.fillStyle = def.flat ? (it.color ?? def.colors[0]!) : '#ffffff';
     c.globalAlpha *= def.flat ? 0.5 : 1;
-    c.strokeStyle = selected ? ACCENT : '#5b544c';
+    c.strokeStyle = selected ? ACCENT : '#475467';
     c.lineWidth = selected ? 2 : 1;
     c.beginPath();
     c.roundRect(-w / 2, -d / 2, w, d, Math.min(4, s * 0.05));
@@ -912,7 +913,7 @@ export class PlanEditor {
       c.fillRect(-w / 2 + 2, -d / 2 + 2, w - 4, Math.max(3, d * 0.18));
     }
     if (s * Math.min(def.w, def.d) > 26 && !def.flat) {
-      c.fillStyle = '#5b544c';
+      c.fillStyle = '#475467';
       c.font = `500 ${Math.max(9, Math.min(12, s * 0.17))}px "Inter Variable", sans-serif`;
       c.textAlign = 'center';
       c.textBaseline = 'middle';

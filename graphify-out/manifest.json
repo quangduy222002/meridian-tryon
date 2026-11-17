@@ -546,15 +546,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/room/index.astro": {
-    "mtime": 1794882806.7626903,
-    "seen": 1794883115.7219672,
-    "ast_hash": "bcc1c1971a248e0d466e7ed88b142f75",
+    "mtime": 1794908973.3978581,
+    "seen": 1794909247.525986,
+    "ast_hash": "5565d4efa6549a6fa3b7758bfd8fbef5",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794908115.2613685,
-    "seen": 1794908699.195319,
-    "ast_hash": "5d5b591afd78c4dab3ed4b12adc2ef48",
+    "mtime": 1794908963.5805724,
+    "seen": 1794909247.526011,
+    "ast_hash": "501402db0fc884f2224174ad67d943ff",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/editor2d.ts": {
-    "mtime": 1794896048.8684058,
-    "seen": 1794896290.5268009,
-    "ast_hash": "e2f824d9544723e0b60c08e49de9fedb",
+    "mtime": 1794908963.578613,
+    "seen": 1794909247.526012,
+    "ast_hash": "b48361f0598615588805ee77a492b5c1",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/furniture.ts": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
-    "mtime": 1794896074.2693872,
-    "seen": 1794896290.526803,
-    "ast_hash": "819b9853a650765845986353f4156b63",
+    "mtime": 1794908969.324697,
+    "seen": 1794909247.526015,
+    "ast_hash": "2ed2c816ce2499265c726690bade5474",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
@@ -630,15 +630,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/studio/index.astro": {
-    "mtime": 1794882607.3710115,
-    "seen": 1794883115.7219682,
-    "ast_hash": "f27625ef61d365edf0479cccf1a8e001",
+    "mtime": 1794908983.6612227,
+    "seen": 1794909247.5259871,
+    "ast_hash": "2c9ebf8e6cb9dc4fa8834a725df5285b",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/app.ts": {
-    "mtime": 1794896168.4196212,
-    "seen": 1794896290.526807,
-    "ast_hash": "8696965768ae64b762c7ba326165f5b8",
+    "mtime": 1794908963.5795271,
+    "seen": 1794909247.52602,
+    "ast_hash": "3131e7457d4c1a4705c83652703166b5",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
