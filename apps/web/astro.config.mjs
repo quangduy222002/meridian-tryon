@@ -21,10 +21,15 @@ export default defineConfig({
       assetsInlineLimit: (file) => (/\.(woff2?|ttf)$/.test(file) ? false : undefined),
       rollupOptions: {
         // One long-lived, shared chunk for three.js: cached once, reused by every 3D page. Editor-only addons
-        // (the build-guide studio's gizmo) stay out of it so pages that never open the studio don't pay for them.
+        // (the build-guide studio's gizmo) and the room planner's post-processing and sky stay out of it, so pages
+        // that never use them don't pay for them.
         output: {
           manualChunks: (id) =>
-            id.includes('node_modules/three/') && !id.includes('TransformControls') ? 'three' : undefined,
+            id.includes('node_modules/three/') &&
+            !id.includes('TransformControls') &&
+            !/examples\/jsm\/(postprocessing|shaders|objects|math)\//.test(id)
+              ? 'three'
+              : undefined,
         },
       },
     },

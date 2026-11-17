@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "apps/web/astro.config.mjs": {
-    "mtime": 1794908519.4016144,
-    "seen": 1794908699.195285,
-    "ast_hash": "8386fc2814f99abaee0b590f5be962af",
+    "mtime": 1794913911.6419287,
+    "seen": 1794914082.0644531,
+    "ast_hash": "fbbc9bf2a12a40dfe424bae6acc364b3",
     "semantic_hash": ""
   },
   "apps/web/package.json": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794910574.8393602,
-    "seen": 1794911065.889549,
-    "ast_hash": "1afb87861a404e379bea94dbb1390bd8",
+    "mtime": 1794913682.9978945,
+    "seen": 1794914082.064485,
+    "ast_hash": "a33bb23fa9ba9a98e2cc1ff6be5cc023",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
-    "mtime": 1794910362.289283,
-    "seen": 1794911065.889555,
-    "ast_hash": "e8a350243984da8ce8f8b957441d0c71",
+    "mtime": 1794913545.529393,
+    "seen": 1794914082.06449,
+    "ast_hash": "312d77bd149fbcd09382cff2e576bb83",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
@@ -705,6 +705,18 @@
     "mtime": 1794910814.3348923,
     "seen": 1794911065.8895528,
     "ast_hash": "aae76d20171614e92a3e2d307fd124f4",
+    "semantic_hash": ""
+  },
+  "apps/web/src/scripts/room/look.ts": {
+    "mtime": 1794913619.301223,
+    "seen": 1794914082.064491,
+    "ast_hash": "cc1ac2f7d185405ae60098a4f819a07e",
+    "semantic_hash": ""
+  },
+  "docs/demo-clip.md": {
+    "mtime": 1794912647.1727462,
+    "seen": 1794914082.064524,
+    "ast_hash": "4cc4ae9c733781f30d56b21b6c97b7fe",
     "semantic_hash": ""
   },
   "package-lock.json": {

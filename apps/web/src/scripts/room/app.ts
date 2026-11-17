@@ -20,9 +20,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
-  LIGHT_STUDIO,
   RenderLoop,
-  bakeStudio,
   createRenderer,
   damp,
   generateTextures,
@@ -34,6 +32,7 @@ import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, WALLS } from './catalog';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
+import { createLook } from './look';
 import {
   findRooms,
   len,
@@ -660,16 +659,21 @@ async function setupThree(
   });
 
   const scene = new Scene();
-  scene.environment = bakeStudio(renderer, LIGHT_STUDIO, '#dde1e7');
-  scene.environmentIntensity = 0.55;
-  const hemi = new HemisphereLight('#f7f9fc', '#b7bec8', 0.7);
+  const camera = new PerspectiveCamera(38, 1, 0.1, 400);
+  // Sky light, tone mapping and (on capable devices) ambient occlusion: see look.ts.
+  const look = createLook(renderer, scene, camera, quality, () => loop.invalidate());
+  scene.environmentIntensity = 0.06;
+  const hemi = new HemisphereLight('#f6f2ea', '#cdb89b', 0.6);
   const sun = new DirectionalLight('#fff4e5', 2.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize);
+  const shadowSize = quality.tier === 'high' ? 4096 : quality.shadowMapSize;
+  sun.shadow.mapSize.set(shadowSize, shadowSize);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
+  // The invisible roof (layer 1) only casts shadows: the main camera and ambient occlusion never see it.
+  sun.shadow.camera.layers.enable(1);
   scene.add(hemi, sun, sun.target);
-  const ground = new Mesh(new PlaneGeometry(200, 200), new MeshStandardMaterial({ color: '#e3e7ec', roughness: 1 }));
+  const ground = new Mesh(new PlaneGeometry(240, 240), new MeshStandardMaterial({ color: '#dde1e6', roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.002;
   ground.receiveShadow = true;
@@ -678,7 +682,6 @@ async function setupThree(
   const house = new House(tex);
   scene.add(house.root);
 
-  const camera = new PerspectiveCamera(38, 1, 0.1, 400);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.maxPolarAngle = 1.45;
@@ -700,8 +703,9 @@ async function setupThree(
   /* ---------- Sun ---------- */
   const hourIn = $<HTMLInputElement>('hour');
   const northIn = $<HTMLInputElement>('north');
+  const sunDir = new Vector3();
   const warm = new Color('#ffb067');
-  const white = new Color('#fff4e5');
+  const white = new Color('#fff0dc');
   const updateSun = () => {
     const p = getPlan();
     p.north = Number(northIn.value);
@@ -724,8 +728,9 @@ async function setupThree(
     sun.target.position.set(cx, 0, cz);
     const k = smoothstep(4 * DEG, 40 * DEG, elev);
     sun.color.copy(warm).lerp(white, k);
-    sun.intensity = 0.6 + 2.4 * k;
-    hemi.intensity = 0.35 + 0.45 * k;
+    sun.intensity = 1 + 3 * k;
+    hemi.intensity = 0.5 + 0.25 * k;
+    look.setSun(sunDir.copy(sun.position).sub(sun.target.position).normalize(), elev);
     Object.assign(sun.shadow.camera, { left: -r - 3, right: r + 3, top: r + 3, bottom: -r - 3, near: 1, far: 90 });
     sun.shadow.camera.updateProjectionMatrix();
     renderer.shadowMap.needsUpdate = true;
@@ -818,7 +823,7 @@ async function setupThree(
       const moving = mode === 'walk' ? walker.update(dt) : controls.update(dt);
       if (mode === 'walk' && (moving || walkerMoved)) redraw2d();
       walkerMoved = false;
-      renderer.render(scene, camera);
+      look.render();
       return cutting || moving;
     },
     { target: viewer, demand: true },
@@ -830,6 +835,7 @@ async function setupThree(
     const { clientWidth: w, clientHeight: h } = viewer;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
+    look.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (!touched) frame();
@@ -886,7 +892,7 @@ async function setupThree(
     /** Renders a frame and reads it back as a PNG (in the same task, before the buffer is cleared). */
     snapshot() {
       return new Promise<Blob | null>((resolve) => {
-        renderer.render(scene, camera);
+        look.render();
         canvas.toBlob(resolve, 'image/png');
       });
     },

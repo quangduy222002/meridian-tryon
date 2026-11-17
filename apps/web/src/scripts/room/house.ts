@@ -12,6 +12,7 @@ import {
   LineBasicMaterial,
   LineLoop,
   Mesh,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   Shape,
   ShapeGeometry,
@@ -70,14 +71,20 @@ export class House {
   private readonly frame = new MeshStandardMaterial({ color: '#f7f5f1', roughness: 0.5 });
   private readonly leaf = new MeshStandardMaterial({ color: '#c8a77e', roughness: 0.55 });
   private readonly metal = new MeshStandardMaterial({ color: '#4a4744', roughness: 0.4, metalness: 0.6 });
-  private readonly glass = new MeshStandardMaterial({
-    color: '#bcd3dc',
-    roughness: 0.05,
-    metalness: 0.3,
+  /** Clear glass: barely tinted, mostly what it reflects (the sky light), as real panes read. */
+  private readonly glass = new MeshPhysicalMaterial({
+    color: '#dfeaee',
+    roughness: 0.02,
+    metalness: 0,
+    ior: 1.5,
+    specularIntensity: 1,
+    envMapIntensity: 2.5,
     transparent: true,
-    opacity: 0.28,
+    opacity: 0.2,
     depthWrite: false,
   });
+  private readonly skirting = new MeshStandardMaterial({ color: '#f4f3f0', roughness: 0.4 });
+  private readonly handle = new MeshStandardMaterial({ color: '#c9ccd1', roughness: 0.3, metalness: 1 });
   /** Writes no colour or depth: the roof exists only in the shadow map. */
   private readonly roofMat = new MeshStandardMaterial({ colorWrite: false, depthWrite: false, side: DoubleSide });
   private readonly selection = new LineLoop(
@@ -97,10 +104,14 @@ export class House {
     if (!m) {
       const f: Finish =
         (kind === 'floor' ? FLOORS[key] : WALLS[key]) ?? (kind === 'floor' ? FLOORS.oak! : WALLS.chalk!);
+      const map = f.tex ? this.tex[f.tex as RoomTexture] : null;
+      // The finish's own pattern doubles as its relief: plank joints and grain, grout lines, mortar, terrazzo chips.
       m = new MeshStandardMaterial({
         color: f.color,
         roughness: f.roughness,
-        map: f.tex ? this.tex[f.tex as RoomTexture] : null,
+        map,
+        bumpMap: map,
+        bumpScale: map ? (BUMP[f.tex as RoomTexture] ?? 1) : 1,
       });
       this.finishMats.set(id, m);
     }
@@ -135,6 +146,7 @@ export class House {
       roof.rotation.x = -Math.PI / 2;
       roof.position.y = WALL_HEIGHT;
       roof.castShadow = true;
+      roof.layers.set(1);
       this.structure.add(roof);
       // Visible ceiling, only while walking through the rooms (faces down).
       const ceiling = new Mesh(
@@ -175,7 +187,12 @@ export class House {
         const r = roomAt(rooms, pt);
         return r ? this.finish('wall', roomStyle(p, r).wall) : this.exterior;
       };
-      const mats: Material[] = [this.cap, this.cap, this.cap, this.cap, side(1), side(-1)];
+      // Box faces: ±x ends and the underside are plastered like the room they open onto (door and window reveals,
+      // lintel soffits, joints between wall pieces); the top is the dark section cut seen in the dollhouse.
+      const front = side(1);
+      const back = side(-1);
+      const reveal = front !== this.exterior ? front : back;
+      const mats: Material[] = [reveal, reveal, this.cap, reveal, front, back];
       const g = new Group();
       g.position.set(mid[0], 0, mid[1]);
       g.rotation.y = Math.atan2(-dz, dx);
@@ -209,6 +226,15 @@ export class House {
         m.position.set((s + e) / 2 - L / 2, (y0 + y1) / 2, 0);
         m.castShadow = m.receiveShadow = true;
         g.add(m);
+        // Skirting boards along the foot of every face that looks into a room.
+        if (y0 === 0)
+          for (const k of [1, -1]) {
+            if (mats[k === 1 ? 4 : 5] === this.exterior) continue;
+            const sk = new Mesh(skirtingGeo(e - s), this.skirting);
+            sk.position.set((s + e) / 2 - L / 2, SKIRTING / 2, k * (w.thick / 2 + 0.006));
+            sk.receiveShadow = true;
+            g.add(sk);
+          }
       };
       let cursor = -endA;
       for (const { o, s, e } of ops) {
@@ -287,6 +313,15 @@ export class House {
         leaf.position.set((-j * lw) / 2, (DOOR_HEIGHT - f) / 2, 0);
         leaf.castShadow = leaf.receiveShadow = true;
         hinge.add(leaf);
+        // Lever handles on both faces, near the free edge, pointing back towards the hinge.
+        for (const side of [1, -1]) {
+          const rose = new Mesh(new BoxGeometry(0.04, 0.12, 0.01), this.handle);
+          rose.position.set(-j * (lw - 0.07), 1.0, side * 0.025);
+          const lever = new Mesh(new BoxGeometry(0.13, 0.02, 0.022), this.handle);
+          lever.position.set(-j * (lw - 0.07) + j * 0.05, 1.02, side * 0.045);
+          rose.castShadow = lever.castShadow = true;
+          hinge.add(rose, lever);
+        }
       }
     } else if (kind === 'glass') {
       const h = DOOR_HEIGHT;
@@ -387,6 +422,26 @@ export class House {
     this.selection.position.set(it.x, 0, it.z);
     this.selection.rotation.y = -it.rot * DEG;
   }
+}
+
+/** Relief strength of each finish texture used as a bump map. */
+const BUMP: Partial<Record<RoomTexture, number>> = {
+  planks: 1.6,
+  tile: 1.4,
+  brick: 3,
+  concrete: 0.6,
+  terrazzo: 0.5,
+  carpet: 2,
+};
+
+const SKIRTING = 0.07;
+const skirtingGeos = new Map<number, BoxGeometry>();
+/** Skirting board of a given length (shared per length, since walls repeat them). */
+function skirtingGeo(len: number) {
+  const k = Math.round(len * 1000);
+  let g = skirtingGeos.get(k);
+  if (!g) skirtingGeos.set(k, (g = new BoxGeometry(k / 1000, SKIRTING, 0.012)));
+  return g;
 }
 
 /** Box UVs in metres (u along the wall, v up), offset so texture runs on across pieces of the same wall. */
