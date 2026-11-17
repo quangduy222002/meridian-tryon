@@ -117,7 +117,17 @@ export async function startStudio(gl: boolean) {
     try {
       if (/\.dxf$/i.test(name)) {
         const { readDxf } = await import('./import-dxf');
-        useDrawing(readDxf(new TextDecoder().decode(data), name));
+        const d = readDxf(new TextDecoder().decode(data), name);
+        if (d.plan) {
+          // A Floorwise export: open the plan it carries instead of detecting walls again.
+          built = null;
+          api.setPlan(d.plan, 'Plan opened from DXF');
+          status.textContent = '';
+          setStage('workspace');
+          toast(`Opened the Floorwise plan saved in ${name}.`);
+          return;
+        }
+        useDrawing(d);
       } else if (!/\.pdf$/i.test(name) && new TextDecoder().decode(data.slice(0, 5)) !== '%PDF-') {
         status.textContent = 'That isn’t a PDF or DXF. A DWG has to be saved as DXF or plotted to PDF first.';
       } else {

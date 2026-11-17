@@ -32,6 +32,7 @@ import {
   type Plan,
   type Room,
   type Vec2,
+  wallReach,
 } from './plan';
 import type { RoomTexture } from './textures';
 
@@ -386,61 +387,6 @@ export class House {
     this.selection.position.set(it.x, 0, it.z);
     this.selection.rotation.y = -it.rot * DEG;
   }
-}
-
-/**
- * How far each wall reaches past its two nodes, so joints are closed without two walls sharing a face (overlapping
- * coplanar faces flicker). At each node one wall runs through: a straight continuation (both stop flush at the node)
- * or, at a corner, the thickest wall, which reaches across the others. The other walls stop at its face.
- */
-export function wallReach(p: Plan, nodes: Map<string, { x: number; z: number }>): Map<string, [number, number]> {
-  type End = { id: string; end: 0 | 1; t: number; dx: number; dz: number; L: number };
-  const at = new Map<string, End[]>();
-  const out = new Map<string, [number, number]>();
-  for (const w of p.walls) {
-    const a = nodes.get(w.a);
-    const b = nodes.get(w.b);
-    if (!a || !b) continue;
-    const L = Math.hypot(b.x - a.x, b.z - a.z);
-    if (L < 0.005) continue;
-    const dx = (b.x - a.x) / L;
-    const dz = (b.z - a.z) / L;
-    out.set(w.id, [0, 0]);
-    const add = (n: string, e: End) => at.set(n, [...(at.get(n) ?? []), e]);
-    add(w.a, { id: w.id, end: 0, t: w.thick, dx, dz, L });
-    add(w.b, { id: w.id, end: 1, t: w.thick, dx: -dx, dz: -dz, L });
-  }
-  const set = (e: End, v: number) => (out.get(e.id)![e.end] = Math.max(v, -e.L / 2));
-  for (const list of at.values()) {
-    if (list.length < 2) continue;
-    const dot = (e: End, f: End) => e.dx * f.dx + e.dz * f.dz;
-    // A straight run through the node (the thickest such pair), else the thickest (then longest) wall.
-    let through: End[] = [];
-    for (let i = 0; i < list.length; i++)
-      for (let j = i + 1; j < list.length; j++)
-        if (dot(list[i]!, list[j]!) < -0.97) {
-          const pair = [list[i]!, list[j]!];
-          if (!through.length || Math.min(...pair.map((e) => e.t)) > Math.min(...through.map((e) => e.t)))
-            through = pair;
-        }
-    if (!through.length) {
-      const main = [...list].sort((e, f) => f.t - e.t || f.L - e.L)[0]!;
-      let reach = 0;
-      for (const e of list)
-        if (e !== main) reach = Math.max(reach, e.t / 2 / Math.max(0.5, Math.abs(main.dx * e.dz - main.dz * e.dx)));
-      set(main, Math.min(reach, 0.6));
-      through = [main];
-    }
-    const face = Math.min(...through.map((e) => e.t)) / 2;
-    const ref = through[0]!;
-    for (const e of list) {
-      if (through.includes(e)) continue;
-      const sin = Math.max(0.2, Math.abs(ref.dx * e.dz - ref.dz * e.dx));
-      const cos = Math.abs(dot(ref, e));
-      set(e, Math.min(0, -face / sin + (e.t / 2) * (cos / sin)));
-    }
-  }
-  return out;
 }
 
 /** Box UVs in metres (u along the wall, v up), offset so texture runs on across pieces of the same wall. */

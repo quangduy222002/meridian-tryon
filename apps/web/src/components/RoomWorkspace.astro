@@ -82,11 +82,16 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
         </svg>
         <span>Estimate</span>
       </button>
-      <button type="button" id="snapBtn" aria-label="Snapshot" title="Save a picture of the 3D view">
+      <button
+        type="button"
+        id="exportBtn"
+        aria-label="Export"
+        title="Export the plan (DXF, SVG, PNG) or a picture of the 3D view"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path>
+          <path d="M14 3H6v18h12V7zM14 3v4h4M12 10v7M9 14l3 3 3-3"></path>
         </svg>
-        <span>Snapshot</span>
+        <span>Export</span>
       </button>
       <button type="button" id="aiBtn" aria-label="Furnish with AI" title="Furnish a room with AI">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -185,6 +190,36 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
     </header>
     <div id="estBody"></div>
     <p class="note">Indicative supply-and-fit prices in USD, for comparing options — not a quote.</p>
+  </dialog>
+
+  <dialog id="exportDlg" class="sheet small" aria-labelledby="exportTitle">
+    <header>
+      <h2 id="exportTitle">Export</h2>
+      <form method="dialog">
+        <button aria-label="Close">✕</button>
+      </form>
+    </header>
+    <div class="export-list" role="group" aria-label="Formats">
+      <button type="button" data-export="dxf">
+        <b>DXF</b>
+        <span>
+          For AutoCAD and other CAD programs: walls, doors, windows, rooms and furniture on layers, in millimetres.
+        </span>
+      </button>
+      <button type="button" data-export="svg">
+        <b>SVG</b>
+        <span>The plan as a vector drawing with room areas and a scale bar.</span>
+      </button>
+      <button type="button" data-export="png">
+        <b>PNG</b>
+        <span>The same plan drawing as an image.</span>
+      </button>
+      <button type="button" data-export="view">
+        <b>3D view</b>
+        <span>A picture of the 3D view as it is now.</span>
+      </button>
+    </div>
+    <p class="ai-status" id="exportStatus" aria-live="polite"></p>
   </dialog>
 
   <dialog id="aiDlg" class="sheet" aria-labelledby="aiTitle">

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 /** Collects page errors, console errors and failed same-origin requests. */
@@ -368,6 +369,45 @@ test('floor plan import reads the sample PDF and builds walls from the selected 
   await page.locator('#drawingBtn').click();
   await expect(page.locator('#drawingBtn')).toHaveAttribute('aria-pressed', 'false');
   await expectNoHorizontalScroll(page);
+  expect(errors).toEqual([]);
+});
+
+test('floor plan exports DXF, SVG and PNG, and reads its own DXF back', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('#sampleBtn').click();
+  await page.locator('#pages .page').first().click();
+  await expect(page.locator('#stepSelect')).toBeVisible({ timeout: 30_000 });
+  await boxOnSheet(page, 52, 85, 530, 488);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+
+  const save = async (kind: string) => {
+    await page.locator('#exportBtn').click();
+    const [file] = await Promise.all([page.waitForEvent('download'), page.locator(`[data-export="${kind}"]`).click()]);
+    return file;
+  };
+  const dxf = await save('dxf');
+  expect(dxf.suggestedFilename()).toMatch(/\.dxf$/);
+  const text = (await readFile((await dxf.path())!, 'utf8')).toString();
+  for (const layer of ['A-WALL', 'A-DOOR', 'A-GLAZ', 'A-WALL-RAIL', 'A-ROOM']) expect(text).toContain(layer);
+  expect(text).toContain('Bathroom');
+  const svg = await save('svg');
+  expect(await readFile((await svg.path())!, 'utf8')).toContain('<svg');
+  const png = await save('png');
+  expect((await readFile((await png.path())!)).subarray(1, 4).toString()).toBe('PNG');
+
+  // The exported DXF goes back in exactly: Floorwise reads the plan it carries instead of detecting walls again.
+  const before = await page.evaluate(() => localStorage.getItem('floorwise.plan'));
+  await page.locator('#reimportBtn').click();
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'plan.dxf', mimeType: 'application/dxf', buffer: Buffer.from(text) });
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+  await expect(page.locator('.toast')).toContainText('Opened the Floorwise plan');
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}'));
+  expect(after.walls).toEqual(JSON.parse(before ?? '{}').walls);
   expect(errors).toEqual([]);
 });
 

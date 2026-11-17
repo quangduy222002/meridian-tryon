@@ -20,7 +20,8 @@
 
 - `npm run artifact` packs `/studio/` as a claude.ai Artifact (`apps/web/dist-artifact/publish/`, relative URLs, no
   document skeleton). There "Furnish with AI" uses the viewer's own Claude through the `sample` capability
-  (`src/lib/claude-host.ts`) instead of an API key; publish the folder with `capabilities: {sample: {}}`.
+  (`src/lib/claude-host.ts`) instead of an API key, and Export saves through the `downloads` capability (a DXF goes
+  inside a ZIP there); publish the folder with `capabilities: {sample: {}, downloads: true}`.
 
 ## 3D work: performance comes first
 

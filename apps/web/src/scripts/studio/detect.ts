@@ -132,9 +132,10 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
 
   const pair = (list: Line[], o: 'H' | 'V') => {
     const out: WallPiece[] = [];
-    // Hatched blocks up to 1 m thick are columns and service shafts: keep them as thick walls.
+    // Hatched blocks up to 1 m thick are columns and service shafts: keep them as thick walls. On a wall layer, short
+    // piers between windows count too.
     const maxT = hatched ? 1000 : 320;
-    const minLen = hatched ? 100 : 250;
+    const minLen = hatched || layered ? 100 : 250;
     for (let i = 0; i < list.length; i++) {
       const p = list[i]!;
       for (let j = i + 1; j < list.length; j++) {

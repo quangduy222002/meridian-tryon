@@ -3,6 +3,7 @@
  * kept so wall detection can prefer wall layers. Units come from $INSUNITS (millimetres when unset).
  */
 import DxfParser from 'dxf-parser';
+import type { Plan } from '../room/plan';
 import { boundsOf, scaleFromDimensions, type BlockRef, type Drawing, type Segment, type Text } from './drawing';
 
 /** $INSUNITS code → millimetres per unit. */
@@ -34,7 +35,31 @@ interface Ent {
 
 type Xf = (x: number, y: number) => [number, number];
 
+/** The plan a Floorwise export carries in its DXF comments (see room/export.ts), or null. */
+function embeddedPlan(lines: string[]): Plan | null {
+  const parts: string[] = [];
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (lines[i]!.trim() !== '999') continue;
+    const m = /^FLOORWISE-PLAN (\d+)\/(\d+) (\S+)/.exec(lines[i + 1]!.trim());
+    if (m) parts[Number(m[1]) - 1] = m[3]!;
+  }
+  if (!parts.length || parts.includes(undefined as unknown as string)) return null;
+  try {
+    const bin = atob(parts.join(''));
+    const plan = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))) as Plan;
+    return Array.isArray(plan?.walls) && Array.isArray(plan?.nodes) ? plan : null;
+  } catch {
+    return null;
+  }
+}
+
 export function readDxf(text: string, name: string): Drawing {
+  // Comments (group 999) are dropped before parsing; a Floorwise export's plan is read from them first.
+  const lines = text.split(/\r?\n/);
+  const plan = embeddedPlan(lines);
+  const kept: string[] = [];
+  for (let i = 0; i < lines.length; i += 2) if (lines[i]!.trim() !== '999') kept.push(lines[i]!, lines[i + 1] ?? '');
+  text = kept.join('\n');
   const dxf = new DxfParser().parseSync(text) as unknown as {
     entities: Ent[];
     blocks?: Record<string, { entities?: Ent[]; position?: { x: number; y: number } }>;
@@ -155,6 +180,7 @@ export function readDxf(text: string, name: string): Drawing {
     segs,
     texts,
     blocks,
+    ...(plan ? { plan } : {}),
     bounds: boundsOf(segs),
     mmPerUnit: UNITS[units] ?? 1,
     scaleNote: UNITS[units] ? `from the file's units` : 'assumed millimetres',

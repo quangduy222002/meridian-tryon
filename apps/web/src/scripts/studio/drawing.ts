@@ -3,6 +3,7 @@
  * arcs (doors), and text (dimensions, room labels). Coordinates are in the file's own units with y pointing up;
  * `mmPerUnit` turns them into millimetres once the scale is known.
  */
+import type { Plan } from '../room/plan';
 
 export interface Segment {
   x1: number;
@@ -45,6 +46,8 @@ export interface Drawing {
   mmPerUnit: number | null;
   /** How the scale was found, for the UI. */
   scaleNote: string;
+  /** The plan itself, when the file is a Floorwise export (DXF only). */
+  plan?: Plan;
   /** Block references with their extents (DXF only). */
   blocks?: BlockRef[];
   /** Raster of the page for a faithful underlay (PDF only). */

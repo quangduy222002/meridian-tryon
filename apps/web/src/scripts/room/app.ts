@@ -2,7 +2,7 @@
  * Roomcraft: a 2D floor-plan editor beside a live 3D model of the same plan. Every edit goes through commit(), which
  * records undo, re-detects rooms and syncs the 3D house; drags call preview() so the 3D view follows the pointer.
  */
-import { hostClaude, type HostSample } from '../../lib/claude-host';
+import { hostClaude, hostDownloads, saveFile, type HostSample } from '../../lib/claude-host';
 import {
   Color,
   DirectionalLight,
@@ -437,27 +437,57 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     }
   });
 
-  /* ---------- Snapshot ---------- */
-  $('snapBtn').addEventListener('click', async () => {
-    if (!three) return toast('3D needs WebGL');
-    showPane('three');
-    const blob = await three.snapshot();
-    if (!blob) return toast('Could not take the picture');
-    const file = new File([blob], 'roomcraft.png', { type: 'image/png' });
-    if (navigator.canShare?.({ files: [file] }) && matchMedia('(pointer: coarse)').matches) {
-      try {
-        await navigator.share({ files: [file], title: 'Roomcraft' });
-        return;
-      } catch {
-        // Cancelled or unsupported: download instead.
-      }
+  /* ---------- Export ---------- */
+  const exportDlg = $<HTMLDialogElement>('exportDlg');
+  const exportStatus = $('exportStatus');
+  $('exportBtn').addEventListener('click', () => {
+    exportStatus.textContent = '';
+    exportDlg.showModal();
+  });
+  exportDlg.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-export]');
+    if (!b || b.getAttribute('aria-busy') === 'true') return;
+    const kind = b.dataset.export;
+    if (!plan.walls.length && kind !== 'view') {
+      exportStatus.textContent = 'Draw or import a plan first.';
+      return;
     }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'roomcraft.png';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('Snapshot saved');
+    b.setAttribute('aria-busy', 'true');
+    exportStatus.textContent = 'Preparing the file…';
+    try {
+      const name = (document.querySelector('.brand')?.firstChild?.textContent ?? 'plan').trim().toLowerCase() || 'plan';
+      const title = `${document.querySelector('.brand')?.firstChild?.textContent?.trim() ?? 'Floor'} plan`;
+      let saved: boolean;
+      if (kind === 'view') {
+        if (!three) throw new Error('The 3D view needs WebGL.');
+        showPane('three');
+        const blob = await three.snapshot();
+        if (!blob) throw new Error('Could not take the picture.');
+        saved = await saveFile(`${name}-3d.png`, blob);
+      } else {
+        const ex = await import('./export');
+        if (kind === 'dxf') {
+          const dxf = ex.planToDxf(plan);
+          // A claude.ai Artifact only lets common file types through: the DXF goes inside a ZIP there.
+          saved = (await hostDownloads())
+            ? await saveFile(`${name}-plan.zip`, ex.zip([{ name: `${name}-plan.dxf`, data: dxf }]))
+            : await saveFile(`${name}-plan.dxf`, new Blob([dxf], { type: 'application/dxf' }));
+        } else {
+          const svg = ex.planToSvg(plan, title);
+          saved =
+            kind === 'svg'
+              ? await saveFile(`${name}-plan.svg`, new Blob([svg], { type: 'image/svg+xml' }))
+              : await saveFile(`${name}-plan.png`, await ex.svgToPng(svg));
+        }
+      }
+      exportStatus.textContent = saved ? 'Saved.' : 'Not saved.';
+      if (saved) exportDlg.close();
+      if (saved) toast(`${b.querySelector('b')?.textContent ?? 'File'} exported`);
+    } catch (err) {
+      exportStatus.textContent = err instanceof Error ? err.message : 'Could not export. Try again.';
+    } finally {
+      b.removeAttribute('aria-busy');
+    }
   });
 
   /* ---------- Furnish with AI ---------- */
