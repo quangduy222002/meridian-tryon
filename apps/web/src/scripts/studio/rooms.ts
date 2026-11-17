@@ -6,6 +6,8 @@
  *    you step onto through glazing (a sliding door or a glass wall), never through a hinged door. Bedrooms, baths and
  *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door, its open front a railing.
  * 3. Without either, the fixtures drawn in it (see symbols.ts): a WC or a shower makes a bathroom, a hob a kitchen.
+ * 4. Still unnamed, by how the room is built: a service shaft is a tiny closed box with no door or window; a bathroom
+ *    is a small room behind a single hinged door, beside a shaft (its pipes run there) or lit only by a small window.
  * Names are written to plan.rooms like a name the visitor typed, so they can be changed in the room inspector.
  */
 import { findRooms, nodeMap, pointInPoly, type Plan, type Room } from '../room/plan';
@@ -85,6 +87,23 @@ export function nameRooms(plan: Plan, d: Drawing, region: Region, found: FoundSy
     const glazed = fromInside.filter((o) => o.kind === 'window').reduce((s, o) => s + o.width, 0);
     const hinged = openings.some((o) => o.kind === 'door');
     if (outside >= 1 && glazed >= 0.6 && !hinged) names.set(r.key, 'Balcony');
+  }
+
+  // 4. Shafts, then the bathrooms beside them or with only a small window (bedrooms and living rooms have larger ones).
+  const openingsOf = (r: Room) => {
+    const ids = new Set(wallsOf(r).map((w) => w.id));
+    return plan.openings.filter((o) => ids.has(o.wall));
+  };
+  const shafts = rooms.filter((r) => !names.has(r.key) && r.area < 1.5 && !openingsOf(r).length);
+  for (const r of shafts) names.set(r.key, 'Shaft');
+  const shaftWalls = new Set(shafts.flatMap((r) => wallsOf(r).map((w) => w.id)));
+  for (const r of rooms) {
+    if (names.has(r.key) || r.area < 1.8 || r.area > 7) continue;
+    const ops = openingsOf(r);
+    const doors = ops.filter((o) => o.kind === 'door');
+    const windows = ops.filter((o) => o.kind === 'window');
+    if (doors.length !== 1 || windows.some((o) => o.tall || o.width > 0.9)) continue;
+    if (windows.length || wallsOf(r).some((w) => shaftWalls.has(w.id))) names.set(r.key, 'Bathroom');
   }
 
   for (const [key, name] of names) plan.rooms[key] = { ...plan.rooms[key], name };

@@ -278,8 +278,9 @@ export class House {
       for (const j of leaves === 2 ? [flip, -flip] : [flip * hand]) {
         const hinge = new Group();
         hinge.position.set((j * (width - 2 * f)) / 2, 0, (thick / 2) * flip);
-        // Mirrored leaves turn opposite ways, so both open to the same side.
-        hinge.rotation.y = j * 0.55;
+        // Open towards the flip side (local +z for flip 1, -z for -1), whichever jamb the leaf hangs on: the leaf
+        // reaches -j along x from its hinge, and a turn of θ about y moves its tip by j·sin θ along z.
+        hinge.rotation.y = j * flip * 0.55;
         o.add(hinge);
         const leaf = new Mesh(new BoxGeometry(lw, DOOR_HEIGHT - f, 0.04), this.leaf);
         leaf.position.set((-j * lw) / 2, (DOOR_HEIGHT - f) / 2, 0);
