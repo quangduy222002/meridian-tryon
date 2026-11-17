@@ -31,6 +31,10 @@ export interface Opening {
   width: number;
   /** Doors: which side the leaf swings to (1 or -1). */
   flip?: number;
+  /** Doors: 2 for a double door (two half-width leaves hinged at both jambs). */
+  leaves?: 2;
+  /** Doors: -1 hinges the leaf at the other jamb (by default flip 1 hinges it at node b, flip -1 at node a). */
+  hand?: -1;
   /** Windows: glazed from the floor to door height, a sliding glass door (onto a balcony, say). */
   tall?: boolean;
 }
@@ -70,6 +74,7 @@ export interface Room {
   centroid: Vec2;
 }
 
+const DEG = Math.PI / 180;
 export const WALL_HEIGHT = 2.7;
 export const DOOR_HEIGHT = 2.1;
 export const WINDOW_SILL = 0.9;
@@ -143,6 +148,33 @@ function centroidOf(poly: Vec2[]): Vec2 {
     poly.reduce((s, p) => s + p[1], 0) / poly.length,
   ];
   return avg;
+}
+
+/** Puts an item against the nearest wall, facing into the room, if it is close to one. */
+export function snapToWall(p: Plan, it: Item, reach = 0.6) {
+  const def = FURNITURE[it.type];
+  if (!def || def.flat) return false;
+  const nodes = nodeMap(p);
+  let best: { d: number; q: Vec2; n: Vec2; thick: number } | null = null;
+  for (const w of p.walls) {
+    const [a, b] = wallEnds(p, w, nodes);
+    const c = closestOnSegment([it.x, it.z], a, b);
+    if (c.t <= 0.01 || c.t >= 0.99) continue;
+    if (!best || c.d < best.d) {
+      const L = len(a, b);
+      let n: Vec2 = [-(b[1] - a[1]) / L, (b[0] - a[0]) / L];
+      // Normal pointing from the wall towards the item.
+      if ((it.x - c.q[0]) * n[0] + (it.z - c.q[1]) * n[1] < 0) n = [-n[0], -n[1]];
+      best = { d: c.d, q: c.q, n, thick: w.thick };
+    }
+  }
+  if (!best || best.d > def.d / 2 + reach) return false;
+  // Front (+z when rot is 0) should point along n; rot is clockwise on screen.
+  it.rot = (Math.round(Math.atan2(-best.n[0], best.n[1]) / DEG) + 360) % 360;
+  const off = best.thick / 2 + def.d / 2 + 0.01;
+  it.x = best.q[0] + best.n[0] * off;
+  it.z = best.q[1] + best.n[1] * off;
+  return true;
 }
 
 export const roomKey = (ids: string[]) => [...ids].sort().join('|');

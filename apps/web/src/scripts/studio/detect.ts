@@ -6,9 +6,9 @@
  *    (cut walls are hatched on architectural plans; dimension and extension lines aren't). Concrete, drawn with
  *    sparse hatch, counts when the band is a closed block. DXF files carry no hatch strokes, so there wall layers
  *    ("WALL", "TUONG", …) count instead.
- * 3. Pieces on one line join up; gaps of a door's or window's width become openings (an arc nearby means a door,
- *    glazing lines inside the gap a window). Short cross-cuts inside a wall's body, and frame lines along one,
- *    are dropped.
+ * 3. Pieces on one line join up; gaps of a door's or window's width become openings: an arc nearby means a door
+ *    (two half-width swings a double door), offset panel lines a sliding door, glazing lines a window. Short
+ *    cross-cuts inside a wall's body, and frame lines along one, are dropped.
  * 4. Ends snap to the walls they run into, so corners and T-junctions share nodes and rooms close; where a facade
  *    changes thickness, the offset centre lines are joined by a short cross piece.
  * It is a heuristic: the result is meant to be checked and fixed in the plan editor (or by the AI clean-up).
@@ -195,7 +195,15 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     a: number;
     b: number;
     t: number;
-    holes: { a: number; b: number; kind: Opening['kind']; flip: number }[];
+    holes: {
+      a: number;
+      b: number;
+      kind: Opening['kind'];
+      flip: number;
+      hingeHi?: boolean;
+      leaves?: 2;
+      tall?: boolean;
+    }[];
     /** A short connector added where a wall changes thickness; kept however short it is. */
     joint?: boolean;
   }
@@ -223,19 +231,72 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         const across = p.o === 'H' ? y : x;
         return along > lo - 50 && along < hi + 50 && Math.abs(across - p.c) < reach;
       };
-      const arcs = curves.filter((cv) => inGap(cv.x, cv.y, gap + 100));
-      // A swing is a quarter circle as wide as the gap: as many short pieces in a DXF, a single Bézier (one chord,
-      // about 1.4 × the width) in a PDF. Its length tells, whatever it was cut into.
-      const door = arcs.reduce((s, cv) => s + cv.L, 0) >= gap * 0.8;
-      // Which side the swing is on decides the leaf's flip.
-      const side = arcs.reduce((s, cv) => s + ((p.o === 'H' ? cv.y : cv.x) - p.c), 0);
-      const panes = (p.o === 'H' ? HM : VM).filter((l) => Math.abs(l.c - p.c) < p.t / 2 && l.a < hi && l.b > lo).length;
-      // Only a gap with evidence becomes an opening: a swing arc (door) or glazing lines (window).
-      if (!door && panes < 2) {
+      const alongOf = (cv: { x: number; y: number }) => (p.o === 'H' ? cv.x : cv.y);
+      const acrossOf = (cv: { x: number; y: number }) => (p.o === 'H' ? cv.y : cv.x) - p.c;
+      // A swing is a quarter circle about a jamb, as wide as the gap (half as wide for each leaf of a double door),
+      // cut into short chords on import. Only curve pieces on such a circle count, so a basin or a bathtub drawn
+      // near the doorway doesn't.
+      const onSwing = (cv: { x: number; y: number }) =>
+        [lo, hi].some((j) =>
+          [gap, gap / 2].some((rad) => {
+            const d = Math.hypot(alongOf(cv) - j, Math.abs(acrossOf(cv)) - p.t / 2);
+            return Math.abs(d - rad) < rad * 0.15 + 40;
+          }),
+        );
+      const arcs = curves.filter((cv) => inGap(cv.x, cv.y, gap + 100) && onSwing(cv));
+      // The side with the most swing is the side the door opens to; its length tells it is a door at all.
+      const sideLen = (sgn: number) => arcs.filter((cv) => acrossOf(cv) * sgn > 0).reduce((s, cv) => s + cv.L, 0);
+      const side = sideLen(1) >= sideLen(-1) ? 1 : -1;
+      const swing = arcs.filter((cv) => acrossOf(cv) * side > 0);
+      const door = sideLen(side) >= gap * 0.8;
+      // A double door: two swings half as wide, one from each jamb, so they reach only half the gap out from the wall.
+      const reachOut = Math.max(0, ...swing.map((cv) => Math.abs(acrossOf(cv))));
+      const double =
+        door &&
+        reachOut < gap * 0.7 &&
+        swing.some((cv) => alongOf(cv) < lo + gap * 0.4) &&
+        swing.some((cv) => alongOf(cv) > hi - gap * 0.4);
+      // The hinge is the jamb farther from the middle of the swing (a quarter circle's centroid lies about two
+      // thirds of the way across, towards the jamb the leaf closes against).
+      const mid = swing.reduce((s, cv) => s + alongOf(cv) * cv.L, 0) / Math.max(1e-6, sideLen(side));
+      const hingeHi = hi - mid > mid - lo;
+      const lines = (p.o === 'H' ? HM : VM).filter((l) => Math.abs(l.c - p.c) < p.t / 2 && l.a < hi && l.b > lo);
+      // A sliding door: two panels, each part of the width, on offset tracks — one from each jamb, overlapping in the
+      // middle. (A window's pane lines run the full width.)
+      const cover = (l: Line) => Math.min(l.b, hi) - Math.max(l.a, lo);
+      // A panel lies within the opening, between the wall faces (a face line running on from the next wall isn't one).
+      const panel = (l: Line) =>
+        cover(l) > gap * 0.3 &&
+        cover(l) < gap * 0.8 &&
+        l.a >= lo - 60 &&
+        l.b <= hi + 60 &&
+        Math.abs(l.c - p.c) < p.t / 2 - 10;
+      const left = lines.find((l) => panel(l) && l.a <= lo + 60);
+      const right = lines.find((l) => panel(l) && l.b >= hi - 60 && l !== left);
+      // A sliding window looks the same but has sill lines across the full width; a door reaches the floor.
+      const sliding =
+        !door &&
+        !!left &&
+        !!right &&
+        Math.abs(left.c - right.c) > 15 &&
+        left.b > right.a &&
+        !lines.some((l) => cover(l) >= gap * 0.9);
+      // Only a gap with evidence becomes an opening: a swing arc (door), panels (sliding door) or glazing (window).
+      if (!door && !sliding && lines.length < 2) {
         runs.push({ ...p, holes: [] });
         continue;
       }
-      r.holes.push({ a: lo, b: hi, kind: door ? 'door' : 'window', flip: side >= 0 ? 1 : -1 });
+      r.holes.push({
+        a: lo,
+        b: hi,
+        kind: door ? 'door' : 'window',
+        // Plan walls run left to right (H) or up the drawing (V), with the normal to their left: for an H wall that
+        // is down the drawing, so a swing up the drawing (+y) is flip -1; for a V wall it is +x, flip 1.
+        flip: p.o === 'H' ? -side : side,
+        hingeHi,
+        ...(double ? { leaves: 2 as const } : {}),
+        ...(sliding ? { tall: true } : {}),
+      });
     }
     r.b = Math.max(r.b, p.b);
     r.c = (r.c + p.c) / 2;
@@ -381,6 +442,10 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         t: ((a + b) / 2 - r.a) / L,
         width: (b - a) / 1000,
         flip: h.flip,
+        // Node b is at the high end of the run; flip 1 hinges there by default.
+        ...(h.kind === 'door' && !h.leaves && h.hingeHi !== h.flip > 0 ? { hand: -1 as const } : {}),
+        ...(h.leaves ? { leaves: h.leaves } : {}),
+        ...(h.tall ? { tall: true } : {}),
       });
     }
   }

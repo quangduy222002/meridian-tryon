@@ -5,10 +5,12 @@
  * 2. Without a label, a balcony is recognised by how it is reached: a small space on the outside of the flat that
  *    you step onto through glazing (a sliding door or a glass wall), never through a hinged door. Bedrooms, baths and
  *    stores always have a hinged door; shafts have no opening at all. The glazing onto a balcony becomes a glass door.
+ * 3. Without either, the fixtures drawn in it (see symbols.ts): a WC or a shower makes a bathroom, a hob a kitchen.
  * Names are written to plan.rooms like a name the visitor typed, so they can be changed in the room inspector.
  */
 import { findRooms, nodeMap, pointInPoly, type Plan, type Room } from '../room/plan';
 import type { Drawing, Region } from './drawing';
+import { SYMBOL_ROOM, type FoundSymbol } from './symbols';
 
 /** Plain lower-case ASCII, so "BAN CÔNG", "Ban công" and "ban cong" all match. */
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
@@ -33,7 +35,7 @@ export function labelOf(text: string): string | null {
 }
 
 /** Fills plan.rooms names from labels and the balcony rule. Returns the names it gave, by room key. */
-export function nameRooms(plan: Plan, d: Drawing, region: Region): Map<string, string> {
+export function nameRooms(plan: Plan, d: Drawing, region: Region, found: FoundSymbol[] = []): Map<string, string> {
   const k = d.mmPerUnit ?? 1;
   const rooms = findRooms(plan);
   const names = new Map<string, string>();
@@ -50,7 +52,18 @@ export function nameRooms(plan: Plan, d: Drawing, region: Region): Map<string, s
     if (room && !names.has(room.key)) names.set(room.key, name);
   }
 
-  // 2. Balconies by how they are reached.
+  // 2. Fixtures: the room most of them belong to (a bathroom's mirror cabinet doesn't make it a bedroom).
+  for (const r of rooms) {
+    if (names.has(r.key)) continue;
+    const votes = new Map<string, number>();
+    for (const s of found)
+      if (pointInPoly([(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2], r.poly))
+        votes.set(SYMBOL_ROOM[s.kind], (votes.get(SYMBOL_ROOM[s.kind]) ?? 0) + 1);
+    const best = [...votes].sort((a, b) => b[1] - a[1])[0];
+    if (best) names.set(r.key, votes.has('Kitchen') && votes.has('Living') ? 'Living & kitchen' : best[0]);
+  }
+
+  // 3. Balconies by how they are reached.
   const nodes = nodeMap(plan);
   const wallOf = (u: string, v: string) => plan.walls.find((w) => (w.a === u && w.b === v) || (w.a === v && w.b === u));
   const wallsOf = (r: Room) => r.nodes.map((u, i) => wallOf(u, r.nodes[(i + 1) % r.nodes.length]!)).filter((w) => !!w);

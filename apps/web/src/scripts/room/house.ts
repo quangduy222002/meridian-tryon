@@ -199,7 +199,16 @@ export class House {
         if (o.kind === 'window' && !glassDoor) piece(s, e, 0, WINDOW_SILL);
         piece(s, e, top, WALL_HEIGHT);
         view.openings.push(
-          this.opening(g, glassDoor ? 'glass' : o.kind, (s + e) / 2 - L / 2, e - s, w.thick, o.flip ?? 1),
+          this.opening(
+            g,
+            glassDoor ? 'glass' : o.kind,
+            (s + e) / 2 - L / 2,
+            e - s,
+            w.thick,
+            o.flip ?? 1,
+            o.leaves,
+            o.hand,
+          ),
         );
         cursor = e;
       }
@@ -220,7 +229,16 @@ export class House {
    * Door (frame + leaf ajar), window (frame, sill, glass) or glass door (frame and two sliding glazed panels, one
    * slid half open) filling an opening, in the wall's local space.
    */
-  private opening(g: Group, kind: 'door' | 'window' | 'glass', x: number, width: number, thick: number, flip: number) {
+  private opening(
+    g: Group,
+    kind: 'door' | 'window' | 'glass',
+    x: number,
+    width: number,
+    thick: number,
+    flip: number,
+    leaves = 1,
+    hand = 1,
+  ) {
     const o = new Group();
     o.position.x = x;
     g.add(o);
@@ -237,14 +255,19 @@ export class House {
     if (kind === 'door') {
       for (const s of [-1, 1]) box(f, DOOR_HEIGHT, d, this.frame, (s * (width - f)) / 2, DOOR_HEIGHT / 2);
       box(width, f, d, this.frame, 0, DOOR_HEIGHT - f / 2);
-      const hinge = new Group();
-      hinge.position.set((flip * (width - 2 * f)) / 2, 0, (thick / 2) * flip);
-      hinge.rotation.y = flip * 0.55;
-      o.add(hinge);
-      const leaf = new Mesh(new BoxGeometry(width - 2 * f, DOOR_HEIGHT - f, 0.04), this.leaf);
-      leaf.position.set((-flip * (width - 2 * f)) / 2, (DOOR_HEIGHT - f) / 2, 0);
-      leaf.castShadow = leaf.receiveShadow = true;
-      hinge.add(leaf);
+      // One leaf hinged at one jamb, or (double door) a half-width leaf at each jamb.
+      const lw = (width - 2 * f) / leaves;
+      for (const j of leaves === 2 ? [flip, -flip] : [flip * hand]) {
+        const hinge = new Group();
+        hinge.position.set((j * (width - 2 * f)) / 2, 0, (thick / 2) * flip);
+        // Mirrored leaves turn opposite ways, so both open to the same side.
+        hinge.rotation.y = j * 0.55;
+        o.add(hinge);
+        const leaf = new Mesh(new BoxGeometry(lw, DOOR_HEIGHT - f, 0.04), this.leaf);
+        leaf.position.set((-j * lw) / 2, (DOOR_HEIGHT - f) / 2, 0);
+        leaf.castShadow = leaf.receiveShadow = true;
+        hinge.add(leaf);
+      }
     } else if (kind === 'glass') {
       const h = DOOR_HEIGHT;
       for (const s of [-1, 1]) box(f, h, d, this.frame, (s * (width - f)) / 2, h / 2);

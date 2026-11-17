@@ -12,6 +12,7 @@ import {
   roomAt,
   roomName,
   roomStyle,
+  snapToWall,
   splitWall,
   tidy,
   uid,
@@ -261,31 +262,8 @@ export class PlanEditor {
     return { pt: q };
   }
 
-  /** Puts an item against the nearest wall, facing into the room, if it is close to one. */
   private snapToWall(it: Item) {
-    const p = this.host.plan();
-    const def = FURNITURE[it.type];
-    if (!def || def.flat) return;
-    const nodes = nodeMap(p);
-    let best: { d: number; q: Vec2; n: Vec2; thick: number } | null = null;
-    for (const w of p.walls) {
-      const [a, b] = wallEnds(p, w, nodes);
-      const c = closestOnSegment([it.x, it.z], a, b);
-      if (c.t <= 0.01 || c.t >= 0.99) continue;
-      if (!best || c.d < best.d) {
-        const L = len(a, b);
-        let n: Vec2 = [-(b[1] - a[1]) / L, (b[0] - a[0]) / L];
-        // Normal pointing from the wall towards the item.
-        if ((it.x - c.q[0]) * n[0] + (it.z - c.q[1]) * n[1] < 0) n = [-n[0], -n[1]];
-        best = { d: c.d, q: c.q, n, thick: w.thick };
-      }
-    }
-    if (!best || best.d > def.d / 2 + 0.6) return;
-    // Front (+z when rot is 0) should point along n; rot is clockwise on screen.
-    it.rot = Math.round((Math.atan2(-best.n[0], best.n[1]) / DEG) * 1) % 360;
-    const off = best.thick / 2 + def.d / 2 + 0.01;
-    it.x = best.q[0] + best.n[0] * off;
-    it.z = best.q[1] + best.n[1] * off;
+    snapToWall(this.host.plan(), it);
   }
 
   /* ---------- Pointer input ---------- */
@@ -733,26 +711,32 @@ export class PlanEditor {
         } else if (o.kind === 'window') {
           for (const k of [-0.35, 0, 0.35]) line(s0, s1, k);
         } else {
-          // Leaf and swing arc, hinged at one jamb, opening to the flip side.
+          // Leaf and swing arc, hinged at one jamb (a double door: a half-width leaf at each), opening to the flip side.
           const f = o.flip ?? 1;
-          const hx = a[0] + ux * (f > 0 ? s1 : s0) + nx * t * f;
-          const hz = a[1] + uz * (f > 0 ? s1 : s0) + nz * t * f;
-          const r = o.width;
-          // Closed, the leaf lies along the wall towards the far jamb; open, it points out to the swing side.
-          const base = f > 0 ? Math.atan2(-uz, -ux) : Math.atan2(uz, ux);
-          const open = Math.atan2(nz * f, nx * f);
-          let diff = open - base;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff <= -Math.PI) diff += Math.PI * 2;
-          c.beginPath();
-          c.moveTo(X(hx), Z(hz));
-          c.lineTo(X(hx + Math.cos(open) * r), Z(hz + Math.sin(open) * r));
-          c.stroke();
-          c.setLineDash([3, 3]);
-          c.beginPath();
-          c.arc(X(hx), Z(hz), r * s, base, base + diff, diff < 0);
-          c.stroke();
-          c.setLineDash([]);
+          const leaf = (at: number, dir: number, r: number) => {
+            const hx = a[0] + ux * at + nx * t * f;
+            const hz = a[1] + uz * at + nz * t * f;
+            // Closed, the leaf lies along the wall towards the far jamb; open, it points out to the swing side.
+            const base = Math.atan2(uz * dir, ux * dir);
+            const open = Math.atan2(nz * f, nx * f);
+            let diff = open - base;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            c.beginPath();
+            c.moveTo(X(hx), Z(hz));
+            c.lineTo(X(hx + Math.cos(open) * r), Z(hz + Math.sin(open) * r));
+            c.stroke();
+            c.setLineDash([3, 3]);
+            c.beginPath();
+            c.arc(X(hx), Z(hz), r * s, base, base + diff, diff < 0);
+            c.stroke();
+            c.setLineDash([]);
+          };
+          if (o.leaves === 2) {
+            leaf(s0, 1, o.width / 2);
+            leaf(s1, -1, o.width / 2);
+          } else if (f * (o.hand ?? 1) > 0) leaf(s1, -1, o.width);
+          else leaf(s0, 1, o.width);
         }
       }
       // Length label: on outside walls (placed outside) and on the selected wall

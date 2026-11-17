@@ -25,6 +25,16 @@ export interface Text {
   angle: number;
 }
 
+/** A block reference (DXF INSERT): its name and the box of what it drew, so fixtures can be recognised by name. */
+export interface BlockRef {
+  name: string;
+  layer?: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export interface Drawing {
   name: string;
   kind: 'pdf' | 'dxf';
@@ -35,6 +45,8 @@ export interface Drawing {
   mmPerUnit: number | null;
   /** How the scale was found, for the UI. */
   scaleNote: string;
+  /** Block references with their extents (DXF only). */
+  blocks?: BlockRef[];
   /** Raster of the page for a faithful underlay (PDF only). */
   image?: { url: string; x0: number; y0: number; x1: number; y1: number };
 }

@@ -393,6 +393,127 @@ test('floor plan import reads a DXF in millimetres', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('floor plan import reads door and fixture symbols', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  type V = number | string;
+  const line = (layer: string, x1: V, y1: V, x2: V, y2: V) => [
+    '0',
+    'LINE',
+    '8',
+    layer,
+    '10',
+    x1,
+    '20',
+    y1,
+    '11',
+    x2,
+    '21',
+    y2,
+  ];
+  const poly = (layer: string, pts: [number, number, number?][]) => [
+    ...['0', 'LWPOLYLINE', '8', layer, '90', pts.length, '70', '1'],
+    ...pts.flatMap(([x, y, bulge]) => ['10', x, '20', y, ...(bulge ? ['42', bulge] : [])]),
+  ];
+  const rect = (layer: string, x0: number, y0: number, x1: number, y1: number) =>
+    poly(layer, [
+      [x0, y0],
+      [x1, y0],
+      [x1, y1],
+      [x0, y1],
+    ]);
+  const block = (name: string, ents: V[]) => [
+    ...['0', 'BLOCK', '8', '0', '2', name, '70', '0', '10', '0', '20', '0', '30', '0', '3', name],
+    ...ents,
+    ...['0', 'ENDBLK', '8', '0'],
+  ];
+  const insert = (name: string, x: number, y: number) => ['0', 'INSERT', '8', 'FURNITURE', '2', name, '10', x, '20', y];
+  // An 8 × 5 m flat (200 mm walls on a WALL layer) split in two by a wall at x 3000–3200.
+  const W = (x1: V, y1: V, x2: V, y2: V) => line('WALL', x1, y1, x2, y2);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'BLOCKS'],
+    ...block('LAVABO', [
+      ...rect('0', -250, -200, 250, 200),
+      '0',
+      'CIRCLE',
+      '8',
+      '0',
+      '10',
+      '0',
+      '20',
+      '0',
+      '40',
+      '150',
+    ]),
+    ...block('GIUONG DOI 1800', [...rect('0', 0, 0, 1800, 2000), ...rect('0', 150, 1600, 850, 1900)]),
+    ...['0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    // Outer walls; the bottom one has a 1.6 m sliding door at x 5000–6600.
+    ...W(0, 0, 5000, 0),
+    ...W(6600, 0, 8000, 0),
+    ...W(200, 200, 3000, 200),
+    ...W(3200, 200, 5000, 200),
+    ...W(6600, 200, 7800, 200),
+    ...W(5000, 0, 5000, 200),
+    ...W(6600, 0, 6600, 200),
+    ...W(8000, 0, 8000, 5000),
+    ...W(7800, 200, 7800, 4800),
+    ...W(8000, 5000, 0, 5000),
+    ...W(7800, 4800, 3200, 4800),
+    ...W(3000, 4800, 200, 4800),
+    ...W(0, 5000, 0, 0),
+    ...W(200, 4800, 200, 200),
+    // Sliding door: two panels on offset tracks, overlapping in the middle.
+    ...line('DOOR', 5000, 80, 5900, 80),
+    ...line('DOOR', 5700, 120, 6600, 120),
+    // Dividing wall with a 1.6 m double door at y 1000–2600: two 800 mm swings, one from each jamb.
+    ...W(3000, 200, 3000, 1000),
+    ...W(3200, 200, 3200, 1000),
+    ...W(3000, 2600, 3000, 4800),
+    ...W(3200, 2600, 3200, 4800),
+    ...W(3000, 1000, 3200, 1000),
+    ...W(3000, 2600, 3200, 2600),
+    ...['0', 'ARC', '8', 'DOOR', '10', '3200', '20', '1000', '40', '800', '50', '0', '51', '90'],
+    ...['0', 'ARC', '8', 'DOOR', '10', '3200', '20', '2600', '40', '800', '50', '270', '51', '360'],
+    ...line('DOOR', 3200, 1000, 4000, 1000),
+    ...line('DOOR', 3200, 2600, 4000, 2600),
+    // Drawn, not named: a WC (oval bowl, cistern behind it) and a bathtub (rounded outline).
+    ...['0', 'ELLIPSE', '8', 'SANITARY', '10', '800', '20', '4300', '30', '0', '11', '0', '21', '250', '31', '0'],
+    ...['40', '0.72', '41', '0', '42', String(Math.PI * 2)],
+    ...rect('SANITARY', 550, 4600, 1050, 4780),
+    ...poly('SANITARY', [
+      [1150, 1200],
+      [2050, 1200, 1],
+      [2050, 1900],
+      [1150, 1900, 1],
+    ]),
+    // Named blocks: a basin and a double bed.
+    ...insert('LAVABO', 2200, 4400),
+    ...insert('GIUONG DOI 1800', 5000, 2500),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'flat.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await boxOnSheet(page, -50, -50, 8050, 5050);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('2 doors and windows, 2 closed rooms, 4 fixtures');
+  await expect(page.locator('.toast')).toContainText(/named: (Bathroom, Bedroom|Bedroom, Bathroom)/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? '')).toContain('"leaves"');
+  const plan = await page.evaluate(() => JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}'));
+  const kinds = (plan.openings as { kind: string; leaves?: number; tall?: boolean }[])
+    .map((o) => (o.leaves === 2 ? 'double door' : o.tall ? 'sliding door' : o.kind))
+    .sort();
+  expect(kinds).toEqual(['double door', 'sliding door']);
+  expect((plan.items as { type: string }[]).map((i) => i.type).sort()).toEqual(['bathtub', 'bed', 'sink', 'toilet']);
+  // The WC stands with its cistern to the wall behind it (front facing down the plan).
+  expect((plan.items as { type: string; rot: number }[]).find((i) => i.type === 'toilet')?.rot).toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

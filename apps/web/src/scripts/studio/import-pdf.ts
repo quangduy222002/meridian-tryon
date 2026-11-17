@@ -19,6 +19,15 @@ const mul = (m: M, n: number[]): M => [
   m[1] * n[4]! + m[3] * n[5]! + m[5],
 ];
 
+const CURVE_STEPS = 8;
+/** Point at t on a quadratic or cubic Bézier (de Casteljau). */
+function bezier(pts: [number, number][], t: number): [number, number] {
+  let p = pts;
+  while (p.length > 1)
+    p = p.slice(1).map((q, i) => [p[i]![0] + (q[0] - p[i]![0]) * t, p[i]![1] + (q[1] - p[i]![1]) * t]);
+  return p[0]!;
+}
+
 export async function openPdf(data: ArrayBuffer) {
   const doc = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise;
   return { pages: doc.numPages, doc };
@@ -74,12 +83,13 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
           cur = at(data[k++]!, data[k++]!);
           start = cur;
         } else if (op === 1) push(at(data[k++]!, data[k++]!));
-        else if (op === 2) {
-          k += 4;
-          push(at(data[k++]!, data[k++]!), true);
-        } else if (op === 3) {
-          k += 2;
-          push(at(data[k++]!, data[k++]!), true);
+        else if (op === 2 || op === 3) {
+          // Curves are flattened into short chords, like DXF arcs, so symbol shapes (a WC bowl, a basin) keep their
+          // outline and a door swing's length is its arc length.
+          const n = op === 2 ? 3 : 2;
+          const pts: [number, number][] = [cur ?? at(0, 0)];
+          for (let j = 0; j < n; j++) pts.push(at(data[k++]!, data[k++]!));
+          for (let j = 1; j <= CURVE_STEPS; j++) push(bezier(pts, j / CURVE_STEPS), true);
         } else if (op === 4 && start) push(start);
       }
     }

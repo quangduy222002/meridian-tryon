@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1794893651.5534146,
-    "seen": 1794893794.131577,
-    "ast_hash": "fb9277e6838f25ef96ca197e19895f5e",
+    "mtime": 1794894924.5748346,
+    "seen": 1794895665.402276,
+    "ast_hash": "cd20de69d2ac8a27b71a6bd012ccc81b",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1794893443.4645424,
-    "seen": 1794893794.131546,
-    "ast_hash": "d4136a365b0073b022cde615780befe7",
+    "mtime": 1794895172.2025907,
+    "seen": 1794895665.4022431,
+    "ast_hash": "e2338dacf105d34d83fb53567a6ae77a",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/editor2d.ts": {
-    "mtime": 1794893458.4934847,
-    "seen": 1794893794.131548,
-    "ast_hash": "4904cc213f824912f58a0301d3bbedd5",
+    "mtime": 1794895172.2020905,
+    "seen": 1794895665.402244,
+    "ast_hash": "7b259940bde3dedff27c0e514e5f96c9",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/furniture.ts": {
@@ -576,15 +576,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
-    "mtime": 1794893443.4634633,
-    "seen": 1794893794.1315498,
-    "ast_hash": "9425e1744a04300eb720cfbef30d35bb",
+    "mtime": 1794895182.732996,
+    "seen": 1794895665.402246,
+    "ast_hash": "1eb6bf33bb18870556e21d7965542b17",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
-    "mtime": 1794893443.4627311,
-    "seen": 1794893794.131551,
-    "ast_hash": "ed26d97e74a8cd9173b2fdd1af09516d",
+    "mtime": 1794895172.2011812,
+    "seen": 1794895665.402247,
+    "ast_hash": "196776dd0dd4f7b3f7ef5cd1b0b9f86a",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/textures.ts": {
@@ -636,33 +636,33 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/app.ts": {
-    "mtime": 1794884300.4664385,
-    "seen": 1794884473.759766,
-    "ast_hash": "7a1fd0a5dbd74c63a3590e6856798a44",
+    "mtime": 1794894733.154729,
+    "seen": 1794895665.402251,
+    "ast_hash": "d40a162a37508b0a2b8236413d548161",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1794893443.4622731,
-    "seen": 1794893794.131555,
-    "ast_hash": "f6ae640cf3ee374648f877fc1b1b6d78",
+    "mtime": 1794895512.96572,
+    "seen": 1794895665.402251,
+    "ast_hash": "4e308175bf7d4c6270ce20ea5f882d04",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {
-    "mtime": 1794879915.7882068,
-    "seen": 1794883115.721995,
-    "ast_hash": "cd42d498112a60fe0e4e8af4e3ca15c7",
+    "mtime": 1794894593.0081503,
+    "seen": 1794895665.402252,
+    "ast_hash": "b80ffadfbdc8b9ef2581d9a79a473208",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-dxf.ts": {
-    "mtime": 1794879915.7883039,
-    "seen": 1794883115.721996,
-    "ast_hash": "83a1b4c8571dbac991e937c7df9ec077",
+    "mtime": 1794894735.3972847,
+    "seen": 1794895665.4022532,
+    "ast_hash": "08d50ea096b429a859139600ad1ceb8b",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-pdf.ts": {
-    "mtime": 1794879915.7883992,
-    "seen": 1794883115.721996,
-    "ast_hash": "a1280e9402ec40dabf076b261cf56056",
+    "mtime": 1794894735.4056854,
+    "seen": 1794895665.4022532,
+    "ast_hash": "024e8b3fa73a2e9fe6ff5d4460633b21",
     "semantic_hash": ""
   },
   "apps/web/public/studio/A26.pdf": {
@@ -678,9 +678,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/rooms.ts": {
-    "mtime": 1794893483.1039984,
-    "seen": 1794893794.131558,
-    "ast_hash": "ecdaccbaa0e14665dcdd19e7866c269d",
+    "mtime": 1794894733.1540122,
+    "seen": 1794895665.402254,
+    "ast_hash": "62985a66b31ff59f4d291dc2f317c17c",
+    "semantic_hash": ""
+  },
+  "apps/web/src/scripts/studio/symbols.ts": {
+    "mtime": 1794894735.4541912,
+    "seen": 1794895665.402255,
+    "ast_hash": "3e5f3e1f8648bbe3cb3006220b444f39",
     "semantic_hash": ""
   },
   "package-lock.json": {

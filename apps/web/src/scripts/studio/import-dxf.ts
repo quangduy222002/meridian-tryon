@@ -1,9 +1,9 @@
 /**
- * DXF import: lines, polylines, arcs, circles, block references (with their transforms) and text, with layer names
+ * DXF import: lines, polylines, arcs, circles, ellipses, splines, block references (with their transforms) and text, with layer names
  * kept so wall detection can prefer wall layers. Units come from $INSUNITS (millimetres when unset).
  */
 import DxfParser from 'dxf-parser';
-import { boundsOf, scaleFromDimensions, type Drawing, type Segment, type Text } from './drawing';
+import { boundsOf, scaleFromDimensions, type BlockRef, type Drawing, type Segment, type Text } from './drawing';
 
 /** $INSUNITS code → millimetres per unit. */
 const UNITS: Record<number, number> = { 1: 25.4, 2: 304.8, 4: 1, 5: 10, 6: 1000 };
@@ -26,6 +26,10 @@ interface Ent {
   text?: string;
   textHeight?: number;
   height?: number;
+  majorAxisEndPoint?: { x: number; y: number };
+  axisRatio?: number;
+  controlPoints?: { x: number; y: number }[];
+  fitPoints?: { x: number; y: number }[];
 }
 
 type Xf = (x: number, y: number) => [number, number];
@@ -39,6 +43,7 @@ export function readDxf(text: string, name: string): Drawing {
   if (!dxf) throw new Error('This DXF could not be read.');
   const segs: Segment[] = [];
   const texts: Text[] = [];
+  const blocks: BlockRef[] = [];
   const add = (a: [number, number], b: [number, number], layer?: string, curve = false) => {
     if (a[0] !== b[0] || a[1] !== b[1])
       segs.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], ...(layer ? { layer } : {}), ...(curve ? { curve } : {}) });
@@ -88,7 +93,26 @@ export function readDxf(text: string, name: string): Drawing {
         arc(xf, e.center.x, e.center.y, e.radius, e.startAngle ?? 0, e.endAngle ?? Math.PI * 2, layer);
       else if (e.type === 'CIRCLE' && e.center && e.radius)
         arc(xf, e.center.x, e.center.y, e.radius, 0, Math.PI * 2 - 1e-6, layer);
-      else if ((e.type === 'TEXT' || e.type === 'MTEXT') && e.text) {
+      else if (e.type === 'ELLIPSE' && e.center && e.majorAxisEndPoint) {
+        // WC bowls and basins are usually ellipses: centre, major axis vector, minor/major ratio, parameter range.
+        const { x: mx, y: my } = e.majorAxisEndPoint;
+        const ratio = e.axisRatio ?? 1;
+        const t0 = e.startAngle ?? 0;
+        let t1 = e.endAngle ?? Math.PI * 2;
+        while (t1 <= t0) t1 += Math.PI * 2;
+        const n = Math.max(8, Math.ceil(((t1 - t0) / (Math.PI * 2)) * 32));
+        const pt = (t: number) =>
+          xf(
+            e.center!.x + mx * Math.cos(t) - my * ratio * Math.sin(t),
+            e.center!.y + my * Math.cos(t) + mx * ratio * Math.sin(t),
+          );
+        for (let i = 1; i <= n; i++) add(pt(t0 + ((t1 - t0) * (i - 1)) / n), pt(t0 + ((t1 - t0) * i) / n), layer, true);
+      } else if (e.type === 'SPLINE') {
+        // Close enough for symbols: the polygon through the fit points, else the control points.
+        const pts = e.fitPoints?.length ? e.fitPoints : (e.controlPoints ?? []);
+        for (let i = 1; i < pts.length; i++)
+          add(xf(pts[i - 1]!.x, pts[i - 1]!.y), xf(pts[i]!.x, pts[i]!.y), layer, true);
+      } else if ((e.type === 'TEXT' || e.type === 'MTEXT') && e.text) {
         const p = e.startPoint ?? e.position;
         if (!p) continue;
         const [x, y] = xf(p.x, p.y);
@@ -114,7 +138,12 @@ export function readDxf(text: string, name: string): Drawing {
           const ly = (y - by) * sy;
           return xf(px + lx * c - ly * s, py + lx * s + ly * c);
         };
+        const first = segs.length;
         walk(blk.entities!, inner, depth + 1, layer);
+        if (segs.length > first) {
+          const b = boundsOf(segs.slice(first));
+          blocks.push({ name: e.name, ...(layer ? { layer } : {}), ...b });
+        }
       }
     }
   };
@@ -125,6 +154,7 @@ export function readDxf(text: string, name: string): Drawing {
     kind: 'dxf',
     segs,
     texts,
+    blocks,
     bounds: boundsOf(segs),
     mmPerUnit: UNITS[units] ?? 1,
     scaleNote: UNITS[units] ? `from the file's units` : 'assumed millimetres',
