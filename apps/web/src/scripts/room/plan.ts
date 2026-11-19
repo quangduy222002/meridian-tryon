@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_STYLE, FURNITURE, ROOM_DEFAULTS } from './catalog';
+import { styleFinish, styleOf } from './styles';
 
 export type Vec2 = [number, number];
 
@@ -66,6 +67,8 @@ export interface Plan {
   rooms: Record<string, RoomStyle>;
   /** Compass angle of north, degrees clockwise from "up" in the 2D plan. */
   north: number;
+  /** Interior design style (styles.ts), which shapes furniture, palettes and default finishes. */
+  style?: string;
 }
 
 export interface Room {
@@ -260,7 +263,10 @@ export function roomName(p: Plan, r: Room): string {
 
 export function roomStyle(p: Plan, r: Room): { floor: string; wall: string } {
   const own = p.rooms[r.key];
-  const auto = ROOM_DEFAULTS[roomName(p, r)] ?? DEFAULT_STYLE;
+  // A design style picks the finishes for each kind of room; without one, the planner's own defaults apply.
+  const auto = p.style
+    ? styleFinish(styleOf(p.style), roomName(p, r))
+    : (ROOM_DEFAULTS[roomName(p, r)] ?? DEFAULT_STYLE);
   return { floor: own?.floor ?? auto.floor, wall: own?.wall ?? auto.wall };
 }
 

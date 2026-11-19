@@ -5,6 +5,7 @@
  */
 import { hostFailure, type HostSample } from '../../lib/claude-host';
 import { FURNITURE } from './catalog';
+import { STYLES } from './styles';
 import { nodeMap, pointInPoly, roomName, type Item, type Plan, type Room, type Vec2 } from './plan';
 
 export interface AiItem {
@@ -66,7 +67,8 @@ const ROOM_GUIDE: Record<string, string> = {
   Hall: `Hall: keep it a clear route of at least 0.9 m; at most a slim piece (plant, bookshelf) against a wall.`,
 };
 
-const systemPrompt = (p: Plan, room: Room, keep: Item[]) => {
+const systemPrompt = (p: Plan, room: Room, keep: Item[], styleId?: string) => {
+  const st = styleId ? STYLES[styleId] : undefined;
   const name = roomName(p, room);
   const xs = room.poly.map((q) => q[0]);
   const zs = room.poly.map((q) => q[1]);
@@ -84,7 +86,15 @@ Clearances and rules that always apply:
 - Do not block windows or glass doors with tall items (wardrobes, bookshelves, fridges); low pieces may sit under a window.
 - Backs of sofas, beds, desks and cabinets go against walls unless a floating layout is clearly better and keeps the clearances.
 - Use only what the request needs, at the scale the room can take: a small room gets fewer, well-chosen pieces.
-- Colours: choose from each item's listed colours so the room reads as one palette (one accent at most).
+- Colours: one palette for the whole room, one accent at most${st ? ' (use the style palette below)' : " (choose from each item's listed colours)"}.
+${
+  st
+    ? `
+Design style: ${st.name} (${st.vi}). ${st.brief}
+Palette (hex, use these for the items' colours): timber ${st.wood}; upholstery ${st.fabric.join(' ')}; cabinetry ${st.cases.join(' ')}; accents ${st.accent.join(' ')}.
+Pieces that make this style read, to reach for first where the room and the request allow: ${st.signature.map((t) => FURNITURE[t]?.name ?? t).join(', ')}.`
+    : ''
+}
 ${(() => {
   const guide = ROOM_GUIDE[name] ?? Object.entries(ROOM_GUIDE).find(([k]) => name.includes(k))?.[1];
   return guide ? `\nFor this room — ${guide}` : '';
@@ -94,9 +104,9 @@ The plan: coordinates are metres; x grows to the right, z grows downwards (towar
 The room "${name}" (${room.area.toFixed(1)} m², about ${(Math.max(...xs) - Math.min(...xs)).toFixed(1)} × ${(Math.max(...zs) - Math.min(...zs)).toFixed(1)} m) is the polygon with these edges, given as wall centrelines:
 ${describeRoom(p, room)}
 
-Furniture you can use (type: name, width × depth × height in metres, colours):
+Furniture you can use (type: name [group: pieces in one group are alternatives], width × depth × height in metres, default colours). Pick the model that fits the room and the request (a 2-seat sofa in a small living room, a corner sofa in a large one, a single bed in a child's room). "art" hangs on a wall: place it against a solid wall like any other piece, above a sofa, bed or sideboard.
 ${Object.entries(FURNITURE)
-  .map(([t, d]) => `- ${t}: ${d.name}, ${d.w} × ${d.d} × ${d.h}, colours ${d.colors.join(' ')}`)
+  .map(([t, d]) => `- ${t}: ${d.name} [${d.group}], ${d.w} × ${d.d} × ${d.h}, colours ${d.colors.join(' ')}`)
   .join('\n')}
 
 Placing an item: x, z is the centre of its footprint. rot is clockwise in degrees, one of 0, 90, 180, 270.
@@ -160,8 +170,15 @@ function keepInside(it: AiItem, room: Room) {
 type Layout = { items: AiItem[]; summary: string };
 
 /** Through the host's Claude (claude.ai Artifact): the same brief, with the JSON shape spelled out. */
-async function askHost(sample: HostSample, request: string, p: Plan, room: Room, keep: Item[]): Promise<Layout> {
-  const prompt = `${systemPrompt(p, room, keep)}
+async function askHost(
+  sample: HostSample,
+  request: string,
+  p: Plan,
+  room: Room,
+  keep: Item[],
+  styleId?: string,
+): Promise<Layout> {
+  const prompt = `${systemPrompt(p, room, keep, styleId)}
 
 The request: ${request}
 
@@ -174,7 +191,14 @@ Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": num
 }
 
 /** Through the Anthropic API with the visitor's key. */
-async function askApi(apiKey: string, request: string, p: Plan, room: Room, keep: Item[]): Promise<Layout> {
+async function askApi(
+  apiKey: string,
+  request: string,
+  p: Plan,
+  room: Room,
+  keep: Item[],
+  styleId?: string,
+): Promise<Layout> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
   let res: Awaited<ReturnType<typeof client.beta.messages.create>>;
@@ -186,7 +210,7 @@ async function askApi(apiKey: string, request: string, p: Plan, room: Room, keep
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
-      system: systemPrompt(p, room, keep),
+      system: systemPrompt(p, room, keep, styleId),
       messages: [{ role: 'user', content: request }],
       stream: false,
     });
@@ -218,11 +242,18 @@ async function askApi(apiKey: string, request: string, p: Plan, room: Room, keep
  * Asks Claude for a layout — through the host page's Claude when given one, else the Anthropic API with a key.
  * Throws an Error whose message is safe to show.
  */
-export async function furnishRoom(brain: string | HostSample, request: string, p: Plan, room: Room, keep: Item[]) {
+export async function furnishRoom(
+  brain: string | HostSample,
+  request: string,
+  p: Plan,
+  room: Room,
+  keep: Item[],
+  styleId?: string,
+) {
   const out =
     typeof brain === 'string'
-      ? await askApi(brain, request, p, room, keep)
-      : await askHost(brain, request, p, room, keep);
+      ? await askApi(brain, request, p, room, keep, styleId)
+      : await askHost(brain, request, p, room, keep, styleId);
   if (!out || !Array.isArray(out.items)) throw new Error('The model returned no layout. Try again.');
   const items = (out.items ?? [])
     .filter((i) => FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
@@ -233,7 +264,8 @@ export async function furnishRoom(brain: string | HostSample, request: string, p
         x: i.x,
         z: i.z,
         rot: (((Math.round((i.rot ?? 0) / 90) * 90) % 360) + 360) % 360,
-        color: def.colors.includes(i.color) ? i.color : def.colors[0]!,
+        // Any palette colour the model chose (styles bring their own), else the piece's default.
+        color: /^#[0-9a-f]{6}$/i.test(i.color ?? '') ? i.color : def.colors[0]!,
       };
       keepInside(it, room);
       return it;

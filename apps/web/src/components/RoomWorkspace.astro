@@ -76,6 +76,12 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
         </svg>
         <span>New</span>
       </button>
+      <button type="button" id="styleBtn" aria-label="Design style" title="Choose the design style of the home">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-1-.8-1.3-.8-2.2 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3zM7.5 12a1 1 0 1 0 0-.1M10 7.5a1 1 0 1 0 0-.1M14.5 7.5a1 1 0 1 0 0-.1"></path>
+        </svg>
+        <span>Style</span>
+      </button>
       <button type="button" id="estimateBtn" aria-label="Estimate" title="Areas and cost estimate">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 3h14v18H5zM8 7h8M8 11h2M12 11h2M8 15h2M12 15h4"></path>
@@ -192,6 +198,20 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
     <p class="note">Indicative supply-and-fit prices in USD, for comparing options — not a quote.</p>
   </dialog>
 
+  <dialog id="styleDlg" class="sheet" aria-labelledby="styleTitle">
+    <header>
+      <h2 id="styleTitle">Design style</h2>
+      <form method="dialog">
+        <button aria-label="Close">✕</button>
+      </form>
+    </header>
+    <p>
+      One style for the whole home: it sets the timber and metal, how furniture stands, the palette, and the floor and
+      wall finish of each room. Rooms you finished by hand are reset to the style.
+    </p>
+    <div class="style-grid" id="styleGrid" role="group" aria-label="Styles"></div>
+  </dialog>
+
   <dialog id="exportDlg" class="sheet small" aria-labelledby="exportTitle">
     <header>
       <h2 id="exportTitle">Export</h2>
@@ -241,6 +261,9 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
           required
           placeholder="e.g. “A calm bedroom for two with a small desk by the window.”"
         ></textarea>
+      </label>
+      <label>
+        Style<select id="aiStyle"></select>
       </label>
       <label class="check">
         <input type="checkbox" id="aiReplace" checked /> Replace the furniture already in this room

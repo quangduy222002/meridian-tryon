@@ -380,16 +380,16 @@ export class House {
     for (const c of this.ceilings) c.visible = on;
   }
 
-  /** Adds, removes and moves furniture; rebuilds an item only when its type or colour changes. */
+  /** Adds, removes and moves furniture; rebuilds an item only when its type, colour or the design style changes. */
   syncItems(p: Plan) {
     const seen = new Set<string>();
     for (const it of p.items) {
       seen.add(it.id);
-      const sig = `${it.type}:${it.color ?? ''}`;
+      const sig = `${it.type}:${it.color ?? ''}:${p.style ?? ''}`;
       let entry = this.items.get(it.id);
       if (!entry || entry.sig !== sig) {
         if (entry) this.furniture.remove(entry.group);
-        const group = buildFurniture(it.type, it.color);
+        const group = buildFurniture(it.type, it.color, p.style);
         group.userData.item = it.id;
         group.traverse((o) => (o.userData.item = it.id));
         this.furniture.add(group);
@@ -432,6 +432,11 @@ const BUMP: Partial<Record<RoomTexture, number>> = {
   concrete: 0.6,
   terrazzo: 0.5,
   carpet: 2,
+  herringbone: 1.6,
+  marble: 0.3,
+  encaustic: 0.6,
+  slats: 3,
+  panel: 2.5,
 };
 
 const SKIRTING = 0.07;

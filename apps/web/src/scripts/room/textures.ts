@@ -155,6 +155,176 @@ export const roomSpecs = (size: number): SpecMap => ({
       noise(c, w, h, 31, 6000, 0.12);
     },
   },
+  /** Oak in a herringbone pattern: 7 × 42 cm blades at 45°. */
+  herringbone: {
+    width: size,
+    height: size,
+    srgb: true,
+    repeat: [1 / TILE_METRES, 1 / TILE_METRES],
+    paint(c, w, h) {
+      const r = rand32(37);
+      const bw = w / 28; // blade width (7 cm on a 2 m tile)
+      const bl = bw * 6;
+      c.fillStyle = '#d8c6a8';
+      c.fillRect(0, 0, w, h);
+      for (let col = -2; col < w / bl + 2; col++)
+        for (let row = -4; row < h / bw + 4; row++)
+          for (const side of [0, 1]) {
+            c.save();
+            const x = col * bl * Math.SQRT1_2 * 2 + (side ? bl * Math.SQRT1_2 : 0);
+            const y = row * bw * Math.SQRT2;
+            c.translate(x, y);
+            c.rotate(side ? -Math.PI / 4 : Math.PI / 4);
+            const v = 200 + Math.floor(r() * 45);
+            c.fillStyle = `rgb(${v},${v - 6},${v - 14})`;
+            c.fillRect(0, 0, bl, bw);
+            c.fillStyle = 'rgba(60,45,30,0.35)';
+            c.fillRect(0, 0, bl, 1.2);
+            c.fillRect(0, 0, 1.2, bw);
+            for (let g = 0; g < 3; g++) {
+              c.fillStyle = `rgba(90,70,50,${0.05 + r() * 0.06})`;
+              c.fillRect(0, r() * bw, bl, 0.8);
+            }
+            c.restore();
+          }
+    },
+  },
+  /** Honed white marble with soft grey veins. */
+  marble: {
+    width: size,
+    height: size,
+    srgb: true,
+    repeat: [1 / TILE_METRES, 1 / TILE_METRES],
+    paint(c, w, h) {
+      c.fillStyle = '#f4f2ee';
+      c.fillRect(0, 0, w, h);
+      const r = rand32(41);
+      for (let v = 0; v < 18; v++) {
+        let x = r() * w;
+        let y = r() * h;
+        c.strokeStyle = `rgba(110,110,115,${0.08 + r() * 0.18})`;
+        c.lineWidth = 0.6 + r() * 2.2;
+        c.beginPath();
+        c.moveTo(x, y);
+        for (let k = 0; k < 14; k++) {
+          x += (r() - 0.3) * w * 0.08;
+          y += (r() - 0.5) * h * 0.08;
+          c.lineTo(x, y);
+        }
+        c.stroke();
+      }
+      noise(c, w, h, 43, 6000, 0.04, 2);
+      // 60 × 120 cm slabs
+      c.fillStyle = 'rgba(150,150,150,0.35)';
+      for (let i = 0; i <= 2; i++) c.fillRect(0, (i * h) / 2 - 1, w, 2);
+      for (let i = 0; i <= 4; i++) c.fillRect((i * w) / 4 - 1, 0, 2, h);
+    },
+  },
+  /** Vietnamese cement tiles (gạch bông): 20 cm tiles with a four-petal motif in indigo, jade and cream. */
+  encaustic: {
+    width: size,
+    height: size,
+    srgb: true,
+    repeat: [1 / TILE_METRES, 1 / TILE_METRES],
+    paint(c, w, h) {
+      const n = 10;
+      const t = w / n;
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n; j++) {
+          const x = i * t;
+          const y = j * t;
+          c.fillStyle = '#ece4d3';
+          c.fillRect(x, y, t, t);
+          c.fillStyle = '#2f4f5e';
+          c.fillRect(x + t * 0.04, y + t * 0.04, t * 0.92, t * 0.92);
+          c.fillStyle = '#ece4d3';
+          c.fillRect(x + t * 0.1, y + t * 0.1, t * 0.8, t * 0.8);
+          // four petals and a centre
+          c.fillStyle = '#3f7a6b';
+          for (const [px, py] of [
+            [0.5, 0.22],
+            [0.78, 0.5],
+            [0.5, 0.78],
+            [0.22, 0.5],
+          ] as const) {
+            c.beginPath();
+            c.ellipse(x + t * px, y + t * py, t * 0.12, t * 0.2, px === 0.5 ? 0 : Math.PI / 2, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.fillStyle = '#c9785a';
+          c.beginPath();
+          c.arc(x + t / 2, y + t / 2, t * 0.09, 0, Math.PI * 2);
+          c.fill();
+          // corner quarter-circles meet across tiles
+          c.fillStyle = '#2f4f5e';
+          for (const [cx, cy] of [
+            [0, 0],
+            [1, 0],
+            [0, 1],
+            [1, 1],
+          ] as const) {
+            c.beginPath();
+            c.arc(x + t * cx, y + t * cy, t * 0.16, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.fillStyle = 'rgba(80,70,60,0.5)';
+          c.fillRect(x, y, t, 1);
+          c.fillRect(x, y, 1, t);
+        }
+      noise(c, w, h, 47, 5000, 0.06, 2);
+    },
+  },
+  /** Vertical timber slats, 4 cm wide with 2 cm shadow gaps. */
+  slats: {
+    width: size,
+    height: size,
+    srgb: true,
+    repeat: [1 / TILE_METRES, 1 / TILE_METRES],
+    paint(c, w, h) {
+      c.fillStyle = '#4a3a2c';
+      c.fillRect(0, 0, w, h);
+      const r = rand32(53);
+      const n = 34;
+      const p = w / n;
+      for (let i = 0; i < n; i++) {
+        const v = 205 + Math.floor(r() * 35);
+        c.fillStyle = `rgb(${v},${v - 6},${v - 14})`;
+        c.fillRect(i * p, 0, p * 0.68, h);
+        for (let g = 0; g < 4; g++) {
+          c.fillStyle = `rgba(90,70,50,${0.05 + r() * 0.07})`;
+          c.fillRect(i * p + r() * p * 0.6, 0, 0.8, h);
+        }
+      }
+    },
+  },
+  /** Classic wall panelling: a dado rail at 90 cm, raised panels below and moulded frames above. */
+  panel: {
+    width: size,
+    height: size,
+    srgb: true,
+    repeat: [1 / TILE_METRES, 1 / TILE_METRES],
+    paint(c, w, h) {
+      c.fillStyle = '#f2ede4';
+      c.fillRect(0, 0, w, h);
+      const m = w / 200; // px per cm
+      const frame = (x: number, y: number, fw: number, fh: number) => {
+        c.strokeStyle = 'rgba(120,105,85,0.55)';
+        c.lineWidth = 2.2 * m;
+        c.strokeRect(x, y, fw, fh);
+        c.strokeStyle = 'rgba(255,255,255,0.8)';
+        c.lineWidth = 1 * m;
+        c.strokeRect(x + 1.6 * m, y + 1.6 * m, fw - 3.2 * m, fh - 3.2 * m);
+      };
+      // The texture runs bottom-up in v; y = h is the floor.
+      const dado = h - 90 * m;
+      c.fillStyle = 'rgba(120,105,85,0.5)';
+      c.fillRect(0, dado - 2 * m, w, 4 * m);
+      for (let i = 0; i < 2; i++) {
+        frame(i * 100 * m + 10 * m, dado + 14 * m, 80 * m, 60 * m);
+        frame(i * 100 * m + 10 * m, 12 * m, 80 * m, dado - 30 * m);
+      }
+    },
+  },
   /** Soft contact shadow, as an alpha map under the building. */
   contact: {
     width: 128,
@@ -170,4 +340,16 @@ export const roomSpecs = (size: number): SpecMap => ({
   },
 });
 
-export type RoomTexture = 'planks' | 'tile' | 'terrazzo' | 'concrete' | 'carpet' | 'brick' | 'contact';
+export type RoomTexture =
+  | 'planks'
+  | 'tile'
+  | 'terrazzo'
+  | 'concrete'
+  | 'carpet'
+  | 'brick'
+  | 'herringbone'
+  | 'marble'
+  | 'encaustic'
+  | 'slats'
+  | 'panel'
+  | 'contact';

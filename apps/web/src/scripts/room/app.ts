@@ -29,7 +29,8 @@ import {
   smoothstep,
 } from '@meridian/three-core';
 import { $, toast } from '../../lib/dom/chrome';
-import { FLOORS, FURNITURE, WALLS } from './catalog';
+import { FLOORS, FURNITURE, GROUPS, WALLS } from './catalog';
+import { STYLES, styleColor, styleOf, styleSwatches } from './styles';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
 import { createLook } from './look';
@@ -195,12 +196,17 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     for (const b of document.querySelectorAll<HTMLElement>('[popovertarget="catalog"]'))
       b.addEventListener('click', () => catalog.classList.toggle('open'));
   }
-  $('catGrid').innerHTML = Object.entries(FURNITURE)
-    .map(
-      ([type, d]) =>
-        `<button type="button" data-type="${type}"><i style="background:${d.colors[0]}"></i>${esc(d.name)}<small>${(d.w * 100).toFixed(0)} × ${(d.d * 100).toFixed(0)} cm</small></button>`,
-    )
-    .join('');
+  $('catGrid').innerHTML = GROUPS.map((g) => {
+    const items = Object.entries(FURNITURE).filter(([, d]) => d.group === g);
+    return items.length
+      ? `<h3>${esc(g)}</h3>${items
+          .map(
+            ([type, d]) =>
+              `<button type="button" data-type="${type}"><i style="background:${d.colors[0]}"></i>${esc(d.name)}<small>${(d.w * 100).toFixed(0)} × ${(d.d * 100).toFixed(0)} cm</small></button>`,
+          )
+          .join('')}`
+      : '';
+  }).join('');
   $('catGrid').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-type]');
     if (!b) return;
@@ -221,8 +227,20 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
       const def = it && FURNITURE[it.type];
       if (it && def) {
         const color = it.color ?? def.colors[0];
+        // Other models of the same piece (a 2-seat or corner sofa, a king bed…) and the style's palette.
+        const models = Object.entries(FURNITURE).filter(([, d]) => d.group === def.group);
+        const swatches = [
+          ...new Set([...(p.style ? styleSwatches(styleOf(p.style), def.role) : []), ...def.colors]),
+        ].slice(0, 9);
         html = `<h2>${esc(def.name)}<small>${(def.w * 100).toFixed(0)}×${(def.d * 100).toFixed(0)} cm</small></h2>
-<div class="swatches" role="group" aria-label="Colour">${def.colors
+${
+  models.length > 1
+    ? `<label>Model<select data-act="model">${models
+        .map(([t, d]) => `<option value="${t}"${t === it.type ? ' selected' : ''}>${esc(d.name)}</option>`)
+        .join('')}</select></label>`
+    : ''
+}
+<div class="swatches" role="group" aria-label="Colour">${swatches
           .map(
             (c) =>
               `<button type="button" class="swatch" data-color="${c}" style="background:${c}" aria-label="Colour ${c}" aria-pressed="${c === color}"></button>`,
@@ -346,6 +364,13 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
   });
   inspector.addEventListener('change', (e) => {
     const t = e.target as HTMLInputElement;
+    if (t.dataset.act === 'model') {
+      const it = plan.items.find((i) => i.id === editor.sel?.id);
+      if (!it || !FURNITURE[t.value]) return;
+      it.type = t.value;
+      inspector.dataset.for = '';
+      return host.commit(`${FURNITURE[t.value]!.name}`);
+    }
     if (t.dataset.act === 'width' || t.dataset.act === 'name') {
       inspector.dataset.for = '';
       host.commit();
@@ -436,6 +461,50 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     } catch {
       report('Copy failed');
     }
+  });
+
+  /* ---------- Design style ---------- */
+  const styleDlg = $<HTMLDialogElement>('styleDlg');
+  const renderStyles = () => {
+    $('styleGrid').innerHTML = Object.entries(STYLES)
+      .map(
+        ([id, st]) =>
+          `<button type="button" data-style="${id}" aria-pressed="${plan.style === id}"><span class="chips">${[
+            st.wood,
+            ...st.fabric.slice(0, 2),
+            st.cases[0],
+            st.accent[0],
+          ]
+            .map((c) => `<i style="background:${c}"></i>`)
+            .join('')}</span><b>${esc(st.name)}<small>${esc(st.vi)}</small></b><span>${esc(st.blurb)}</span></button>`,
+      )
+      .join('');
+  };
+  /** Gives the whole home a style: its finishes per room, and every piece recoloured from its palette. */
+  const applyStyle = (id: string) => {
+    const st = STYLES[id];
+    if (!st) return;
+    plan.style = id;
+    for (const r of Object.values(plan.rooms)) {
+      delete r.floor;
+      delete r.wall;
+    }
+    for (const it of plan.items) {
+      const def = FURNITURE[it.type];
+      if (def) it.color = styleColor(st, it.type, def.role, it.color ?? def.colors[0]!);
+    }
+    host.commit(`Style: ${st.name}`);
+  };
+  $('styleBtn').addEventListener('click', () => {
+    renderStyles();
+    styleDlg.showModal();
+  });
+  $('styleGrid').addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[data-style]');
+    if (!b?.dataset.style) return;
+    applyStyle(b.dataset.style);
+    styleDlg.close();
+    showPane('three');
   });
 
   /* ---------- Export ---------- */
@@ -531,6 +600,12 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
           `<option value="${esc(r.key)}" ${r.key === (selected ?? byArea[0]!.key) ? 'selected' : ''}>${esc(roomName(plan, r))} · ${r.area.toFixed(1)} m²</option>`,
       )
       .join('');
+    $('aiStyle').innerHTML = `<option value="">No particular style</option>${Object.entries(STYLES)
+      .map(
+        ([id, st]) =>
+          `<option value="${id}"${plan.style === id ? ' selected' : ''}>${esc(st.name)} · ${esc(st.vi)}</option>`,
+      )
+      .join('')}`;
     aiStatus.textContent = hostAi ? 'Uses your Claude account.' : '';
     setKeyBox(false);
     aiDlg.showModal();
@@ -578,7 +653,16 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     aiStatus.textContent = 'Arranging the room…';
     try {
       const { furnishRoom } = await import('./ai');
-      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep);
+      const styleId = $<HTMLSelectElement>('aiStyle').value;
+      // The style is the home's: choosing one here gives the whole home its finishes, as the Style dialog does.
+      if (styleId && styleId !== plan.style) {
+        plan.style = styleId;
+        for (const r of Object.values(plan.rooms)) {
+          delete r.floor;
+          delete r.wall;
+        }
+      }
+      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep, styleId || undefined);
       if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z));
       for (const it of out.items) plan.items.push({ id: uid('i'), ...it });
       aiDlg.close();
