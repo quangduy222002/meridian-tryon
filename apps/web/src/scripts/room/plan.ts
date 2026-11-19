@@ -524,3 +524,61 @@ export function addStorey(p: Plan, floor?: Plan, name?: string, height = 3.3): P
   for (const k of HOME_WIDE) (next as unknown as Record<string, unknown>)[k] = p[k];
   return next;
 }
+
+/* ---------- Stairs and floor openings ---------- */
+
+/** Footprint corners of an item in plan space: back-left, back-right, front-right, front-left (front faces +z). */
+export function itemCorners(it: Item): Vec2[] {
+  const d = FURNITURE[it.type];
+  if (!d) return [];
+  const r = (it.rot * Math.PI) / 180;
+  const c = Math.cos(r);
+  const s = Math.sin(r);
+  return (
+    [
+      [-d.w / 2, -d.d / 2],
+      [d.w / 2, -d.d / 2],
+      [d.w / 2, d.d / 2],
+      [-d.w / 2, d.d / 2],
+    ] as Vec2[]
+  ).map(([x, z]) => [it.x + x * c - z * s, it.z + x * s + z * c] as Vec2);
+}
+
+/** A hole in a floor: its outline, and the edge (index of corner → next corner) left open where a stair arrives. */
+export interface FloorOpening {
+  poly: Vec2[];
+  open?: number;
+}
+
+/**
+ * The openings in floor `i` of a home: above each stair on the floor below (open on the side the stair arrives:
+ * the back of a straight flight, the right of an L), and every double-height void placed on this floor.
+ */
+export function floorOpenings(floors: { storey: Storey; plan: Plan }[], i: number): FloorOpening[] {
+  const here = floors[i];
+  if (!here) return [];
+  const out: FloorOpening[] = here.plan.items
+    .filter((it) => it.type === 'void')
+    .map((it) => ({ poly: itemCorners(it) }));
+  const below = floors
+    .filter((f) => f.storey.elevation < here.storey.elevation)
+    .sort((a, b) => b.storey.elevation - a.storey.elevation)[0];
+  for (const it of below?.plan.items ?? [])
+    if (it.type === 'stairs' || it.type === 'stairsL')
+      out.push({ poly: itemCorners(it), open: it.type === 'stairs' ? 0 : 1 });
+  return out;
+}
+
+/** The openings in floor `i`'s ceiling: over its own stairs, and under the voids of the floor above. */
+export function ceilingOpenings(floors: { storey: Storey; plan: Plan }[], i: number): FloorOpening[] {
+  const here = floors[i];
+  if (!here) return [];
+  const out: FloorOpening[] = here.plan.items
+    .filter((it) => it.type === 'stairs' || it.type === 'stairsL')
+    .map((it) => ({ poly: itemCorners(it) }));
+  const up = floors
+    .filter((f) => f.storey.elevation > here.storey.elevation)
+    .sort((a, b) => a.storey.elevation - b.storey.elevation)[0];
+  for (const it of up?.plan.items ?? []) if (it.type === 'void') out.push({ poly: itemCorners(it) });
+  return out;
+}

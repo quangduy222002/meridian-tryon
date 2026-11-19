@@ -504,6 +504,35 @@ export const FURNITURE: Record<string, FurnitureDef> = {
     mount: 'wall',
     light: { kind: 'point', y: 1.8, power: 0.6 },
   },
+  /* Stairs and floor openings: a stair rises one storey from the floor it stands on and opens the floor above. */
+  stairs: {
+    name: 'Straight stairs',
+    w: 1.0,
+    d: 4.3,
+    h: 3.3,
+    colors: ['#c9a77c', '#7a5638', '#e9e3d8', '#3b3a38'],
+    group: 'Stairs',
+    role: 'wood',
+  },
+  stairsL: {
+    name: 'L-shaped stairs',
+    w: 3.0,
+    d: 3.0,
+    h: 3.3,
+    colors: ['#c9a77c', '#7a5638', '#e9e3d8', '#3b3a38'],
+    group: 'Stairs',
+    role: 'wood',
+  },
+  void: {
+    name: 'Double-height void (opening to the floor below)',
+    w: 2.4,
+    d: 2.4,
+    h: 0.01,
+    colors: ['#e9e3d8'],
+    flat: true,
+    group: 'Stairs',
+    role: 'fixed',
+  },
   art: {
     name: 'Framed art (on the wall)',
     w: 1.0,
@@ -532,6 +561,7 @@ export const GROUPS = [
   'Plants',
   'Lighting',
   'Decor',
+  'Stairs',
 ];
 
 export interface Finish {
@@ -636,6 +666,9 @@ export const FURNITURE_PRICE: Record<string, number> = {
   pendant: 180,
   chandelier: 650,
   wallLight: 95,
+  stairs: 3200,
+  stairsL: 4600,
+  void: 450,
 };
 
 /** Doors and windows, per piece, for the estimate. */

@@ -7,6 +7,7 @@
 import { FLOORS, FURNITURE } from './catalog';
 import {
   closestOnSegment,
+  itemCorners,
   len,
   nodeMap,
   roomAt,
@@ -633,6 +634,31 @@ export class PlanEditor {
 
     this.host.underlay?.(c, X, Z, s);
     const below = this.host.ghost?.();
+    // Stairs on the floor below open this floor: dashed outline, crossed, "Void".
+    for (const it of below?.items ?? []) {
+      if (it.type !== 'stairs' && it.type !== 'stairsL') continue;
+      const q = itemCorners(it);
+      c.save();
+      c.setLineDash([5, 4]);
+      c.strokeStyle = '#475467';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      q.forEach(([x, z], i) => (i ? c.lineTo(X(x), Z(z)) : c.moveTo(X(x), Z(z))));
+      c.closePath();
+      c.stroke();
+      c.beginPath();
+      c.moveTo(X(q[0]![0]), Z(q[0]![1]));
+      c.lineTo(X(q[2]![0]), Z(q[2]![1]));
+      c.moveTo(X(q[1]![0]), Z(q[1]![1]));
+      c.lineTo(X(q[3]![0]), Z(q[3]![1]));
+      c.stroke();
+      c.setLineDash([]);
+      c.font = '500 11px "Inter Variable", sans-serif';
+      c.fillStyle = '#475467';
+      c.textAlign = 'center';
+      c.fillText('Void · stairs below', X(it.x), Z(it.z) - 6);
+      c.restore();
+    }
     if (below) {
       const gn = nodeMap(below);
       c.strokeStyle = 'rgba(102, 112, 133, 0.28)';
@@ -916,6 +942,11 @@ export class PlanEditor {
     c.rotate(it.rot * DEG);
     const w = def.w * s;
     const d = def.d * s;
+    if (it.type === 'stairs' || it.type === 'stairsL' || it.type === 'void') {
+      paintStair(c, it.type, w, d, s, selected);
+      c.restore();
+      return;
+    }
     if (def.mount) {
       // Lighting-plan symbols: a circle (crossed for a downlight), a half circle on the wall for a wall light.
       const r = Math.max(5, (Math.min(def.w, 0.5) * s) / 2);
@@ -968,4 +999,80 @@ export class PlanEditor {
     }
     c.restore();
   }
+}
+
+/**
+ * Plan symbol of a stair (treads, a walking line and an UP arrow from the bottom step) or a double-height void
+ * (dashed and crossed), in the item's own frame: w × d pixels, front (bottom step) towards +z.
+ */
+function paintStair(c: CanvasRenderingContext2D, type: string, w: number, d: number, s: number, selected: boolean) {
+  c.strokeStyle = selected ? '#2563eb' : '#475467';
+  c.fillStyle = '#ffffff';
+  c.lineWidth = selected ? 2 : 1;
+  if (type === 'void') {
+    c.setLineDash([5, 4]);
+    c.strokeRect(-w / 2, -d / 2, w, d);
+    c.beginPath();
+    c.moveTo(-w / 2, -d / 2);
+    c.lineTo(w / 2, d / 2);
+    c.moveTo(w / 2, -d / 2);
+    c.lineTo(-w / 2, d / 2);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#475467';
+    c.font = '500 11px "Inter Variable", sans-serif';
+    c.textAlign = 'center';
+    c.fillText('Void', 0, -4);
+    return;
+  }
+  const treads = (x0: number, z0: number, x1: number, z1: number, n: number, alongZ: boolean) => {
+    c.fillRect(Math.min(x0, x1), Math.min(z0, z1), Math.abs(x1 - x0), Math.abs(z1 - z0));
+    c.strokeRect(Math.min(x0, x1), Math.min(z0, z1), Math.abs(x1 - x0), Math.abs(z1 - z0));
+    c.beginPath();
+    for (let i = 1; i < n; i++) {
+      if (alongZ) {
+        const z = z0 + ((z1 - z0) * i) / n;
+        c.moveTo(x0, z);
+        c.lineTo(x1, z);
+      } else {
+        const x = x0 + ((x1 - x0) * i) / n;
+        c.moveTo(x, z0);
+        c.lineTo(x, z1);
+      }
+    }
+    c.stroke();
+  };
+  const arrow: [number, number][] = [];
+  if (type === 'stairs') {
+    treads(-w / 2, d / 2, w / 2, -d / 2, 18, true);
+    arrow.push([0, d / 2 - 0.15 * s], [0, -d / 2 + 0.25 * s]);
+  } else {
+    const run = 1.0 * s;
+    treads(-w / 2, d / 2, -w / 2 + run, -d / 2 + run, 9, true);
+    c.fillRect(-w / 2, -d / 2, run, run);
+    c.strokeRect(-w / 2, -d / 2, run, run);
+    treads(-w / 2 + run, -d / 2, w / 2, -d / 2 + run, 9, false);
+    arrow.push(
+      [-w / 2 + run / 2, d / 2 - 0.15 * s],
+      [-w / 2 + run / 2, -d / 2 + run / 2],
+      [w / 2 - 0.25 * s, -d / 2 + run / 2],
+    );
+  }
+  // Walking line with an arrow head and "UP" at the bottom.
+  c.beginPath();
+  arrow.forEach(([x, z], i) => (i ? c.lineTo(x, z) : c.moveTo(x, z)));
+  c.stroke();
+  const [ax, az] = arrow[arrow.length - 1]!;
+  const [px, pz] = arrow[arrow.length - 2]!;
+  const ang = Math.atan2(az - pz, ax - px);
+  c.beginPath();
+  c.moveTo(ax, az);
+  c.lineTo(ax - Math.cos(ang - 0.45) * 8, az - Math.sin(ang - 0.45) * 8);
+  c.moveTo(ax, az);
+  c.lineTo(ax - Math.cos(ang + 0.45) * 8, az - Math.sin(ang + 0.45) * 8);
+  c.stroke();
+  c.fillStyle = selected ? '#2563eb' : '#475467';
+  c.font = '600 10px "Inter Variable", sans-serif';
+  c.textAlign = 'center';
+  c.fillText('UP', arrow[0]![0], arrow[0]![1] + 12);
 }

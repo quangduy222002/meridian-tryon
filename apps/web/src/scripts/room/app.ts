@@ -39,7 +39,9 @@ import { designLighting, kelvinColor } from './lighting';
 import {
   WALL_HEIGHT,
   addStorey,
+  ceilingOpenings,
   findRooms,
+  floorOpenings,
   len,
   nodeMap,
   pointInPoly,
@@ -894,7 +896,7 @@ async function setupThree(
       // Walls run up to the floor above, so the storeys read as one building.
       const above = list.filter((g) => g.storey.elevation > f.storey.elevation).map((g) => g.storey.elevation);
       h.wallHeight = above.length ? Math.min(...above) - f.storey.elevation : WALL_HEIGHT;
-      h.syncStructure(f.plan, findRooms(f.plan));
+      h.syncStructure(f.plan, findRooms(f.plan), floorOpenings(list, i), ceilingOpenings(list, i));
       h.syncItems(f.plan);
       h.root.position.y = f.storey.elevation - base;
       h.root.visible = true;
@@ -1141,7 +1143,9 @@ async function setupThree(
       const p = getPlan();
       // The slider follows the plan (a new or reopened plan brings its own orientation).
       if (Number(northIn.value) !== (p.north ?? 0)) northIn.value = String(p.north ?? 0);
-      const rebuilt = house.syncStructure(p, getRooms());
+      const floors = storeysOf(p);
+      const here = floors.findIndex((f) => f.active);
+      const rebuilt = house.syncStructure(p, getRooms(), floorOpenings(floors, here), ceilingOpenings(floors, here));
       house.syncItems(p);
       syncStoreys(p);
       if (rebuilt && !framed && house.walls.length) {

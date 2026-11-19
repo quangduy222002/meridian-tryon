@@ -548,6 +548,40 @@ const builders: Record<string, Build> = {
   art(add, m, w, _d, h, look) {
     artwork(add, look, m, w, h - 0.75, 0.75);
   },
+  /* Stairs climb from the front (+z) of their footprint to the back, one storey high. */
+  stairs(add, m, w, d, h, look) {
+    flight(add, m, look, { x0: -w / 2, x1: w / 2, z0: d / 2, z1: -d / 2, axis: 'z', y0: 0, y1: h, steps: 18 });
+  },
+  stairsL(add, m, w, d, h, look) {
+    // Up the left side to a square landing in the back-left corner, then along the back to the right.
+    const run = 1.0;
+    const mid = h / 2;
+    flight(add, m, look, {
+      x0: -w / 2,
+      x1: -w / 2 + run,
+      z0: d / 2,
+      z1: -d / 2 + run,
+      axis: 'z',
+      y0: 0,
+      y1: mid,
+      steps: 9,
+    });
+    add(rbox(run, 0.05, run, 0.005), m, -w / 2 + run / 2, mid - 0.025, -d / 2 + run / 2);
+    add(rbox(run, mid - 0.05, run, 0.005), shared.white, -w / 2 + run / 2, (mid - 0.05) / 2, -d / 2 + run / 2);
+    flight(add, m, look, {
+      x0: -w / 2 + run,
+      x1: w / 2,
+      z0: -d / 2,
+      z1: -d / 2 + run,
+      axis: 'x',
+      y0: mid,
+      y1: h,
+      steps: 9,
+    });
+  },
+  void() {
+    // An opening in the floor: cut by the house, with railings; nothing to build here.
+  },
   /* Light fittings: modelled at their real height (the ceiling is at 2.7 m). */
   downlight(add, m) {
     add(cyl(0.065, 0.065, 0.012, 24), m, 0, 2.694, 0);
@@ -591,6 +625,65 @@ function diningChair(_add: Add, m: Material, look: Look, x: number, z: number, r
   add(rbox(0.44, 0.36, 0.04, 0.02), look.style.legs === 'rattan' ? shared.rattan : m, 0, 0.68, -0.19);
   const legMat = look.style.legs === 'metal' ? look.metal : look.wood;
   for (const lx of [-1, 1]) for (const lz of [-1, 1]) add(cyl(0.017, 0.013, 0.44), legMat, lx * 0.18, 0.22, lz * 0.17);
+}
+
+/**
+ * One flight of stairs: treads in the main colour on white risers over a solid stringer, a handrail on posts along
+ * the open side. Climbs along z (from z0 to z1) or along x (from x0 to x1), from y0 to y1.
+ */
+function flight(
+  add: Add,
+  m: Material,
+  look: Look,
+  f: { x0: number; x1: number; z0: number; z1: number; axis: 'x' | 'z'; y0: number; y1: number; steps: number },
+) {
+  const rise = (f.y1 - f.y0) / f.steps;
+  const along = f.axis === 'z' ? f.z1 - f.z0 : f.x1 - f.x0;
+  const run = along / f.steps;
+  const width = f.axis === 'z' ? Math.abs(f.x1 - f.x0) : Math.abs(f.z1 - f.z0);
+  const cx = (f.x0 + f.x1) / 2;
+  const cz = (f.z0 + f.z1) / 2;
+  for (let k = 0; k < f.steps; k++) {
+    const top = f.y0 + (k + 1) * rise;
+    const c = (f.axis === 'z' ? f.z0 : f.x0) + run * (k + 0.5);
+    const [x, z] = f.axis === 'z' ? [cx, c] : [c, cz];
+    const [tw, td] = f.axis === 'z' ? [width, Math.abs(run) + 0.02] : [Math.abs(run) + 0.02, width];
+    add(rbox(tw, 0.035, td, 0.004), m, x, top - 0.0175, z);
+    // Riser and the solid mass under the step.
+    add(
+      rbox(
+        f.axis === 'z' ? width - 0.01 : Math.abs(run),
+        top - 0.035,
+        f.axis === 'z' ? Math.abs(run) : width - 0.01,
+        0.002,
+      ),
+      shared.white,
+      x,
+      (top - 0.035) / 2,
+      z,
+    );
+  }
+  // Handrail on posts along the side away from the wall (the +x side for a z flight, the +z side for an x flight).
+  const posts = 4;
+  for (let i = 0; i <= posts; i++) {
+    const t = i / posts;
+    const y = f.y0 + (f.y1 - f.y0) * t;
+    const [x, z] =
+      f.axis === 'z'
+        ? [Math.max(f.x0, f.x1) - 0.04, f.z0 + along * t]
+        : [f.x0 + along * t, Math.max(f.z0, f.z1) - 0.04];
+    add(cyl(0.015, 0.015, 0.9, 8), look.metal, x, y + 0.45, z);
+  }
+  const len = Math.hypot(along, f.y1 - f.y0);
+  const rail = add(cyl(0.022, 0.022, len, 10), look.wood, 0, 0, 0);
+  const [rx, rz] =
+    f.axis === 'z'
+      ? [Math.max(f.x0, f.x1) - 0.04, (f.z0 + f.z1) / 2]
+      : [(f.x0 + f.x1) / 2, Math.max(f.z0, f.z1) - 0.04];
+  rail.position.set(rx, (f.y0 + f.y1) / 2 + 0.9, rz);
+  const slope = Math.atan2(f.y1 - f.y0, Math.abs(along));
+  if (f.axis === 'z') rail.rotation.x = (along < 0 ? -1 : 1) * (Math.PI / 2 - slope);
+  else rail.rotation.z = (along < 0 ? 1 : -1) * (Math.PI / 2 - slope);
 }
 
 /** Open shelving with books, `n` shelves from `y0`. */

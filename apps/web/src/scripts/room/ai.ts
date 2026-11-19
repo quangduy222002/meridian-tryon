@@ -107,6 +107,7 @@ ${describeRoom(p, room)}
 
 Furniture you can use (type: name [group: pieces in one group are alternatives], width × depth × height in metres, default colours). Pick the model that fits the room and the request (a 2-seat sofa in a small living room, a corner sofa in a large one, a single bed in a child's room). "art" hangs on a wall: place it against a solid wall like any other piece, above a sofa, bed or sideboard.
 ${Object.entries(FURNITURE)
+  .filter(([, d]) => d.group !== 'Stairs')
   .map(([t, d]) => `- ${t}: ${d.name} [${d.group}], ${d.w} × ${d.d} × ${d.h}, colours ${d.colors.join(' ')}`)
   .join('\n')}
 

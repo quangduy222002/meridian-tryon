@@ -613,6 +613,16 @@ test('floor plan import builds a two-storey home from one drawing', async ({ pag
   // Switching floors keeps both.
   await page.locator('#storeys [data-storey="0"]').click();
   await expect(page.locator('#storeys [aria-pressed="true"]')).toHaveText('Tầng 1');
+  // A stair on the ground floor opens the floor above (a stairwell with railings in 3D).
+  await page.locator('#furnBtn').click();
+  await page.locator('[data-type="stairsL"]').click();
+  const plan2d = (await page.locator('#plan').boundingBox())!;
+  await page.mouse.click(plan2d.x + plan2d.width * 0.6, plan2d.y + plan2d.height * 0.5);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('floorwise.plan') ?? ''))
+    .toContain('"type":"stairsL"');
+  await page.locator('#storeys [data-storey="1"]').click();
+  await expect(page.locator('#storeys [aria-pressed="true"]')).toHaveText('Tầng 2');
   expect(errors).toEqual([]);
 });
 

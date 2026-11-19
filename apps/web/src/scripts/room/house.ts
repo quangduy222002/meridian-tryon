@@ -14,11 +14,13 @@ import {
   LineBasicMaterial,
   LineLoop,
   Mesh,
+  Path,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   Shape,
   ShapeGeometry,
   SpotLight,
+  Vector2,
   type Material,
   type Texture,
 } from 'three';
@@ -33,6 +35,8 @@ import {
   nodeMap,
   roomAt,
   roomStyle,
+  pointInPoly,
+  type FloorOpening,
   type Plan,
   type Room,
   type Vec2,
@@ -128,13 +132,21 @@ export class House {
    */
   wallHeight = WALL_HEIGHT;
 
-  syncStructure(p: Plan, rooms: Room[]) {
+  /**
+   * @param below Openings in this floor (over a stair from the floor below, double-height voids): cut out of the
+   *   floor and guarded by railings.
+   * @param above Openings in the ceiling (over this floor's own stairs and under voids above): cut out of the ceiling
+   *   and the shadow roof, so the stairwell is open and lit from above.
+   */
+  syncStructure(p: Plan, rooms: Room[], below: FloorOpening[] = [], above: FloorOpening[] = []) {
     const sig = JSON.stringify([
       p.nodes,
       p.walls,
       p.openings,
       rooms.map((r) => [r.key, roomStyle(p, r)]),
       this.wallHeight,
+      below,
+      above,
     ]);
     if (sig === this.structureSig) return false;
     this.structureSig = sig;
@@ -148,8 +160,17 @@ export class House {
     const nodes = nodeMap(p);
 
     /* Floors and the shadow-only roof */
+    // A hole goes in the room that holds its middle.
+    const holesIn = (r: Room, list: FloorOpening[], flip: number) =>
+      list
+        .filter((o) => {
+          const c = o.poly.reduce((a, q) => [a[0] + q[0] / o.poly.length, a[1] + q[1] / o.poly.length], [0, 0]);
+          return pointInPoly(c as Vec2, r.poly);
+        })
+        .map((o) => new Path(o.poly.map(([x, z]) => new Vector2(x, flip * z))));
     for (const r of rooms) {
       const shape = new Shape(r.poly.map(([x, z]) => ({ x, y: -z }) as never));
+      shape.holes.push(...holesIn(r, below, -1));
       const geo = new ShapeGeometry(shape);
       const floor = new Mesh(geo, this.finish('floor', roomStyle(p, r).floor));
       floor.rotation.x = -Math.PI / 2;
@@ -157,17 +178,18 @@ export class House {
       floor.receiveShadow = true;
       floor.userData.room = r.key;
       this.structure.add(floor);
-      const roof = new Mesh(geo, this.roofMat);
+      const roofShape = new Shape(r.poly.map(([x, z]) => ({ x, y: -z }) as never));
+      roofShape.holes.push(...holesIn(r, above, -1));
+      const roof = new Mesh(new ShapeGeometry(roofShape), this.roofMat);
       roof.rotation.x = -Math.PI / 2;
       roof.position.y = this.wallHeight;
       roof.castShadow = true;
       roof.layers.set(1);
       this.structure.add(roof);
       // Visible ceiling, only while walking through the rooms (faces down).
-      const ceiling = new Mesh(
-        new ShapeGeometry(new Shape(r.poly.map(([x, z]) => ({ x, y: z }) as never))),
-        this.ceilingMat,
-      );
+      const ceilingShape = new Shape(r.poly.map(([x, z]) => ({ x, y: z }) as never));
+      ceilingShape.holes.push(...holesIn(r, above, 1));
+      const ceiling = new Mesh(new ShapeGeometry(ceilingShape), this.ceilingMat);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.y = WALL_HEIGHT - 0.002;
       ceiling.receiveShadow = true;
@@ -175,6 +197,20 @@ export class House {
       this.ceilings.push(ceiling);
       this.structure.add(ceiling);
     }
+
+    /* Railings round the openings in this floor (not on the side a stair arrives) */
+    for (const o of below)
+      o.poly.forEach((a, i) => {
+        if (i === o.open) return;
+        const b = o.poly[(i + 1) % o.poly.length]!;
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (L < 0.05) return;
+        const g = new Group();
+        g.position.set((a[0] + b[0]) / 2, 0, (a[1] + b[1]) / 2);
+        g.rotation.y = Math.atan2(-(b[1] - a[1]), b[0] - a[0]);
+        this.railing(g, -L / 2, L / 2, 0.06);
+        this.structure.add(g);
+      });
 
     /* Walls */
     const ends = wallReach(p, nodes);
