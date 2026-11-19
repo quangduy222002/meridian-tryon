@@ -675,6 +675,141 @@ test('floor plan import closes rooms at plain doorways and short partitions', as
   expect(errors).toEqual([]);
 });
 
+test('floor plan import builds a curved wall from two concentric arcs', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const line = (x1: number, y1: number, x2: number, y2: number) => [
+    '0',
+    'LINE',
+    '8',
+    'WALL',
+    '10',
+    x1,
+    '20',
+    y1,
+    '11',
+    x2,
+    '21',
+    y2,
+  ];
+  const arc = (r: number, a0: number, a1: number) => [
+    '0',
+    'ARC',
+    '8',
+    'WALL',
+    '10',
+    3000,
+    '20',
+    4000,
+    '40',
+    r,
+    '50',
+    a0,
+    '51',
+    a1,
+  ];
+  // A 6 m wide room whose front is a 200 mm wall bowed outwards: two arcs about one centre, 5 m and 4.8 m across.
+  const deg = (x: number, y: number) => (Math.atan2(y, x) * 180) / Math.PI + 360;
+  const inner = Math.sqrt(4800 ** 2 - 2800 ** 2);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...line(0, 0, 0, 4000),
+    ...line(200, 101, 200, 3800),
+    ...line(0, 4000, 6000, 4000),
+    ...line(200, 3800, 5800, 3800),
+    ...line(6000, 4000, 6000, 0),
+    ...line(5800, 3800, 5800, 101),
+    ...arc(5000, deg(-3000, -4000), deg(3000, -4000)),
+    ...arc(4800, deg(-2800, -inner), deg(2800, -inner)),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page.locator('#file').setInputFiles({ name: 'bay.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await boxOnSheet(page, -50, -1050, 6050, 4050);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('1 closed room');
+  // The bowed front is a run of short walls along the curve, not one straight chord.
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}').walls ?? []).length))
+    .toBeGreaterThan(6);
+  expect(errors).toEqual([]);
+});
+
+test('floor plan import finds each floor on a sheet and builds them all', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const line = (x1: number, y1: number, x2: number, y2: number) => [
+    '0',
+    'LINE',
+    '8',
+    'WALL',
+    '10',
+    x1,
+    '20',
+    y1,
+    '11',
+    x2,
+    '21',
+    y2,
+  ];
+  const rect = (x0: number, y0: number, x1: number, y1: number) => [
+    ...line(x0, y0, x1, y0),
+    ...line(x1, y0, x1, y1),
+    ...line(x1, y1, x0, y1),
+    ...line(x0, y1, x0, y0),
+  ];
+  const text = (x: number, y: number, h: number, s: string) => [
+    '0',
+    'TEXT',
+    '8',
+    'TEXT',
+    '10',
+    x,
+    '20',
+    y,
+    '40',
+    h,
+    '1',
+    s,
+  ];
+  const floor = (ox: number, title: string) => [
+    ...rect(ox, 0, ox + 8000, 6000),
+    ...rect(ox + 200, 200, ox + 7800, 5800),
+    ...line(ox + 4000, 200, ox + 4000, 5800),
+    ...line(ox + 4100, 200, ox + 4100, 5800),
+    ...text(ox + 1500, 3000, 150, 'P. NGỦ'),
+    ...text(ox + 5500, 3000, 150, 'P. KHÁCH'),
+    ...text(ox, -900, 400, title),
+  ];
+  // Upper floor first in the file, a section beside them: the floors still come out bottom up, without the section.
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...floor(12000, 'MẶT BẰNG TẦNG 2 TL 1/100'),
+    ...floor(0, 'MẶT BẰNG TẦNG 1 TL 1/100'),
+    ...rect(26000, 0, 32000, 6000),
+    ...line(26000, 3000, 32000, 3000),
+    ...text(26000, -900, 400, 'MẶT CẮT A-A TL 1/100'),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'house.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await expect(page.locator('#viewChips .view-chip')).toHaveText([/Tầng 1/, /Tầng 2/]);
+  await page.locator('#buildAll').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+  await expect(page.locator('#storeys')).toContainText('Tầng 1');
+  await expect(page.locator('#storeys')).toContainText('Tầng 2');
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}').storeys ?? []).length))
+    .toBe(2);
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import ignores annotation and erased areas', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

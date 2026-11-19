@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1795081644.032619,
-    "seen": 1795081906.787195,
-    "ast_hash": "5fd63b13d0ac3a9fdabf8147102931ed",
+    "mtime": 1795084087.3153214,
+    "seen": 1795084393.2860868,
+    "ast_hash": "acc68549a7f2370d2d0ec279f5abbd8e",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -630,26 +630,26 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/studio/index.astro": {
-    "mtime": 1795067162.859753,
-    "seen": 1795067697.9396212,
-    "ast_hash": "af3d2446d92df70a0a66e1150d1e2e78",
+    "mtime": 1795083426.157802,
+    "seen": 1795084393.286027,
+    "ast_hash": "d24118cc04a15551685b3671cb378f46",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/app.ts": {
-    "mtime": 1795067185.666786,
-    "seen": 1795067697.939656,
-    "ast_hash": "3fed84072843620cf8d98c4a44c22849",
+    "mtime": 1795083425.103455,
+    "seen": 1795084393.28606,
+    "ast_hash": "7ef9a72e12556f16c6d8aee57a286e43",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1795081618.9541621,
-    "seen": 1795081906.787169,
-    "ast_hash": "6ad0a30dbb79ec171ce20839c88c046f",
+    "mtime": 1795083427.1000352,
+    "seen": 1795084393.28606,
+    "ast_hash": "3315c5bca874767c0bd515d06461ab58",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {
-    "mtime": 1795081139.5808015,
-    "seen": 1795081906.78717,
+    "mtime": 1795081949.3593535,
+    "seen": 1795084393.286061,
     "ast_hash": "7c13f4994e873904fc1100918c2e3ddb",
     "semantic_hash": ""
   },
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-pdf.ts": {
-    "mtime": 1795081369.7334774,
-    "seen": 1795081906.787172,
+    "mtime": 1795081949.359675,
+    "seen": 1795084393.2860632,
     "ast_hash": "4f2127e5a33b5a85104b3091ee0ac5b9",
     "semantic_hash": ""
   },
@@ -732,9 +732,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/floors.ts": {
-    "mtime": 1795062446.142841,
-    "seen": 1795063613.07123,
-    "ast_hash": "4f90d4a7284a6fc97dee905ed9546518",
+    "mtime": 1795083499.929792,
+    "seen": 1795084393.286062,
+    "ast_hash": "cd7943a333eed91ea43e25436fa705fd",
     "semantic_hash": ""
   },
   "docs/Floorwise_TikTok_30s.mp4": {
@@ -783,6 +783,12 @@
     "mtime": 1795079566.2004788,
     "seen": 1795081906.7872052,
     "ast_hash": "6220b47f5a21bb360e6f1a3f4148e1e6",
+    "semantic_hash": ""
+  },
+  "apps/web/src/scripts/studio/views.ts": {
+    "mtime": 1795083606.4423146,
+    "seen": 1795084393.2860658,
+    "ast_hash": "4ff3dafdcef93bbf539b6df4bc7ae837",
     "semantic_hash": ""
   },
   "package-lock.json": {

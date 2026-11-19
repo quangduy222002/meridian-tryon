@@ -8,10 +8,10 @@ import { inRegion, type Drawing, type Region } from './drawing';
 const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
 
 const FLOOR =
-  /\b(tang\s*ham|ham|tang\s*\d+|lau\s*\d+|tret|mai|tum|basement|ground floor|(first|second|third) floor|level\s*\d+|roof)\b/;
+  /\b(tang\s*ham|ham|tang\s*\d+|lau\s*\d+|tret|lung|mai|tum|basement|ground floor|(first|second|third) floor|level\s*\d+|roof)\b/;
 
 /**
- * The floor's name from a title in or just under the selected box ("Tầng 2", "Lầu 1", "Trệt"), as written on the
+ * The floor's name from a title in or just under the selected box ("Tầng 2", "Lầu 1", "Trệt", "Lửng"), as written on the
  * sheet; null when there is none.
  */
 export function floorLabel(d: Drawing, r: Region): string | null {

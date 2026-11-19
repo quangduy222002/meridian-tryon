@@ -124,6 +124,13 @@ import '../../styles/studio.css';
           <button type="button" id="clearErase" class="btn-link" hidden>
             Clear erased areas
           </button>
+          <div class="views" id="views" hidden>
+            <p class="views-label">Plans found on this sheet — pick one, or build them all:</p>
+            <div class="view-chips" id="viewChips" role="group" aria-label="Plans on this sheet"></div>
+            <button type="button" id="buildAll" class="btn-line" hidden>
+              Build all floors
+            </button>
+          </div>
           <button type="button" id="detectBtn" class="btn-ink" aria-disabled="true">
             Build the plan
           </button>

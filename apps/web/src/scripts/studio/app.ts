@@ -10,6 +10,7 @@ import { detectWalls } from './detect';
 import { alignTo, floorLabel } from './floors';
 import { nameRooms } from './rooms';
 import { findSymbols, furnish } from './symbols';
+import { findViews, type PlanView } from './views';
 
 type Stage = 'import' | 'select' | 'workspace';
 const STORE = 'floorwise.plan';
@@ -68,21 +69,23 @@ export async function startStudio(gl: boolean) {
     c.restore();
   };
 
+  /** The next build adds a floor over the current one (from the same sheet). */
+  const startAddingFloor = () => {
+    if (!drawing) {
+      toast('Import the drawing first: Import → choose the file, then select the next floor on it.');
+      return;
+    }
+    addingFloor = true;
+    region = null;
+    setStage('select');
+    $('detectBtn').textContent = 'Add as a new floor';
+    $('selectStatus').textContent = 'Drag a box around the next floor on the sheet.';
+  };
   const api: RoomcraftApi = await startRoomcraft(gl, {
     storageKey: STORE,
     plan: emptyPlan(),
     underlay,
-    addFloorFromDrawing: () => {
-      if (!drawing) {
-        toast('Import the drawing first: Import → choose the file, then select the next floor on it.');
-        return;
-      }
-      addingFloor = true;
-      region = null;
-      setStage('select');
-      $('detectBtn').textContent = 'Add as a new floor';
-      $('selectStatus').textContent = 'Drag a box around the next floor on the sheet.';
-    },
+    addFloorFromDrawing: () => startAddingFloor(),
   });
   floorIndex = () => api.plan().storey ?? 0;
 
@@ -226,6 +229,8 @@ export async function startStudio(gl: boolean) {
     } else underlayImg = null;
     updateScale();
     syncDetect();
+    views = findViews(d);
+    renderViews();
     setStage('select');
   };
   $<HTMLInputElement>('file').addEventListener('change', async (e) => {
@@ -299,7 +304,7 @@ export async function startStudio(gl: boolean) {
     else syncDetect();
   };
 
-  const sheet = new SheetView($<HTMLCanvasElement>('sheet'), {
+  const sheetHost: SheetHost = {
     drawing: () => drawing,
     image: () => underlayImg,
     region: () => region,
@@ -322,6 +327,7 @@ export async function startStudio(gl: boolean) {
         }
       }
       syncDetect();
+      if (views.length) renderViews();
       // A crowded box (many notes and labels) builds better once they are erased.
       if (drawing && r && !masks.length) {
         const notes = drawing.texts.filter((t) => inRegion(r, t.x, t.y)).length;
@@ -354,6 +360,42 @@ export async function startStudio(gl: boolean) {
         { once: true },
       );
     },
+  };
+  const sheet = new SheetView($<HTMLCanvasElement>('sheet'), sheetHost);
+
+  /* ---------- Plans found on the sheet ---------- */
+  let views: PlanView[] = [];
+  const renderViews = () => {
+    const box = $('views');
+    box.hidden = !views.length;
+    $('viewChips').innerHTML = views
+      .map(
+        (v, i) =>
+          `<button type="button" class="view-chip" data-view="${i}" aria-pressed="${!!region && region.x0 === v.region.x0 && region.y0 === v.region.y0}">${v.name}${v.scale ? `<small>1:${v.scale}</small>` : ''}</button>`,
+      )
+      .join('');
+    $('buildAll').hidden = views.length < 2;
+    $('buildAll').textContent = `Build all ${views.length} floors`;
+  };
+  const chooseView = (v: PlanView) => {
+    sheetHost.setRegion({ ...v.region });
+    sheet.draw();
+    renderViews();
+  };
+  $('viewChips').addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[data-view]');
+    const v = b && views[Number(b.dataset.view)];
+    if (v) chooseView(v);
+  });
+  // Every floor in turn, bottom up: the first builds the plan, each next one is added as the floor above.
+  $('buildAll').addEventListener('click', () => {
+    const list = [...views];
+    for (const [i, v] of list.entries()) {
+      if (i) startAddingFloor();
+      chooseView(v);
+      $('detectBtn').click();
+    }
+    toast(`Built ${list.length} floors: ${list.map((v) => v.name).join(', ')} — check each against the drawing.`, 6000);
   });
   $('sheetIn').addEventListener('click', () => sheet.zoom(1.25));
   $('sheetOut').addEventListener('click', () => sheet.zoom(0.8));

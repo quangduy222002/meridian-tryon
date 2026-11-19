@@ -69,6 +69,8 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   const V: Line[] = [];
   const hatch: { x: number; y: number; L: number }[] = [];
   const curves: { x: number; y: number; L: number }[] = [];
+  /** Curve chords in drawing order (mm), with their pen and layer, for curved walls. */
+  const chords: (Chord & { pen?: number; layer?: string })[] = [];
   const angTol = Math.tan((1.5 * Math.PI) / 180);
   /** Length of long straight strokes per pen width, to tell the wall pen from the rest. */
   const penLen = new Map<number, number>();
@@ -82,6 +84,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     const L = Math.hypot(dx, dy);
     if (s.curve) {
       curves.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2, L });
+      chords.push({ x1, y1, x2, y2, pen: s.pen, layer: s.layer });
       continue;
     }
     if (L < 30) continue;
@@ -101,9 +104,16 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
    * DXF), every line may pair, as before.
    */
   const totalPen = [...penLen.values()].reduce((t, v) => t + v, 0);
-  const pens = [...penLen].filter(([, v]) => v >= totalPen * 0.08).map(([p]) => p);
+  // Width 0 is a hairline (the thinnest the device draws): fine by definition, not a class to measure from.
+  const pens = [...penLen].filter(([p, v]) => p > 0 && v >= totalPen * 0.08).map(([p]) => p);
   const fine = pens.length >= 2 ? Math.min(...pens) : 0;
-  const wallPen = fine > 0 && pens.some((p) => p >= fine * 1.4) ? fine * 1.4 : null;
+  const heavyShare =
+    [...penLen].filter(([p]) => fine > 0 && p >= fine * 1.4).reduce((t, [, v]) => t + v, 0) / (totalPen || 1);
+  // Filter only where the heavy pens carry a real share of the long lines: some offices draw only part of the walls
+  // heavy, and filtering would lose the rest.
+  const wallPen = fine > 0 && heavyShare >= 0.2 ? fine * 1.4 : null;
+  /** Curved walls come from the heavier pens in any case (the fine ones draw door swings, furniture, fixtures). */
+  const curvePen = wallPen ?? (fine > 0 ? fine * 1.4 : null);
   const heavy = (l: Line) => wallPen === null || (l.pen ?? 0) >= wallPen - 1e-6;
   const area = Math.max(1, (region.x1 - region.x0) * (region.y1 - region.y0) * k * k);
   let hatched = hatch.reduce((s, h) => s + h.L, 0) / area > 0.0005;
@@ -626,6 +636,18 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       });
     }
   }
+  // Curved walls (a rounded stair hall, a bay, a curved bedroom wall): pairs of concentric curves in the wall pen (or
+  // on a wall layer), built as a run of short straight walls along their centre line.
+  const wallChords = chords.filter((c) =>
+    curvePen !== null ? (c.pen ?? 0) >= curvePen - 1e-6 : !!c.layer && WALL_LAYER.test(c.layer),
+  );
+  const toPlanPt = (x: number, y: number) => [(x - ox) / 1000, (oy - y) / 1000] as const;
+  for (const cw of curvedWalls(wallChords)) {
+    const ids = cw.pts.map((p) => nodeAt(...toPlanPt(...p)));
+    for (let i = 1; i < ids.length; i++)
+      if (ids[i] !== ids[i - 1])
+        plan.walls.push({ id: uid('w'), a: ids[i - 1]!.id, b: ids[i]!.id, thick: Math.round(cw.t / 10) / 100 });
+  }
   // T-junctions: an end landing on another wall's middle splits that wall there, so rooms close.
   for (const n of [...plan.nodes]) {
     for (const w of [...plan.walls]) {
@@ -678,6 +700,118 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   });
   tidy(plan);
   return { plan, walls: plan.walls.length, openings: plan.openings.length };
+}
+
+/* ---------- Curved walls ---------- */
+
+interface Chord {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+type Pt = [number, number];
+
+/** Distance from p to a polyline, and the nearest point on it. */
+function nearestOn(p: Pt, line: Pt[]): { d: number; q: Pt } {
+  let best = { d: Infinity, q: p };
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1]!;
+    const b = line[i]!;
+    const ex = b[0] - a[0];
+    const ey = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / (ex * ex + ey * ey || 1)));
+    const q: Pt = [a[0] + ex * t, a[1] + ey * t];
+    const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    if (d < best.d) best = { d, q };
+  }
+  return best;
+}
+
+/**
+ * Curved walls from curve chords (mm): chords that continue each other chain into curves; two curves that run side
+ * by side a wall's thickness apart (60–350 mm over most of their length) are the faces of one curved wall. Returns its centre
+ * line, resampled into pieces short enough to follow the curve, and its thickness.
+ */
+export function curvedWalls(chords: Chord[]): { pts: Pt[]; t: number }[] {
+  const chains: Pt[][] = [];
+  for (const c of chords) {
+    const last = chains[chains.length - 1];
+    const end = last?.[last.length - 1];
+    if (end && Math.hypot(end[0] - c.x1, end[1] - c.y1) < 10) last!.push([c.x2, c.y2]);
+    else
+      chains.push([
+        [c.x1, c.y1],
+        [c.x2, c.y2],
+      ]);
+  }
+  // Curves drawn as several pieces (a bend, then a long sweep) join end to end, in either direction.
+  const near = (p: Pt, q: Pt) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 10;
+  for (let joined = true; joined;) {
+    joined = false;
+    for (const a of chains)
+      for (const b of chains) {
+        if (a === b) continue;
+        const [a0, a1, b0, b1] = [a[0]!, a[a.length - 1]!, b[0]!, b[b.length - 1]!];
+        let tail: Pt[] | null = null;
+        if (near(a1, b0)) tail = b.slice(1);
+        else if (near(a1, b1)) tail = [...b].reverse().slice(1);
+        else if (near(a0, b1)) {
+          a.unshift(...b.slice(0, -1));
+          tail = [];
+        } else if (near(a0, b0)) {
+          a.unshift(...[...b].reverse().slice(0, -1));
+          tail = [];
+        }
+        if (!tail) continue;
+        a.push(...tail);
+        chains.splice(chains.indexOf(b), 1);
+        joined = true;
+        break;
+      }
+  }
+  const length = (l: Pt[]) => l.slice(1).reduce((t, p, i) => t + Math.hypot(p[0] - l[i]![0], p[1] - l[i]![1]), 0);
+  const curves = chains.filter((l) => length(l) >= 500);
+  const used = new Set<Pt[]>();
+  const cand: { a: Pt[]; b: Pt[]; t: number; mid: Pt[] }[] = [];
+  for (const a of curves)
+    for (const b of curves) {
+      if (a === b || length(a) > length(b)) continue;
+      const ds = a.map((p) => nearestOn(p, b));
+      const inBand = ds.filter((x) => x.d >= 60 && x.d <= 350);
+      if (inBand.length < a.length * 0.7) continue;
+      const sorted = inBand.map((x) => x.d).sort((p, q) => p - q);
+      const t = sorted[Math.floor(sorted.length / 2)]!;
+      // Only heavy (wall-pen or wall-layer) curves come here, so two that stay a wall's thickness apart over most of
+      // their length are one wall, even where it swells (a curved wall with a niche or a built-in shelf).
+      const mid = a
+        .map((p, i): Pt | null =>
+          ds[i]!.d >= 60 && ds[i]!.d <= 350 ? [(p[0] + ds[i]!.q[0]) / 2, (p[1] + ds[i]!.q[1]) / 2] : null,
+        )
+        .filter((p): p is Pt => !!p);
+      cand.push({ a, b, t, mid });
+    }
+  cand.sort((p, q) => p.t - q.t);
+  const out: { pts: Pt[]; t: number }[] = [];
+  for (const c of cand) {
+    if (used.has(c.a) || used.has(c.b) || c.mid.length < 2) continue;
+    used.add(c.a);
+    used.add(c.b);
+    // Resample along the centre line: pieces of about a twelfth of it, 250–700 mm.
+    const L = length(c.mid);
+    const step = Math.max(250, Math.min(700, L / 12));
+    const pts: Pt[] = [c.mid[0]!];
+    let acc = 0;
+    for (let i = 1; i < c.mid.length; i++) {
+      acc += Math.hypot(c.mid[i]![0] - c.mid[i - 1]![0], c.mid[i]![1] - c.mid[i - 1]![1]);
+      if (acc >= step || i === c.mid.length - 1) {
+        pts.push(c.mid[i]!);
+        acc = 0;
+      }
+    }
+    out.push({ pts, t: c.t });
+  }
+  return out;
 }
 
 /* ---------- Noise: annotation, dimensions, stray clusters ---------- */

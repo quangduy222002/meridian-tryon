@@ -378,3 +378,41 @@
     padding-top: 28px;
   }
 }
+
+/* Plans found on the sheet */
+.views {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.views-label {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.view-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.view-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--line-strong);
+  font-size: 13px;
+  font-weight: 500;
+}
+.view-chip small {
+  font-size: 11px;
+  font-weight: 450;
+  color: var(--mute);
+}
+.view-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
