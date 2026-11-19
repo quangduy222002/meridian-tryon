@@ -1,7 +1,7 @@
 # Graph Report - portfolio  (2026-11-19)
 
 ## Corpus Check
-- 120 files · ~120,822 words
+- 120 files · ~121,379 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 16 file(s) not represented in the graph (top: .css 9, (none) 7)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b49f8bf7`
+- Built from commit: `105f3978`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -68,8 +68,8 @@
 3. `Plan` - 36 edges
 4. `startStudio()` - 28 edges
 5. `$` - 28 edges
-6. `Vec2` - 27 edges
-7. `RenderLoop` - 27 edges
+6. `RenderLoop` - 27 edges
+7. `Vec2` - 27 edges
 8. `startStudio()` - 27 edges
 9. `nodeMap()` - 24 edges
 10. `setupThree()` - 22 edges
@@ -256,15 +256,15 @@ Nodes (3): Develop, Duy Q. — 3D portfolio & product demos, Stack
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `$` connect `$` to `watch/catalog.ts`, `house.ts`, `RenderLoop`, `studio/app.ts`, `configurator.ts`, `watch/index.astro`, `box/studio.ts`, `assembly/app.ts`, `pages/index.astro`, `PlanEditor`, `room/app.ts`?**
-  _High betweenness centrality (0.082) - this node is a cross-community bridge._
+  _High betweenness centrality (0.100) - this node is a cross-community bridge._
 - **Are the 7 inferred relationships involving `startRoomcraft()` (e.g. with `.deleteSelection()` and `.draw()`) actually correct?**
   _`startRoomcraft()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `astro/tsconfigs/strict` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `store/package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.0766488413547237 - nodes in this community are weakly interconnected._
-- **Why does `startStudio()` connect `assembly/app.ts` to `$`?**
-  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Why does `startRoomcraft()` connect `PlanEditor` to `house.ts`, `studio/app.ts`, `RoomcraftApi`, `furniture.ts`, `configurator.ts`, `editor2d.ts`, `$`, `export.ts`, `room/app.ts`, `plan.ts`, `room/ai.ts`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
 - **Are the 6 inferred relationships involving `startStudio()` (e.g. with `.cancelCalibration()` and `.draw()`) actually correct?**
   _`startStudio()` has 6 INFERRED edges - model-reasoned connections that need verification._
 - **Should `shopify.ts` be split into smaller, more focused modules?**

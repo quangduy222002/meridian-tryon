@@ -141,3 +141,86 @@ export function scaleFromDimensions(d: Drawing, region?: Region): { mmPerUnit: n
   if (best.length < 2) return null;
   return { mmPerUnit: best[Math.floor(best.length / 2)]!, votes: best.length };
 }
+
+/**
+ * Some CAD programs write arcs to PDF as chains of short straight lines instead of curves. Finds runs of four or more
+ * short, similar chords that keep turning the same way by a few degrees each (a door swing, a basin's rim) and marks
+ * them as curve pieces, as if they had been drawn as curves.
+ */
+export function markPolylineArcs(segs: Segment[]) {
+  const key = (x: number, y: number) => `${Math.round(x * 20)},${Math.round(y * 20)}`;
+  const at = new Map<string, number[]>();
+  const seen = new Set<string>();
+  segs.forEach((s, i) => {
+    const L = segLen(s);
+    if (s.curve || L === 0 || L > 40) return;
+    // The same stroke drawn twice (outline and fill) counts once.
+    const a = key(s.x1, s.y1);
+    const b = key(s.x2, s.y2);
+    const id = a < b ? `${a}|${b}` : `${b}|${a}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    for (const k of [a, b]) at.set(k, [...(at.get(k) ?? []), i]);
+  });
+  const done = new Set<number>();
+  // Walk chains from their ends (or junctions) first, then what is left: closed loops (a round basin).
+  for (const loops of [false, true])
+    for (const [start, list] of at) {
+      if (!loops && list.length === 2) continue;
+      for (const first of list) {
+        if (done.has(first)) continue;
+        // Points along the chain, following segments through nodes where exactly two meet.
+        const chain: number[] = [];
+        const pts: [number, number][] = [];
+        let node = start;
+        let i: number | undefined = first;
+        while (i !== undefined && !done.has(i)) {
+          done.add(i);
+          chain.push(i);
+          const s = segs[i]!;
+          const fwd = key(s.x1, s.y1) === node;
+          if (!pts.length) pts.push(fwd ? [s.x1, s.y1] : [s.x2, s.y2]);
+          pts.push(fwd ? [s.x2, s.y2] : [s.x1, s.y1]);
+          node = fwd ? key(s.x2, s.y2) : key(s.x1, s.y1);
+          const next: number[] = at.get(node) ?? [];
+          i = next.length === 2 ? next.find((j) => j !== i) : undefined;
+        }
+        markArcRuns(segs, chain, pts);
+      }
+    }
+}
+
+function markArcRuns(segs: Segment[], chain: number[], pts: [number, number][]) {
+  if (chain.length < 4) return;
+  const dir = (k: number) => Math.atan2(pts[k + 1]![1] - pts[k]![1], pts[k + 1]![0] - pts[k]![0]);
+  const turn = (k: number) => {
+    let t = dir(k + 1) - dir(k);
+    while (t > Math.PI) t -= 2 * Math.PI;
+    while (t < -Math.PI) t += 2 * Math.PI;
+    return t;
+  };
+  const DEG = Math.PI / 180;
+  let runStart = 0;
+  const close = (end: number) => {
+    // Segments runStart..end-1 form a run with consistent small turns.
+    const n = end - runStart;
+    if (n < 4) return;
+    const lens = chain.slice(runStart, end).map((i) => segLen(segs[i]!));
+    const sorted = [...lens].sort((a, b) => a - b);
+    const med = sorted[n >> 1]!;
+    let total = 0;
+    for (let k = runStart; k < end - 1; k++) total += Math.abs(turn(k));
+    if (sorted[0]! < med / 3 || sorted[n - 1]! > med * 3 || total < 30 * DEG) return;
+    for (let k = runStart; k < end; k++) segs[chain[k]!]!.curve = true;
+  };
+  for (let k = 0; k < chain.length - 1; k++) {
+    const t = turn(k);
+    const prev = k > runStart ? turn(k - 1) : t;
+    const ok = Math.abs(t) > 1 * DEG && Math.abs(t) < 40 * DEG && Math.sign(t) === Math.sign(prev);
+    if (!ok) {
+      close(k + 1);
+      runStart = k + 1;
+    }
+  }
+  close(chain.length);
+}

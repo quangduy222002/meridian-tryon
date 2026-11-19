@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1795072665.4100435,
-    "seen": 1795072717.290439,
-    "ast_hash": "b6befc55de7f345bc1e3ea25d4f7b804",
+    "mtime": 1795073538.082805,
+    "seen": 1795074220.061578,
+    "ast_hash": "cbf8a3b1f81bdf21259df4e2e41e1dee",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-pdf.ts": {
-    "mtime": 1795072652.7445385,
-    "seen": 1795072717.290442,
-    "ast_hash": "09716f52b71d9ccc6704c47bf965e289",
+    "mtime": 1795073729.0256853,
+    "seen": 1795074220.0615811,
+    "ast_hash": "0b8e9ae91a3136c0bc8e30c7d82fdf9d",
     "semantic_hash": ""
   },
   "apps/web/public/studio/A26.pdf": {

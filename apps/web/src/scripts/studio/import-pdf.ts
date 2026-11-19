@@ -5,7 +5,7 @@
  */
 import * as pdfjs from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { boundsOf, scaleFromDimensions, type Drawing, type Segment, type Text } from './drawing';
+import { boundsOf, markPolylineArcs, scaleFromDimensions, type Drawing, type Segment, type Text } from './drawing';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -50,7 +50,12 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
   const page = await doc.getPage(n);
   const { OPS } = pdfjs;
   const ops = await page.getOperatorList();
-  let ctm: M = [1, 0, 0, 1, 0, 0];
+  // Drawing units are the page as shown (a /Rotate'd sheet turned upright), y up, keeping the page box's origin so an
+  // unrotated page reads exactly in its own PDF coordinates.
+  const vp = page.getViewport({ scale: 1 });
+  const [vx0, vy0] = page.view as [number, number, number, number];
+  const shown: M = mul([1, 0, 0, -1, vx0, vp.height + vy0], vp.transform);
+  let ctm: M = shown;
   const stack: M[] = [];
   const segs: Segment[] = [];
   const at = (x: number, y: number): [number, number] => [
@@ -94,23 +99,26 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
       }
     }
   }
+  markPolylineArcs(segs);
   const content = await page.getTextContent();
   const texts: Text[] = [];
   for (const item of content.items) {
     if (!('str' in item) || !item.str.trim()) continue;
     const [a, b, c, d, e, f] = item.transform as number[];
-    texts.push({ str: item.str, x: e!, y: f!, h: Math.hypot(c!, d!), angle: Math.atan2(b!, a!) });
+    const [x, y] = [shown[0] * e! + shown[2] * f! + shown[4], shown[1] * e! + shown[3] * f! + shown[5]];
+    // The text's baseline direction, turned with the page.
+    const dx = shown[0] * a! + shown[2] * b!;
+    const dy = shown[1] * a! + shown[3] * b!;
+    texts.push({ str: item.str, x, y, h: Math.hypot(c!, d!), angle: Math.atan2(dy, dx) });
   }
 
   // Raster underlay at a resolution that stays crisp when zoomed in on one flat.
-  const vp = page.getViewport({ scale: 1 });
   const scale = Math.min(4, 4096 / Math.max(vp.width, vp.height));
   const v = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(v.width);
   canvas.height = Math.round(v.height);
   await page.render({ canvas, viewport: v }).promise;
-  const [vx0, vy0, vx1, vy1] = page.view as [number, number, number, number];
 
   const drawing: Drawing = {
     name,
@@ -120,7 +128,7 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
     bounds: boundsOf(segs),
     mmPerUnit: null,
     scaleNote: '',
-    image: { url: canvas.toDataURL('image/png'), x0: vx0, y0: vy0, x1: vx1, y1: vy1 },
+    image: { url: canvas.toDataURL('image/png'), x0: vx0, y0: vy0, x1: vx0 + vp.width, y1: vy0 + vp.height },
   };
   const s = scaleFromDimensions(drawing);
   if (s) {

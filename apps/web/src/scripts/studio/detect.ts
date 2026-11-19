@@ -86,7 +86,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     else hatch.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2, L });
   }
   const area = Math.max(1, (region.x1 - region.x0) * (region.y1 - region.y0) * k * k);
-  const hatched = hatch.reduce((s, h) => s + h.L, 0) / area > 0.0005;
+  let hatched = hatch.reduce((s, h) => s + h.L, 0) / area > 0.0005;
   const layered = [...H, ...V].some((l) => l.layer && WALL_LAYER.test(l.layer));
 
   const merge = (list: Line[]) => {
@@ -101,8 +101,38 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     }
     return out;
   };
+  /**
+   * Stair treads: four or more lines of the same extent, evenly spaced 15–35 cm apart. Any two neighbours look like a
+   * thin wall, so they are left out of wall pairing (they still count as lines for windows and doors).
+   */
+  const treadsOf = (list: Line[]) => {
+    const out = new Set<Line>();
+    const cand = list.filter((l) => l.b - l.a >= 500 && l.b - l.a <= 2000);
+    for (const l of cand) {
+      if (out.has(l)) continue;
+      const run = [l];
+      for (let last = l; ;) {
+        const step = run.length > 1 ? last.c - run[run.length - 2]!.c : 0;
+        const next = cand.find(
+          (r) =>
+            r.c > last.c &&
+            Math.abs(r.a - l.a) < 60 &&
+            Math.abs(r.b - l.b) < 60 &&
+            r.c - last.c >= 150 &&
+            r.c - last.c <= 350 &&
+            (!step || Math.abs(r.c - last.c - step) < step * 0.2),
+        );
+        if (!next) break;
+        run.push(next);
+        last = next;
+      }
+      if (run.length >= 4) for (const r of run) out.add(r);
+    }
+    return out;
+  };
   const HM = merge(H);
   const VM = merge(V);
+  const treads = new Set([...treadsOf(HM), ...treadsOf(VM)]);
 
   const hatchDensity = (o: 'H' | 'V', c0: number, c1: number, a: number, b: number) => {
     let L = 0;
@@ -113,6 +143,31 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     }
     return L / ((b - a) * (c1 - c0));
   };
+
+  /*
+   * Diagonals elsewhere (a void's cross, stair arrows, a planting hatch) don't make this a hatched drawing: its walls
+   * must hold the hatch. Plans whose walls are plain double lines next to such diagonals are read as unhatched.
+   */
+  if (hatched) {
+    let all = 0;
+    let filled = 0;
+    for (const [list, o] of [
+      [HM, 'H'],
+      [VM, 'V'],
+    ] as const)
+      for (let i = 0; i < list.length; i++)
+        for (let j = i + 1; j < list.length; j++) {
+          const gap = list[j]!.c - list[i]!.c;
+          if (gap < 60) continue;
+          if (gap > 320) break;
+          const a = Math.max(list[i]!.a, list[j]!.a);
+          const b = Math.min(list[i]!.b, list[j]!.b);
+          if (b - a < 450) continue;
+          all += b - a;
+          if (hatchDensity(o, list[i]!.c, list[j]!.c, a, b) >= 0.01) filled += b - a;
+        }
+    hatched = filled > all * 0.08;
+  }
 
   /**
    * Cast concrete is drawn with sparse diagonals and aggregate marks, far below brick hatch density. Such a band
@@ -140,10 +195,11 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     const minLen = hatched || layered ? 100 : 250;
     for (let i = 0; i < list.length; i++) {
       const p = list[i]!;
+      if (treads.has(p)) continue;
       for (let j = i + 1; j < list.length; j++) {
         const q = list[j]!;
         const gap = q.c - p.c;
-        if (gap < 60) continue;
+        if (gap < 60 || treads.has(q)) continue;
         if (gap > maxT) break;
         const a = Math.max(p.a, q.a);
         const b = Math.min(p.b, q.b);
@@ -213,16 +269,21 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   const runs: Run[] = [];
   pieces.sort((p, q) => (p.o === q.o ? p.c - q.c || p.a - q.a : p.o < q.o ? -1 : 1));
   for (const p of pieces) {
-    const r = runs.find(
-      (x) => x.o === p.o && Math.abs(x.c - p.c) < 40 && Math.abs(x.t - p.t) < 60 && p.a <= x.b + 3000 && p.a >= x.a,
-    );
+    // The nearest run on the same line that this piece continues (a gate's far jamb may be up to 5.2 m on).
+    const r = runs
+      .filter(
+        (x) => x.o === p.o && Math.abs(x.c - p.c) < 40 && Math.abs(x.t - p.t) < 60 && p.a <= x.b + 5200 && p.a >= x.a,
+      )
+      .reduce<Run | undefined>((best, x) => (!best || x.b > best.b ? x : best), undefined);
     if (!r) {
       runs.push({ ...p, holes: [] });
       continue;
     }
     const gap = p.a - r.b;
     if (gap > 60) {
-      if (gap < 450 || gap > 3000) {
+      // Wider than a door: only a gate of two or four folding leaves (a shop-house front, a garage) can span it.
+      const wide = gap > 3000;
+      if (gap < 450 || gap > 5200) {
         // Too short or too long for an opening: a separate wall.
         runs.push({ ...p, holes: [] });
         continue;
@@ -239,19 +300,38 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       // A swing is a quarter circle about a jamb, as wide as the gap (half as wide for each leaf of a double door),
       // cut into short chords on import. Only curve pieces on such a circle count, so a basin or a bathtub drawn
       // near the doorway doesn't.
+      const swings = [lo, hi].flatMap((j) => [gap, gap / 2].map((rad): [number, number] => [j, rad]));
       const onSwing = (cv: { x: number; y: number }) =>
-        [lo, hi].some((j) =>
-          [gap, gap / 2].some((rad) => {
-            const d = Math.hypot(alongOf(cv) - j, Math.abs(acrossOf(cv)) - p.t / 2);
-            return Math.abs(d - rad) < rad * 0.15 + 40;
-          }),
-        );
+        swings.some(([j, rad]) => {
+          const d = Math.hypot(alongOf(cv) - j, Math.abs(acrossOf(cv)) - p.t / 2);
+          return Math.abs(d - rad) < rad * 0.15 + 40;
+        });
       const arcs = curves.filter((cv) => inGap(cv.x, cv.y, gap + 100) && onSwing(cv));
       // The side with the most swing is the side the door opens to; its length tells it is a door at all.
       const sideLen = (sgn: number) => arcs.filter((cv) => acrossOf(cv) * sgn > 0).reduce((s, cv) => s + cv.L, 0);
       const side = sideLen(1) >= sideLen(-1) ? 1 : -1;
       const swing = arcs.filter((cv) => acrossOf(cv) * side > 0);
-      const door = sideLen(side) >= gap * 0.8;
+      // A gate: each leaf swings about its own hinge, so there are swings on circles about at least three of the
+      // hinge points (both jambs of a pair and the meeting point, or the hinges of a four-leaf fold). A curved
+      // balcony or a round window drawn across the gap doesn't have that.
+      const gate =
+        wide &&
+        [2, 4].some((n) => {
+          const rad = gap / n;
+          let hinges = 0;
+          for (let k = 0; k <= n; k++) {
+            const j = lo + rad * k;
+            const len = curves
+              .filter((cv) => inGap(cv.x, cv.y, rad + 100))
+              .filter(
+                (cv) => Math.abs(Math.hypot(alongOf(cv) - j, Math.abs(acrossOf(cv)) - p.t / 2) - rad) < rad * 0.1 + 30,
+              )
+              .reduce((t, cv) => t + cv.L, 0);
+            if (len > rad * 0.6) hinges++;
+          }
+          return hinges >= 3;
+        });
+      const door = wide ? gate : sideLen(side) >= gap * 0.8;
       // A double door: two swings half as wide, one from each jamb, so they reach only half the gap out from the wall.
       const reachOut = Math.max(0, ...swing.map((cv) => Math.abs(acrossOf(cv))));
       const double =
@@ -285,7 +365,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         left.b > right.a &&
         !lines.some((l) => cover(l) >= gap * 0.9);
       // Only a gap with evidence becomes an opening: a swing arc (door), panels (sliding door) or glazing (window).
-      if (!door && !sliding && lines.length < 2) {
+      if ((!door && !sliding && lines.length < 2) || (wide && !gate)) {
         runs.push({ ...p, holes: [] });
         continue;
       }
@@ -297,7 +377,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         // is down the drawing, so a swing up the drawing (+y) is flip -1; for a V wall it is +x, flip 1.
         flip: p.o === 'H' ? -side : side,
         hingeHi,
-        ...(double ? { leaves: 2 as const } : {}),
+        ...(double || gate ? { leaves: 2 as const } : {}),
         ...(sliding ? { tall: true } : {}),
       });
     }
