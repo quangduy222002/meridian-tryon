@@ -569,6 +569,53 @@ test('floor plan import reads door and fixture symbols', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('floor plan import builds a two-storey home from one drawing', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // Two 8 × 6 m floors side by side on one sheet, each titled as Vietnamese drawings do.
+  const rect = (x0: number, y0: number, x1: number, y1: number) =>
+    [
+      [x0, y0, x1, y0],
+      [x1, y0, x1, y1],
+      [x1, y1, x0, y1],
+      [x0, y1, x0, y0],
+    ].flatMap(([a, b, c, d]) => ['0', 'LINE', '8', 'WALL', '10', a, '20', b, '11', c, '21', d]);
+  const floor = (ox: number, label: string) => [
+    ...rect(ox, 0, ox + 8000, 6000),
+    ...rect(ox + 200, 200, ox + 7800, 5800),
+    ...['0', 'TEXT', '8', 'TEXT', '10', ox + 2500, '20', -900, '40', '350', '1', label],
+  ];
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...floor(0, 'MẶT BẰNG TẦNG 1'),
+    ...floor(12000, 'MẶT BẰNG TẦNG 2'),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'villa.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await boxOnSheet(page, -300, -1500, 8300, 6300);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-stage', 'workspace');
+  // The next floor comes from the same sheet.
+  await page.locator('[data-act="floor-drawing"]').click();
+  await expect(page.locator('#detectBtn')).toHaveText('Add as a new floor');
+  await boxOnSheet(page, 11700, -1500, 20300, 6300);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('#storeys [data-storey]')).toHaveText(['Tầng 1', 'Tầng 2']);
+  await expect(page.locator('#storeys [aria-pressed="true"]')).toHaveText('Tầng 2');
+  await expect
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}').storeys?.length ?? 0))
+    .toBe(2);
+  // Switching floors keeps both.
+  await page.locator('#storeys [data-storey="0"]').click();
+  await expect(page.locator('#storeys [aria-pressed="true"]')).toHaveText('Tầng 1');
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

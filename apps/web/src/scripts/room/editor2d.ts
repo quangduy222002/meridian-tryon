@@ -39,6 +39,8 @@ export interface EditorHost {
   preview(): void;
   selected(sel: Selection | null): void;
   toolChanged(tool: Tool): void;
+  /** The floor below (multi-storey homes), drawn faintly under this one to line walls up. */
+  ghost?(): Plan | null;
   /** Draws something under the plan (an imported drawing), in plan coordinates. */
   underlay?(c: CanvasRenderingContext2D, X: (x: number) => number, Z: (z: number) => number, s: number): void;
   /** Where the visitor is standing in walk mode (plan metres, yaw in radians), if walking. */
@@ -630,6 +632,22 @@ export class PlanEditor {
     }
 
     this.host.underlay?.(c, X, Z, s);
+    const below = this.host.ghost?.();
+    if (below) {
+      const gn = nodeMap(below);
+      c.strokeStyle = 'rgba(102, 112, 133, 0.28)';
+      c.lineCap = 'butt';
+      for (const w of below.walls) {
+        const a = gn.get(w.a);
+        const b = gn.get(w.b);
+        if (!a || !b) continue;
+        c.lineWidth = Math.max(1, w.thick * s);
+        c.beginPath();
+        c.moveTo(X(a.x), Z(a.z));
+        c.lineTo(X(b.x), Z(b.z));
+        c.stroke();
+      }
+    }
 
     // Rooms tinted with their floor finish
     for (const r of rooms) {

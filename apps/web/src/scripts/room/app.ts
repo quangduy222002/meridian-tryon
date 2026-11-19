@@ -37,6 +37,8 @@ import { House } from './house';
 import { createLook } from './look';
 import { designLighting, kelvinColor } from './lighting';
 import {
+  WALL_HEIGHT,
+  addStorey,
   findRooms,
   len,
   nodeMap,
@@ -44,6 +46,8 @@ import {
   roomName,
   roomStyle,
   samplePlan,
+  storeysOf,
+  switchStorey,
   uid,
   wallEnds,
   type Plan,
@@ -73,6 +77,8 @@ export interface RoomcraftOptions {
   /** Start from this plan instead of a shared link / saved plan / sample. */
   plan?: Plan;
   underlay?: EditorHost['underlay'];
+  /** Offered in the floor switcher: bring another floor in from the imported drawing (Floorwise). */
+  addFloorFromDrawing?: () => void;
 }
 
 /** What a page embedding the workspace can do with it. */
@@ -83,6 +89,8 @@ export interface RoomcraftApi {
   setPlan(p: Plan, message?: string): void;
   /** Records an edit made to plan() from outside (undo, save, redraw, 3D). */
   commit(message?: string): void;
+  /** Adds a floor above the others from a plan (undoable) and switches to it. */
+  addStorey(p: Plan, name?: string): void;
   redraw(): void;
   select(sel: Selection | null): void;
 }
@@ -112,11 +120,61 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     three?.sync();
     editor.draw();
     renderInspector();
+    renderStoreys();
   };
+
+  /* ---------- Floors ---------- */
+  const renderStoreys = () => {
+    const list = storeysOf(plan);
+    const many = list.length > 1;
+    $('storeys').innerHTML = `${
+      many
+        ? list
+            .map(
+              (f, i) =>
+                `<button type="button" data-storey="${i}" aria-pressed="${f.active}">${esc(f.storey.name)}</button>`,
+            )
+            .join('')
+        : ''
+    }<button type="button" class="add" data-act="floor" title="Add an empty floor above, with this floor's walls">+ Floor</button>${
+      opts.addFloorFromDrawing
+        ? '<button type="button" class="add" data-act="floor-drawing" title="Select another floor on the imported drawing">+ From drawing</button>'
+        : ''
+    }`;
+  };
+  /** Replaces the whole home (all floors) as one undoable step. */
+  const replaceHome = (next: Plan, message?: string) => {
+    undo.push(JSON.stringify(plan));
+    redo.length = 0;
+    plan = next;
+    last = JSON.stringify(plan);
+    editor.select(null);
+    syncHistory();
+    refresh();
+    autosave(plan);
+    three?.reframe();
+    requestAnimationFrame(() => editor.fit());
+    if (message) toast(message);
+  };
+  $('storeys').addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('button');
+    if (!b) return;
+    if (b.dataset.storey) {
+      const i = Number(b.dataset.storey);
+      if (i !== (plan.storey ?? 0)) replaceHome(switchStorey(plan, i));
+    } else if (b.dataset.act === 'floor')
+      replaceHome(addStorey(plan), 'Floor added: the walls are copied from the floor below');
+    else if (b.dataset.act === 'floor-drawing') opts.addFloorFromDrawing?.();
+  });
   const host: EditorHost = {
     underlay: opts.underlay,
     plan: () => plan,
     rooms: () => rooms,
+    ghost() {
+      const list = storeysOf(plan);
+      const i = list.findIndex((f) => f.active);
+      return i > 0 ? list[i - 1]!.plan : null;
+    },
     commit(message) {
       const now = JSON.stringify(plan);
       if (now !== last) {
@@ -740,6 +798,7 @@ ${
     await three.start();
   }
   renderInspector();
+  renderStoreys();
 
   return {
     plan: () => plan,
@@ -758,6 +817,9 @@ ${
       if (message) toast(message);
     },
     commit: (message) => host.commit(message),
+    addStorey(p, name) {
+      replaceHome(addStorey(plan, p, name), `${name ?? 'New floor'} added`);
+    },
     redraw: () => editor.draw(),
     select: (sel) => editor.select(sel),
   };
@@ -806,6 +868,43 @@ async function setupThree(
   scene.add(ground);
 
   const house = new House(tex);
+  /**
+   * The other floors of a multi-storey home, each its own House: floors below the one being edited stand under it
+   * (the active floor stays at y = 0, so walking and framing work as for a single floor); floors above are hidden so
+   * the active floor can be seen into.
+   */
+  const others = new Map<number, House>();
+  const syncStoreys = (p: Plan) => {
+    const list = storeysOf(p);
+    const base = list.find((f) => f.active)!.storey.elevation;
+    const lowest = Math.min(...list.map((f) => f.storey.elevation));
+    ground.position.y = lowest - base - 0.002;
+    list.forEach((f, i) => {
+      if (f.active) return;
+      let h = others.get(i);
+      if (f.storey.elevation >= base) {
+        if (h) h.root.visible = false;
+        return;
+      }
+      if (!h) {
+        h = new House(tex);
+        others.set(i, h);
+        scene.add(h.root);
+      }
+      // Walls run up to the floor above, so the storeys read as one building.
+      const above = list.filter((g) => g.storey.elevation > f.storey.elevation).map((g) => g.storey.elevation);
+      h.wallHeight = above.length ? Math.min(...above) - f.storey.elevation : WALL_HEIGHT;
+      h.syncStructure(f.plan, findRooms(f.plan));
+      h.syncItems(f.plan);
+      h.root.position.y = f.storey.elevation - base;
+      h.root.visible = true;
+    });
+    for (const [i, h] of others)
+      if (i >= list.length) {
+        scene.remove(h.root);
+        others.delete(i);
+      }
+  };
   scene.add(house.root);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -1044,6 +1143,7 @@ async function setupThree(
       if (Number(northIn.value) !== (p.north ?? 0)) northIn.value = String(p.north ?? 0);
       const rebuilt = house.syncStructure(p, getRooms());
       house.syncItems(p);
+      syncStoreys(p);
       if (rebuilt && !framed && house.walls.length) {
         frame();
         framed = true;

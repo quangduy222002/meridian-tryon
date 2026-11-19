@@ -60,6 +60,14 @@ export interface RoomStyle {
   name?: string;
 }
 
+export interface Storey {
+  name: string;
+  /** Finished floor level above the lowest floor, in metres. */
+  elevation: number;
+  /** This floor's plan while another floor is being edited. */
+  plan?: Plan;
+}
+
 export interface Plan {
   nodes: PlanNode[];
   walls: Wall[];
@@ -69,6 +77,12 @@ export interface Plan {
   rooms: Record<string, RoomStyle>;
   /** Compass angle of north, degrees clockwise from "up" in the 2D plan. */
   north: number;
+  /**
+   * Floors of a multi-storey home, in order from the lowest. The plan being edited is the one at `storey`; the other
+   * floors keep their own plan here. Absent for a single-floor home.
+   */
+  storeys?: Storey[];
+  storey?: number;
   /** Artificial lighting: switched on (it also comes on by itself after dusk) and its colour temperature in kelvin. */
   lights?: { on: boolean; kelvin: number };
   /** Interior design style (styles.ts), which shapes furniture, palettes and default finishes. */
@@ -452,4 +466,61 @@ export function wallReach(p: Plan, nodes: Map<string, { x: number; z: number }>)
     }
   }
   return out;
+}
+
+/* ---------- Storeys ---------- */
+
+/** Settings that belong to the whole home, not one floor. */
+const HOME_WIDE = ['north', 'style', 'lights'] as const;
+
+const floorOnly = (p: Plan): Plan => {
+  const { storeys: _s, storey: _i, ...rest } = p;
+  return rest as Plan;
+};
+
+/** Every floor with its plan (the active one is `p` itself), lowest first. */
+export function storeysOf(p: Plan): { storey: Storey; plan: Plan; active: boolean }[] {
+  if (!p.storeys?.length) return [{ storey: { name: 'Floor 1', elevation: 0 }, plan: p, active: true }];
+  const cur = p.storey ?? 0;
+  return p.storeys.map((s, i) => ({
+    storey: s,
+    plan: i === cur ? p : (s.plan ?? emptyFloor(p)),
+    active: i === cur,
+  }));
+}
+
+function emptyFloor(p: Plan): Plan {
+  return { nodes: [], walls: [], openings: [], items: [], rooms: {}, north: p.north };
+}
+
+/** The same home with floor `i` being edited. */
+export function switchStorey(p: Plan, i: number): Plan {
+  const list = structuredClone(p.storeys ?? [{ name: 'Floor 1', elevation: 0 }]);
+  const cur = p.storey ?? 0;
+  if (i === cur || !list[i]) return p;
+  list[cur] = { ...list[cur]!, plan: floorOnly(structuredClone(p)) };
+  const target = list[i]!.plan ?? emptyFloor(p);
+  delete list[i]!.plan;
+  const next: Plan = { ...target, storeys: list, storey: i };
+  for (const k of HOME_WIDE) (next as unknown as Record<string, unknown>)[k] = p[k];
+  return next;
+}
+
+/**
+ * Adds a floor above the others (from an imported plan, or a copy of the current floor's walls) and switches to it.
+ * Floor-to-floor height defaults to 3.3 m (2.7 m clear plus the slab and finishes).
+ */
+export function addStorey(p: Plan, floor?: Plan, name?: string, height = 3.3): Plan {
+  const list = structuredClone(p.storeys ?? [{ name: 'Floor 1', elevation: 0 }]);
+  const cur = p.storey ?? 0;
+  list[cur] = { ...list[cur]!, plan: floorOnly(structuredClone(p)) };
+  const top = Math.max(...list.map((s) => s.elevation));
+  const fresh: Plan = floor
+    ? floorOnly(structuredClone(floor))
+    : { ...emptyFloor(p), nodes: structuredClone(p.nodes), walls: structuredClone(p.walls) };
+  // The floor that was being edited keeps its plan in the list; the new one is the active plan.
+  list.push({ name: name ?? `Floor ${list.length + 1}`, elevation: top + height });
+  const next: Plan = { ...fresh, storeys: list, storey: list.length - 1 };
+  for (const k of HOME_WIDE) (next as unknown as Record<string, unknown>)[k] = p[k];
+  return next;
 }

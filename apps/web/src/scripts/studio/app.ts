@@ -7,6 +7,7 @@ import { startRoomcraft, type RoomcraftApi, type RoomcraftOptions } from '../roo
 import { findRooms, type Plan } from '../room/plan';
 import { inRegion, scaleFromDimensions, type Drawing, type Region } from './drawing';
 import { detectWalls } from './detect';
+import { alignTo, floorLabel } from './floors';
 import { nameRooms } from './rooms';
 import { findSymbols, furnish } from './symbols';
 
@@ -21,18 +22,30 @@ export async function startStudio(gl: boolean) {
   let region: Region | null = null;
   /** The scale was set by hand: a new selection box must not overwrite it. */
   let scaleByHand = false;
-  /** The region and scale the current plan was built from, for the underlay. */
-  let built: { d: Drawing; r: Region; k: number } | null = null;
+  /**
+   * The region and scale each floor was built from, for the underlay, by floor index; dx/dz is the shift that lined
+   * the floor up with the others.
+   */
+  type Built = { d: Drawing; r: Region; k: number; dx: number; dz: number };
+  const builtFloors = new Map<number, Built>();
+  /** Index of the floor being edited (0 until the workspace exists). */
+  let floorIndex = () => 0;
+  const builtNow = () => builtFloors.get(floorIndex()) ?? null;
+  /** Bringing another floor in from the drawing: the next "Build" adds a floor instead of replacing the plan. */
+  let addingFloor = false;
+  /** The name read from the drawing for the first floor, used once a second floor makes names matter. */
+  let firstFloorName: string | null = null;
   /** A plan is open in the workspace this visit, so "back" can return to it as it is. */
   let inWorkspace = false;
   let underlayOn = true;
   let underlayImg: HTMLImageElement | null = null;
 
   const underlay: RoomcraftOptions['underlay'] = (c, X, Z) => {
-    if (!built || !underlayOn) return;
-    const { d, r, k } = built;
-    const mx = (x: number) => ((x - r.x0) * k) / 1000;
-    const mz = (y: number) => ((r.y1 - y) * k) / 1000;
+    const b = builtNow();
+    if (!b || !underlayOn) return;
+    const { d, r, k, dx, dz } = b;
+    const mx = (x: number) => ((x - r.x0) * k) / 1000 + dx;
+    const mz = (y: number) => ((r.y1 - y) * k) / 1000 + dz;
     c.save();
     c.globalAlpha = 0.32;
     if (d.image && underlayImg?.complete) {
@@ -53,7 +66,23 @@ export async function startStudio(gl: boolean) {
     c.restore();
   };
 
-  const api: RoomcraftApi = await startRoomcraft(gl, { storageKey: STORE, plan: emptyPlan(), underlay });
+  const api: RoomcraftApi = await startRoomcraft(gl, {
+    storageKey: STORE,
+    plan: emptyPlan(),
+    underlay,
+    addFloorFromDrawing: () => {
+      if (!drawing) {
+        toast('Import the drawing first: Import → choose the file, then select the next floor on it.');
+        return;
+      }
+      addingFloor = true;
+      region = null;
+      setStage('select');
+      $('detectBtn').textContent = 'Add as a new floor';
+      $('selectStatus').textContent = 'Drag a box around the next floor on the sheet.';
+    },
+  });
+  floorIndex = () => api.plan().storey ?? 0;
 
   /* ---------- Steps ---------- */
   const setStage = (s: Stage) => {
@@ -73,7 +102,7 @@ export async function startStudio(gl: boolean) {
     if (s === 'workspace') {
       inWorkspace = true;
       // The drawing toggle only means something when the plan came from a drawing this visit.
-      $<HTMLButtonElement>('drawingBtn').disabled = !built;
+      $<HTMLButtonElement>('drawingBtn').disabled = !builtNow();
     }
   };
 
@@ -95,7 +124,7 @@ export async function startStudio(gl: boolean) {
     try {
       const p = JSON.parse(localStorage.getItem(STORE) ?? 'null') as Plan | null;
       if (!p?.walls) throw new Error('no plan');
-      built = null;
+      builtFloors.clear();
       api.setPlan(p, 'Your last plan');
       setStage('workspace');
     } catch {
@@ -120,7 +149,7 @@ export async function startStudio(gl: boolean) {
         const d = readDxf(new TextDecoder().decode(data), name);
         if (d.plan) {
           // A Floorwise export: open the plan it carries instead of detecting walls again.
-          built = null;
+          builtFloors.clear();
           api.setPlan(d.plan, 'Plan opened from DXF');
           status.textContent = '';
           setStage('workspace');
@@ -331,10 +360,36 @@ export async function startStudio(gl: boolean) {
     const found = findSymbols(drawing, region);
     const furnished = furnish(res.plan, found);
     const named = [...new Set(nameRooms(res.plan, drawing, region, found).values())];
-    built = { d: drawing, r: region, k: drawing.mmPerUnit };
+    const floorName = floorLabel(drawing, region);
     underlayOn = true;
     $('drawingBtn').setAttribute('aria-pressed', 'true');
-    api.setPlan(res.plan);
+    if (addingFloor) {
+      // Line the new floor up with the one being edited: same outline corner (villa floors share a footprint).
+      const [dx, dz] = alignTo(api.plan(), res.plan);
+      for (const n of res.plan.nodes) {
+        n.x += dx;
+        n.z += dz;
+      }
+      for (const it of res.plan.items) {
+        it.x += dx;
+        it.z += dz;
+      }
+      const renamed = api.plan().storeys?.length ? null : firstFloorName;
+      api.addStorey(res.plan, floorName ?? undefined);
+      const p = api.plan();
+      if (renamed && p.storeys?.[0]) {
+        p.storeys[0].name = renamed;
+        api.commit();
+      }
+      builtFloors.set(p.storey ?? 0, { d: drawing, r: region, k: drawing.mmPerUnit, dx, dz });
+      addingFloor = false;
+      $('detectBtn').textContent = 'Build the plan';
+    } else {
+      firstFloorName = floorName;
+      builtFloors.clear();
+      builtFloors.set(0, { d: drawing, r: region, k: drawing.mmPerUnit, dx: 0, dz: 0 });
+      api.setPlan(res.plan);
+    }
     const rooms = findRooms(res.plan).length;
     setStage('workspace');
     toast(

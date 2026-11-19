@@ -315,6 +315,38 @@ svg {
   border-top: 1px solid var(--line);
 }
 
+/* Floor switcher (multi-storey homes), bottom-left of the plan; the inspector sits above it when open. */
+.storeys {
+  position: absolute;
+  left: 12px;
+  top: 64px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.94);
+  border: 1px solid var(--line);
+  box-shadow: var(--float);
+  max-width: calc(100% - 80px);
+}
+.storeys button {
+  min-block-size: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.storeys button[aria-pressed='true'] {
+  background: var(--text);
+  color: #fff;
+}
+.storeys .add {
+  color: var(--accent);
+}
+
 /* ---------- Inspector ---------- */
 .inspector {
   position: absolute;

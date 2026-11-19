@@ -136,6 +136,7 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
         aria-label="Floor plan editor. Select with click or tap; arrow keys move the selection, R rotates furniture, Delete removes it."
       ></canvas>
       <p class="hint" id="hint" aria-live="polite"></p>
+      <div class="storeys" id="storeys" role="group" aria-label="Floors"></div>
       <div class="zoom" role="group" aria-label="Plan zoom">
         <button type="button" id="zoomIn" aria-label="Zoom in" title="Zoom in">
           +

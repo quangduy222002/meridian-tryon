@@ -122,8 +122,20 @@ export class House {
   }
 
   /** Rebuilds walls, openings, floors and roof if any of them changed. Returns true when it rebuilt. */
+  /**
+   * Height of the walls: the room height for the floor being edited; floor-to-floor for a floor below another, so its
+   * walls run up to the next floor's slab.
+   */
+  wallHeight = WALL_HEIGHT;
+
   syncStructure(p: Plan, rooms: Room[]) {
-    const sig = JSON.stringify([p.nodes, p.walls, p.openings, rooms.map((r) => [r.key, roomStyle(p, r)])]);
+    const sig = JSON.stringify([
+      p.nodes,
+      p.walls,
+      p.openings,
+      rooms.map((r) => [r.key, roomStyle(p, r)]),
+      this.wallHeight,
+    ]);
     if (sig === this.structureSig) return false;
     this.structureSig = sig;
     this.structure.traverse((o) => {
@@ -147,7 +159,7 @@ export class House {
       this.structure.add(floor);
       const roof = new Mesh(geo, this.roofMat);
       roof.rotation.x = -Math.PI / 2;
-      roof.position.y = WALL_HEIGHT;
+      roof.position.y = this.wallHeight;
       roof.castShadow = true;
       roof.layers.set(1);
       this.structure.add(roof);
@@ -241,11 +253,11 @@ export class House {
       };
       let cursor = -endA;
       for (const { o, s, e } of ops) {
-        piece(cursor, s, 0, WALL_HEIGHT);
+        piece(cursor, s, 0, this.wallHeight);
         const glassDoor = o.kind === 'window' && !!o.tall;
         const top = o.kind === 'door' || glassDoor ? DOOR_HEIGHT : WINDOW_TOP;
         if (o.kind === 'window' && !glassDoor) piece(s, e, 0, WINDOW_SILL);
-        piece(s, e, top, WALL_HEIGHT);
+        piece(s, e, top, this.wallHeight);
         view.openings.push(
           this.opening(
             g,
@@ -260,7 +272,7 @@ export class House {
         );
         cursor = e;
       }
-      piece(cursor, L + endB, 0, WALL_HEIGHT);
+      piece(cursor, L + endB, 0, this.wallHeight);
       this.walls.push(view);
     }
     if (Number.isFinite(minX)) {
