@@ -62,12 +62,23 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
     ctm[0] * x + ctm[2] * y + ctm[4],
     ctm[1] * x + ctm[3] * y + ctm[5],
   ];
+  // Pen width in page units: cut walls are drawn with the heaviest pens, furniture and hatch with fine ones.
+  let lw = 1;
+  const lwStack: number[] = [];
+  const penOf = () => lw * Math.sqrt(Math.abs(ctm[0] * ctm[3] - ctm[1] * ctm[2]));
   for (let i = 0; i < ops.fnArray.length; i++) {
     const fn = ops.fnArray[i];
     const a = ops.argsArray[i] as unknown[];
-    if (fn === OPS.save) stack.push(ctm);
-    else if (fn === OPS.restore) ctm = stack.pop() ?? ctm;
-    else if (fn === OPS.transform) ctm = mul(ctm, a as number[]);
+    if (fn === OPS.save) {
+      stack.push(ctm);
+      lwStack.push(lw);
+    } else if (fn === OPS.restore) {
+      ctm = stack.pop() ?? ctm;
+      lw = lwStack.pop() ?? lw;
+    } else if (fn === OPS.setLineWidth) lw = Number(a[0]) || 0;
+    else if (fn === OPS.setGState) {
+      for (const [key, v] of (a[0] as [string, unknown][] | undefined) ?? []) if (key === 'LW') lw = Number(v) || 0;
+    } else if (fn === OPS.transform) ctm = mul(ctm, a as number[]);
     else if (fn === OPS.paintFormXObjectBegin) {
       stack.push(ctm);
       if (a[0]) ctm = mul(ctm, a[0] as number[]);
@@ -77,9 +88,19 @@ export async function readPdfPage(doc: pdfjs.PDFDocumentProxy, n: number, name: 
       if (!data) continue;
       let cur: [number, number] | null = null;
       let start: [number, number] | null = null;
+      const paint = a[0];
+      const fill = paint === OPS.fill || paint === OPS.eoFill;
+      const pen = Math.round(penOf() * 1000) / 1000;
       const push = (p: [number, number], curve = false) => {
         if (cur && (p[0] !== cur[0] || p[1] !== cur[1]))
-          segs.push({ x1: cur[0], y1: cur[1], x2: p[0], y2: p[1], ...(curve ? { curve } : {}) });
+          segs.push({
+            x1: cur[0],
+            y1: cur[1],
+            x2: p[0],
+            y2: p[1],
+            ...(curve ? { curve } : {}),
+            ...(fill ? { fill } : { pen }),
+          });
         cur = p;
       };
       for (let k = 0; k < data.length;) {

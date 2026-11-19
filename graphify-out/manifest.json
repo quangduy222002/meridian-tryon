@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1795072378.5711493,
-    "seen": 1795072717.290465,
-    "ast_hash": "dc53a65fd1e43c7fa87547814cfd4f88",
+    "mtime": 1795081644.032619,
+    "seen": 1795081906.787195,
+    "ast_hash": "5fd63b13d0ac3a9fdabf8147102931ed",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -642,15 +642,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {
-    "mtime": 1795073538.082805,
-    "seen": 1795074220.061578,
-    "ast_hash": "cbf8a3b1f81bdf21259df4e2e41e1dee",
+    "mtime": 1795081618.9541621,
+    "seen": 1795081906.787169,
+    "ast_hash": "6ad0a30dbb79ec171ce20839c88c046f",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/drawing.ts": {
-    "mtime": 1795072665.4419003,
-    "seen": 1795072717.290439,
-    "ast_hash": "25483c6bcaaeca0abb0d180c707fd3f6",
+    "mtime": 1795081139.5808015,
+    "seen": 1795081906.78717,
+    "ast_hash": "7c13f4994e873904fc1100918c2e3ddb",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-dxf.ts": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/import-pdf.ts": {
-    "mtime": 1795073729.0256853,
-    "seen": 1795074220.0615811,
-    "ast_hash": "0b8e9ae91a3136c0bc8e30c7d82fdf9d",
+    "mtime": 1795081369.7334774,
+    "seen": 1795081906.787172,
+    "ast_hash": "4f2127e5a33b5a85104b3091ee0ac5b9",
     "semantic_hash": ""
   },
   "apps/web/public/studio/A26.pdf": {
@@ -753,6 +753,36 @@
     "mtime": 1795066997.1244245,
     "seen": 1795067697.9396448,
     "ast_hash": "5d3c62ea75d8e397cccd7947001f196e",
+    "semantic_hash": ""
+  },
+  "reports/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0.md": {
+    "mtime": 1795079935.161941,
+    "seen": 1795081906.787201,
+    "ast_hash": "bb63f1f864035fc7f212c1484e41d1e8",
+    "semantic_hash": ""
+  },
+  "research_notes/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0/drawing_conventions.md": {
+    "mtime": 1795079551.230297,
+    "seen": 1795081906.7872021,
+    "ast_hash": "7c50be034e1d26f6f60042275e4a82a6",
+    "semantic_hash": ""
+  },
+  "research_notes/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0/learned_methods_and_tools.md": {
+    "mtime": 1795079539.4583952,
+    "seen": 1795081906.787203,
+    "ast_hash": "9788ea016088a58abc9b4f84ce3f704a",
+    "semantic_hash": ""
+  },
+  "research_notes/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0/vector_parsing_algorithms.md": {
+    "mtime": 1795079690.7699895,
+    "seen": 1795081906.787203,
+    "ast_hash": "97bb80a42941b188c654b2de407e9a6e",
+    "semantic_hash": ""
+  },
+  "research_notes/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0/vlm_with_geometry.md": {
+    "mtime": 1795079566.2004788,
+    "seen": 1795081906.7872052,
+    "ast_hash": "6220b47f5a21bb360e6f1a3f4148e1e6",
     "semantic_hash": ""
   },
   "package-lock.json": {

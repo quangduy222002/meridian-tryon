@@ -626,6 +626,55 @@ test('floor plan import builds a two-storey home from one drawing', async ({ pag
   expect(errors).toEqual([]);
 });
 
+test('floor plan import closes rooms at plain doorways and short partitions', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const line = (x1: number, y1: number, x2: number, y2: number) => [
+    '0',
+    'LINE',
+    '8',
+    'WALL',
+    '10',
+    x1,
+    '20',
+    y1,
+    '11',
+    x2,
+    '21',
+    y2,
+  ];
+  const rect = (x0: number, y0: number, x1: number, y1: number) => [
+    ...line(x0, y0, x1, y0),
+    ...line(x1, y0, x1, y1),
+    ...line(x1, y1, x0, y1),
+    ...line(x0, y1, x0, y0),
+  ];
+  // An 8 × 5 m flat split in two by a 100 mm partition. The partition has a 900 mm doorway drawn as a plain gap (no
+  // swing, as permit drawings often leave it), and one of its faces stops 800 mm short of the facade, where a
+  // cupboard was drawn against it.
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...rect(0, 0, 8000, 5000),
+    ...rect(200, 200, 7800, 4800),
+    ...line(4000, 200, 4000, 2000),
+    ...line(4100, 200, 4100, 2000),
+    ...line(4000, 2900, 4000, 4800),
+    ...line(4100, 2900, 4100, 4000),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'flat.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await boxOnSheet(page, -100, -100, 8100, 5100);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('1 door');
+  await expect(page.locator('.toast')).toContainText('2 closed rooms');
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import ignores annotation and erased areas', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

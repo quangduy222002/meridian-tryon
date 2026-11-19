@@ -22,6 +22,8 @@ interface Line {
   a: number;
   b: number;
   layer?: string;
+  /** Pen width (PDF). */
+  pen?: number;
 }
 interface WallPiece {
   o: 'H' | 'V';
@@ -68,6 +70,8 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   const hatch: { x: number; y: number; L: number }[] = [];
   const curves: { x: number; y: number; L: number }[] = [];
   const angTol = Math.tan((1.5 * Math.PI) / 180);
+  /** Length of long straight strokes per pen width, to tell the wall pen from the rest. */
+  const penLen = new Map<number, number>();
   for (const s of segs) {
     const x1 = s.x1 * k;
     const y1 = s.y1 * k;
@@ -81,10 +85,26 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       continue;
     }
     if (L < 30) continue;
-    if (dy <= dx * angTol) H.push({ c: (y1 + y2) / 2, a: Math.min(x1, x2), b: Math.max(x1, x2), layer: s.layer });
-    else if (dx <= dy * angTol) V.push({ c: (x1 + x2) / 2, a: Math.min(y1, y2), b: Math.max(y1, y2), layer: s.layer });
+    const axis = dy <= dx * angTol || dx <= dy * angTol;
+    if (axis && L >= 300 && s.pen !== undefined) penLen.set(s.pen, (penLen.get(s.pen) ?? 0) + L);
+    if (dy <= dx * angTol)
+      H.push({ c: (y1 + y2) / 2, a: Math.min(x1, x2), b: Math.max(x1, x2), layer: s.layer, pen: s.pen });
+    else if (dx <= dy * angTol)
+      V.push({ c: (x1 + x2) / 2, a: Math.min(y1, y2), b: Math.max(y1, y2), layer: s.layer, pen: s.pen });
     else hatch.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2, L });
   }
+  /*
+   * The wall pen. Drawings print cut walls with the heaviest pens (TCVN 8: thick lines at least twice thin ones), and
+   * furniture, fixtures, hatch, dimensions and frames with fine ones. Among the pens that draw a real share of the long
+   * straight lines, the finest is the fine pen; pens at least 1.4 times heavier draw walls. Only lines in those pens
+   * pair into walls; every line still counts as evidence for doors and windows. Without clear classes (one pen, or a
+   * DXF), every line may pair, as before.
+   */
+  const totalPen = [...penLen.values()].reduce((t, v) => t + v, 0);
+  const pens = [...penLen].filter(([, v]) => v >= totalPen * 0.08).map(([p]) => p);
+  const fine = pens.length >= 2 ? Math.min(...pens) : 0;
+  const wallPen = fine > 0 && pens.some((p) => p >= fine * 1.4) ? fine * 1.4 : null;
+  const heavy = (l: Line) => wallPen === null || (l.pen ?? 0) >= wallPen - 1e-6;
   const area = Math.max(1, (region.x1 - region.x0) * (region.y1 - region.y0) * k * k);
   let hatched = hatch.reduce((s, h) => s + h.L, 0) / area > 0.0005;
   const layered = [...H, ...V].some((l) => l.layer && WALL_LAYER.test(l.layer));
@@ -93,7 +113,10 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     list.sort((p, q) => p.c - q.c || p.a - q.a);
     const out: Line[] = [];
     for (const l of list) {
-      const m = out.find((o) => Math.abs(o.c - l.c) < 6 && l.a <= o.b + 15 && l.b >= o.a - 15 && o.layer === l.layer);
+      const m = out.find(
+        (o) =>
+          Math.abs(o.c - l.c) < 6 && l.a <= o.b + 15 && l.b >= o.a - 15 && o.layer === l.layer && heavy(o) === heavy(l),
+      );
       if (m) {
         m.a = Math.min(m.a, l.a);
         m.b = Math.max(m.b, l.b);
@@ -195,17 +218,18 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     const minLen = hatched || layered ? 100 : 250;
     for (let i = 0; i < list.length; i++) {
       const p = list[i]!;
-      if (treads.has(p)) continue;
+      if (treads.has(p) || !heavy(p)) continue;
       for (let j = i + 1; j < list.length; j++) {
         const q = list[j]!;
         const gap = q.c - p.c;
-        if (gap < 60 || treads.has(q)) continue;
+        if (gap < 60 || treads.has(q) || !heavy(q)) continue;
         if (gap > maxT) break;
         const a = Math.max(p.a, q.a);
         const b = Math.min(p.b, q.b);
         if (b - a < minLen) continue;
         const between = list.some(
           (r) =>
+            heavy(r) &&
             r !== p &&
             r !== q &&
             r.c > p.c + 6 &&
@@ -283,9 +307,15 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     if (gap > 60) {
       // Wider than a door: only a gate of two or four folding leaves (a shop-house front, a garage) can span it.
       const wide = gap > 3000;
-      if (gap < 450 || gap > 5200) {
-        // Too short or too long for an opening: a separate wall.
+      if (gap > 5200) {
+        // Too long for an opening: a separate wall.
         runs.push({ ...p, holes: [] });
+        continue;
+      }
+      if (gap < 450) {
+        // Too narrow for a door: the wall carries on through a column, a pipe box or a break in its face lines.
+        r.b = Math.max(r.b, p.b);
+        r.c = (r.c + p.c) / 2;
         continue;
       }
       const lo = r.b;
@@ -364,15 +394,19 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         Math.abs(left.c - right.c) > 15 &&
         left.b > right.a &&
         !lines.some((l) => cover(l) >= gap * 0.9);
-      // Only a gap with evidence becomes an opening: a swing arc (door), panels (sliding door) or glazing (window).
-      if ((!door && !sliding && lines.length < 2) || (wide && !gate)) {
+      // A door-wide gap between two pieces of one wall with nothing drawn in it is a doorway too: permit drawings and
+      // simplified plans often leave the swing out. (Gaps in the valley between doors and windows, 1.5–3 m, need
+      // evidence.)
+      const plain = !door && !sliding && lines.length < 2 && !wide && gap >= 600 && gap <= 1500;
+      // Otherwise only a gap with evidence becomes an opening: a swing arc (door), panels (sliding door) or glazing.
+      if ((!door && !sliding && lines.length < 2 && !plain) || (wide && !gate)) {
         runs.push({ ...p, holes: [] });
         continue;
       }
       r.holes.push({
         a: lo,
         b: hi,
-        kind: door ? 'door' : 'window',
+        kind: door || plain ? 'door' : 'window',
         // Plan walls run left to right (H) or up the drawing (V), with the normal to their left: for an H wall that
         // is down the drawing, so a swing up the drawing (+y) is flip -1; for a V wall it is +x, flip 1.
         flip: p.o === 'H' ? -side : side,
@@ -437,6 +471,30 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   const frames = runs.filter((p) => !p.holes.length && runs.some((q) => along(p, q)));
   for (const p of frames) runs.splice(runs.indexOf(p), 1);
 
+  // Two walls side by side whose bodies touch or overlap (a wall drawn with three or four face lines — cladding, a
+  // sill, a column face — pairs up twice): one wall spanning both, or the sliver between them reads as a room.
+  for (let merged = true; merged;) {
+    merged = false;
+    for (const p of runs)
+      for (const q of runs) {
+        if (p === q || p.o !== q.o || p.joint || q.joint) continue;
+        const lo = Math.min(p.c - p.t / 2, q.c - q.t / 2);
+        const hi = Math.max(p.c + p.t / 2, q.c + q.t / 2);
+        const overlap = Math.min(p.b, q.b) - Math.max(p.a, q.a);
+        if (hi - lo > Math.max(p.t, q.t) + 160 || hi - lo > 450) continue;
+        if (overlap < Math.min(p.b - p.a, q.b - q.a) * 0.5) continue;
+        // Holes along the merged length, from either piece.
+        p.holes.push(...q.holes);
+        p.a = Math.min(p.a, q.a);
+        p.b = Math.max(p.b, q.b);
+        p.c = (lo + hi) / 2;
+        p.t = hi - lo;
+        runs.splice(runs.indexOf(q), 1);
+        merged = true;
+        break;
+      }
+  }
+
   /* ---------- Snap ends onto the walls they meet ---------- */
   const reach = (r: Run, s: Run) => r.t / 2 + s.t / 2 + 150;
   /** Ends already landed on a wall; the gap-closing pass below must not drag them onto another one. */
@@ -456,6 +514,36 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
         r[end] = best.v;
         snapped.add(`${runs.indexOf(r)}${end}`);
       }
+    }
+  }
+  // A wall that stops short of the wall ahead of it while one of its face lines carries on there (its other face was
+  // broken by a cupboard, a column or a door frame drawn against it): extend it to that wall, so the room closes.
+  const facesOf = (o: 'H' | 'V') => (o === 'H' ? HM : VM);
+  for (const [i, r] of runs.entries()) {
+    if (r.joint) continue;
+    for (const end of ['a', 'b'] as const) {
+      if (snapped.has(`${i}${end}`)) continue;
+      const dir = end === 'a' ? -1 : 1;
+      const pos = r[end];
+      let best: Run | null = null;
+      let bd = Infinity;
+      for (const s of runs) {
+        if (s.o === r.o || r.c < s.a - s.t / 2 - 20 || r.c > s.b + s.t / 2 + 20) continue;
+        const dist = (s.c - pos) * dir;
+        if (dist > 0 && dist <= 1500 && dist < bd) {
+          best = s;
+          bd = dist;
+        }
+      }
+      if (!best) continue;
+      const lo = Math.min(pos, best.c - (dir * best.t) / 2);
+      const hi = Math.max(pos, best.c - (dir * best.t) / 2);
+      const covered = facesOf(r.o)
+        .filter((l) => Math.abs(l.c - r.c) <= r.t / 2 + 15 && l.a <= hi && l.b >= lo)
+        .reduce((m, l) => Math.max(m, Math.min(l.b, hi) - Math.max(l.a, lo)), 0);
+      if (covered < (hi - lo) * 0.6) continue;
+      r[end] = best.c;
+      snapped.add(`${i}${end}`);
     }
   }
   // Perpendicular walls whose spans stop short of each other's lines (an L corner drawn with a gap): extend.
@@ -481,7 +569,13 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
     for (const s of runs) {
       if (r === s || r.o !== s.o || r.joint || s.joint) continue;
       const off = Math.abs(r.c - s.c);
-      if (off < 10 || off > (r.t + s.t) / 2 + 30 || Math.abs(r.b - s.a) > 150) continue;
+      // Up to a column's width apart (a column box between them is not paired as wall).
+      if (off > (r.t + s.t) / 2 + 30 || s.a - r.b > 450 || r.b - s.a > 150) continue;
+      if (off < 10) {
+        // One line carrying on (a thin stretch meeting a thick one, ends overlapping or a hair apart): meet them.
+        r.b = s.a = (r.b + s.a) / 2;
+        continue;
+      }
       const at = (r.b + s.a) / 2;
       const lo = Math.min(r.c, s.c);
       const hi = Math.max(r.c, s.c);
@@ -543,8 +637,25 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       if (t <= 0.01 || t >= 0.99) continue;
       const px = a.x + (b.x - a.x) * t;
       const pz = a.z + (b.z - a.z) * t;
-      if (Math.hypot(px - n.x, pz - n.z) > 0.03) continue;
+      const off = Math.hypot(px - n.x, pz - n.z);
+      // Within the wall's body counts when the node's own wall meets this one square-on (a partition stopping at the
+      // face of a thicker wall, or at a thin piece beside it).
+      const across = plan.walls.some((x) => {
+        if (x.a !== n.id && x.b !== n.id) return false;
+        const p = plan.nodes.find((m) => m.id === (x.a === n.id ? x.b : x.a))!;
+        const dot =
+          ((p.x - n.x) * (b.x - a.x) + (p.z - n.z) * (b.z - a.z)) / (Math.hypot(p.x - n.x, p.z - n.z) * L || 1);
+        return Math.abs(dot) < 0.2;
+      });
+      if (off > 0.03 && !(across && off <= (w.thick ?? 0.15) / 2 + 0.03)) continue;
       const mid = splitWall(plan, w, t);
+      if (off > 0.03) {
+        // Inside the wall's body but off its centre line: a short piece inside the body joins the two, so neither
+        // wall slants.
+        const own = plan.walls.find((x) => x.a === n.id || x.b === n.id)!;
+        plan.walls.push({ id: uid('w'), a: n.id, b: mid.id, thick: own.thick });
+        continue;
+      }
       // Re-point the new node to the existing one.
       for (const x of plan.walls) {
         if (x.a === mid.id) x.a = n.id;
@@ -552,6 +663,7 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       }
     }
   }
+  closeDangles(plan);
   // Small clusters of walls apart from the building, with no door or window, are notes and symbols read as walls
   // (a legend box, a north arrow, a furniture block): keep only clusters of some size or joined to the main one.
   dropStrayClusters(plan);
@@ -653,6 +765,159 @@ function withoutAnnotation(d: Drawing): Segment[] {
       return Math.min(along - lo, hi - along) < Math.max(tol * 3, L * 0.08);
     });
   });
+}
+
+/**
+ * Repairs the wall graph before rooms are traced: a free end (a wall touching nothing there) runs on along its own
+ * line to the first wall within reach, splitting that wall where it lands, so a partition drawn a little short — or
+ * cut short by a cupboard, a column or a frame — still closes its room. Short stubs left touching nothing at one end
+ * (frame and sill pieces read as walls) are then dropped. Works on the plan, in metres.
+ */
+function closeDangles(plan: Plan, reach = 1.0) {
+  const node = (id: string) => plan.nodes.find((n) => n.id === id)!;
+  const degree = () => {
+    const d = new Map<string, number>();
+    for (const w of plan.walls) for (const id of [w.a, w.b]) d.set(id, (d.get(id) ?? 0) + 1);
+    return d;
+  };
+  const dropStubs = () => {
+    const deg = degree();
+    plan.walls = plan.walls.filter((w) => {
+      const a = node(w.a);
+      const b = node(w.b);
+      const free = deg.get(w.a) === 1 || deg.get(w.b) === 1;
+      return !(free && Math.hypot(b.x - a.x, b.z - a.z) < 0.45 && !plan.openings.some((o) => o.wall === w.id));
+    });
+  };
+  // Stubs first (under 45 cm, free at one end, no opening: frame and sill pieces read as walls), so a wall they hang
+  // on is free to run on to the wall it was meant to meet.
+  dropStubs();
+  for (let pass = 0; pass < 2; pass++) {
+    const deg = degree();
+    for (const w of [...plan.walls]) {
+      for (const end of ['a', 'b'] as const) {
+        const id = w[end];
+        if (deg.get(id) !== 1) continue;
+        const n = node(id);
+        const m = node(end === 'a' ? w.b : w.a);
+        const L = Math.hypot(n.x - m.x, n.z - m.z);
+        if (L < 0.05) continue;
+        const ux = (n.x - m.x) / L;
+        const uz = (n.z - m.z) / L;
+        // Nearest wall the ray from n meets within reach (a little past a wall's ends counts: its thickness).
+        let hit: { w: Wall; t: number; d: number } | null = null;
+        for (const x of plan.walls) {
+          if (x === w || x.a === id || x.b === id) continue;
+          const a = node(x.a);
+          const b = node(x.b);
+          const ex = b.x - a.x;
+          const ez = b.z - a.z;
+          const den = ux * ez - uz * ex;
+          if (Math.abs(den) < 1e-6) continue;
+          const d = ((a.x - n.x) * ez - (a.z - n.z) * ex) / den;
+          const t = ((a.x - n.x) * uz - (a.z - n.z) * ux) / den;
+          const len = Math.hypot(ex, ez);
+          const slack = (x.thick ?? 0.15) / 2 / len;
+          if (d < -0.02 || d > reach + (x.thick ?? 0.15) / 2 || t < -slack || t > 1 + slack) continue;
+          if (!hit || d < hit.d) hit = { w: x, t, d };
+        }
+        if (!hit) continue;
+        let target: PlanNode;
+        if (hit.t < 0.02 || hit.t > 0.98) {
+          // Landing at (or just past) the other wall's end: a free end there moves onto this one's line, so neither
+          // wall slants; an end that is already joined is used as it is.
+          target = node(hit.t < 0.5 ? hit.w.a : hit.w.b);
+          const x = n.x + ux * hit.d;
+          const z = n.z + uz * hit.d;
+          const joinedAt = plan.walls.filter((q) => q.a === target.id || q.b === target.id).length;
+          if (joinedAt === 1) {
+            target.x = x;
+            target.z = z;
+          } else if (Math.hypot(target.x - x, target.z - z) > 0.02) {
+            // That end is joined already: run this wall on to the corner point and close the step along the other
+            // wall's line with a short piece.
+            n.x = x;
+            n.z = z;
+            plan.walls.push({ id: uid('w'), a: n.id, b: target.id, thick: hit.w.thick });
+            deg.set(id, 2);
+            deg.set(target.id, (deg.get(target.id) ?? 0) + 1);
+            continue;
+          }
+        } else {
+          target = splitWall(plan, hit.w, hit.t);
+          deg.set(target.id, 2);
+        }
+        // Re-point the free end onto the wall it reached.
+        if (target.id !== id) {
+          w[end] = target.id;
+          plan.nodes = plan.nodes.filter((q) => q.id !== id || plan.walls.some((x) => x.a === id || x.b === id));
+        }
+        deg.set(id, 0);
+        deg.set(target.id, (deg.get(target.id) ?? 0) + 1);
+      }
+    }
+  }
+  // Two free ends whose walls would meet at a corner just ahead of both (an L corner drawn with a gap, or cut by a
+  // column): run both on to the corner.
+  {
+    const deg = degree();
+    const free = plan.nodes.filter((n) => deg.get(n.id) === 1);
+    const dirOf = (n: PlanNode): [number, number] | null => {
+      const w = plan.walls.find((x) => x.a === n.id || x.b === n.id);
+      if (!w) return null;
+      const m = node(w.a === n.id ? w.b : w.a);
+      const L = Math.hypot(n.x - m.x, n.z - m.z);
+      return L < 0.05 ? null : [(n.x - m.x) / L, (n.z - m.z) / L];
+    };
+    const used = new Set<string>();
+    for (const n1 of free)
+      for (const n2 of free) {
+        if (n1 === n2 || used.has(n1.id) || used.has(n2.id)) continue;
+        const u1 = dirOf(n1);
+        const u2 = dirOf(n2);
+        if (!u1 || !u2) continue;
+        const den = u1[0] * u2[1] - u1[1] * u2[0];
+        if (Math.abs(den) < 0.9) continue;
+        const d1 = ((n2.x - n1.x) * u2[1] - (n2.z - n1.z) * u2[0]) / den;
+        const d2 = ((n2.x - n1.x) * u1[1] - (n2.z - n1.z) * u1[0]) / den;
+        if (d1 < -0.05 || d1 > reach || d2 < -0.05 || d2 > reach) continue;
+        const x = n1.x + u1[0] * d1;
+        const z = n1.z + u1[1] * d1;
+        n1.x = x;
+        n1.z = z;
+        for (const w of plan.walls) {
+          if (w.a === n2.id) w.a = n1.id;
+          if (w.b === n2.id) w.b = n1.id;
+        }
+        used.add(n1.id);
+        used.add(n2.id);
+      }
+  }
+  // A free end that reached no wall but stops right by another wall's end or corner (two walls offset where the
+  // wall changes thickness, a corner drawn with a jog): join the two with a short piece.
+  const deg = degree();
+  for (const n of [...plan.nodes]) {
+    if (deg.get(n.id) !== 1) continue;
+    let best: PlanNode | null = null;
+    let bd = 0.35;
+    for (const m of plan.nodes) {
+      if (m === n || !deg.get(m.id)) continue;
+      const d = Math.hypot(m.x - n.x, m.z - n.z);
+      // A jog runs square to the walls (a diagonal piece would cut a sliver off the room).
+      if (Math.min(Math.abs(m.x - n.x), Math.abs(m.z - n.z)) > 0.03) continue;
+      if (d < bd && !plan.walls.some((w) => (w.a === n.id && w.b === m.id) || (w.b === n.id && w.a === m.id))) {
+        best = m;
+        bd = d;
+      }
+    }
+    if (!best) continue;
+    const own = plan.walls.find((w) => w.a === n.id || w.b === n.id)!;
+    plan.walls.push({ id: uid('w'), a: n.id, b: best.id, thick: own.thick });
+    deg.set(n.id, 2);
+    deg.set(best.id, (deg.get(best.id) ?? 0) + 1);
+  }
+  dropStubs();
+  plan.walls = plan.walls.filter((w) => w.a !== w.b);
 }
 
 /** Removes small wall clusters that stand apart from the main building and have no openings. */

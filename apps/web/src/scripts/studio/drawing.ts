@@ -14,6 +14,10 @@ export interface Segment {
   curve?: boolean;
   /** CAD layer, when the file has layers (DXF). */
   layer?: string;
+  /** Stroke width in drawing units (PDF), when stroked. */
+  pen?: number;
+  /** Edge of a filled shape (PDF): solid hatch, a filled column, a filled wall. */
+  fill?: boolean;
 }
 
 export interface Text {
