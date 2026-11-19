@@ -82,6 +82,17 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
         </svg>
         <span>Style</span>
       </button>
+      <button
+        type="button"
+        id="lightBtn"
+        aria-label="Lighting"
+        title="Light fittings, colour temperature and night view"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"></path>
+        </svg>
+        <span>Lighting</span>
+      </button>
       <button type="button" id="estimateBtn" aria-label="Estimate" title="Areas and cost estimate">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 3h14v18H5zM8 7h8M8 11h2M12 11h2M8 15h2M12 15h4"></path>
@@ -168,7 +179,7 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
           <span>Sun</span>
           <output id="hourOut"></output>
         </label>
-        <input type="range" id="hour" min="6" max="19" step="0.25" value="15" />
+        <input type="range" id="hour" min="6" max="23" step="0.25" value="15" />
         <label for="north">
           <span id="northLabel">Facing</span>
           <output id="northOut"></output>
@@ -210,6 +221,40 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
       wall finish of each room. Rooms you finished by hand are reset to the style.
     </p>
     <div class="style-grid" id="styleGrid" role="group" aria-label="Styles"></div>
+  </dialog>
+
+  <dialog id="lightDlg" class="sheet small" aria-labelledby="lightTitle">
+    <header>
+      <h2 id="lightTitle">Lighting</h2>
+      <form method="dialog">
+        <button aria-label="Close">✕</button>
+      </form>
+    </header>
+    <p>
+      Light fittings work in 3D: they come on by themselves after dusk (drag the sun past 19:00), or switch them on
+      here. Add fittings from Furniture → Lighting, or let Floorwise draw a lighting plan.
+    </p>
+    <div class="choices">
+      <button type="button" id="lightsOn" aria-pressed="false">
+        Lights on
+      </button>
+      <button type="button" id="lightsAuto" class="primary">
+        Design the lighting
+      </button>
+    </div>
+    <p class="note">Colour temperature</p>
+    <div class="choices" role="group" aria-label="Colour temperature" id="kelvins">
+      <button type="button" data-kelvin="2700" aria-pressed="false">
+        2700 K · warm
+      </button>
+      <button type="button" data-kelvin="3000" aria-pressed="true">
+        3000 K · soft white
+      </button>
+      <button type="button" data-kelvin="4000" aria-pressed="false">
+        4000 K · neutral
+      </button>
+    </div>
+    <p class="ai-status" id="lightStatus" aria-live="polite"></p>
   </dialog>
 
   <dialog id="exportDlg" class="sheet small" aria-labelledby="exportTitle">

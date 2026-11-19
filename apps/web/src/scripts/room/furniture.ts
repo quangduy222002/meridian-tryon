@@ -5,6 +5,7 @@
  * recessed plinth, turned legs or rattan) and how soft their edges are.
  */
 import {
+  Color,
   CylinderGeometry,
   Group,
   Mesh,
@@ -57,8 +58,24 @@ const shared = {
   screen: std('#16181c', 0.2, 0.3),
   canvas: std('#e9e3d8', 0.9),
   rattan: std('#c9a26b', 0.85),
-  shade: new MeshStandardMaterial({ color: '#fff1d6', emissive: '#ffd9a0', emissiveIntensity: 0.6, roughness: 0.9 }),
+  shade: new MeshStandardMaterial({ color: '#fff1d6', emissive: '#ffd9a0', emissiveIntensity: 0.15, roughness: 0.9 }),
 };
+
+/** The glowing parts of light fittings (diffusers, bulbs): bright while the lights are on. */
+const glow = new MeshStandardMaterial({
+  color: '#fff7ea',
+  emissive: '#ffdcaa',
+  emissiveIntensity: 0.05,
+  roughness: 0.5,
+});
+
+/** Lights the glowing parts of every fitting (and the lamp shades) in the light's colour. */
+export function setFixtureGlow(on: boolean, color: Color) {
+  glow.emissive.copy(color);
+  glow.emissiveIntensity = on ? 2.4 : 0.05;
+  shared.shade.emissive.copy(color);
+  shared.shade.emissiveIntensity = on ? 1.4 : 0.15;
+}
 
 const matCache = new Map<string, MeshStandardMaterial>();
 const cached = (k: string, make: () => MeshStandardMaterial) => {
@@ -531,6 +548,39 @@ const builders: Record<string, Build> = {
   art(add, m, w, _d, h, look) {
     artwork(add, look, m, w, h - 0.75, 0.75);
   },
+  /* Light fittings: modelled at their real height (the ceiling is at 2.7 m). */
+  downlight(add, m) {
+    add(cyl(0.065, 0.065, 0.012, 24), m, 0, 2.694, 0);
+    add(cyl(0.048, 0.048, 0.006, 24), glow, 0, 2.687, 0);
+  },
+  ceilingLight(add, m, w) {
+    add(cyl(w / 2 - 0.02, w / 2, 0.03, 32), m, 0, 2.685, 0);
+    add(cyl(w / 2 - 0.05, w / 2 - 0.1, 0.07, 32), glow, 0, 2.635, 0);
+  },
+  pendant(add, m, w) {
+    add(cyl(0.004, 0.004, 1.0, 6), shared.dark, 0, 2.2, 0);
+    add(cyl(0.05, 0.05, 0.03, 16), m, 0, 2.69, 0);
+    add(cyl(0.035, w / 2, 0.22, 28), m, 0, 1.6, 0);
+    add(cyl(0.03, 0.03, 0.05, 12), shared.dark, 0, 1.69, 0);
+    add((leafGeo ??= new SphereGeometry(0.16, 10, 8)), glow, 0, 1.55, 0).scale.setScalar(0.32);
+  },
+  chandelier(add, m, w) {
+    add(cyl(0.008, 0.008, 0.5, 8), m, 0, 2.45, 0);
+    add(cyl(0.06, 0.06, 0.03, 16), m, 0, 2.69, 0);
+    add(ring(w / 2 - 0.08, 0.012), m, 0, 2.05, 0).rotation.x = Math.PI / 2;
+    add(ring(w / 4, 0.01), m, 0, 2.2, 0).rotation.x = Math.PI / 2;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = w / 2 - 0.08;
+      add(cyl(0.012, 0.012, 0.08, 10), shared.white, Math.cos(a) * r, 2.1, Math.sin(a) * r);
+      add(cyl(0.01, 0.018, 0.05, 10), glow, Math.cos(a) * r, 2.165, Math.sin(a) * r);
+    }
+  },
+  wallLight(add, m, _w, d) {
+    add(rbox(0.1, 0.16, 0.02, 0.006), m, 0, 1.8, -d / 2 + 0.01);
+    add(cyl(0.065, 0.065, 0.18, 24), m, 0, 1.8, 0.01);
+    for (const y of [1.89, 1.71]) add(cyl(0.055, 0.055, 0.004, 24), glow, 0, y, 0.01);
+  },
 };
 
 /** A dining chair at (x, z) turned by rot: linen (or rattan) seat, back in the main colour, the style's legs. */
@@ -639,10 +689,8 @@ export function buildFurniture(type: string, color?: string, styleId?: string) {
   };
   const build = builders[type];
   if (def && build) build(add, m, def.w, def.d, def.h, look);
+  if (def?.mount) g.userData.mount = def.mount;
   else add(rbox(0.5, 0.5, 0.5), m, 0, 0.25, 0);
   soft = 1;
   return g;
 }
-
-/** Point light under a lamp shade, used for warm evening light. */
-export const LAMP_TYPES = new Set(['lamp', 'nightstand']);

@@ -898,6 +898,34 @@ export class PlanEditor {
     c.rotate(it.rot * DEG);
     const w = def.w * s;
     const d = def.d * s;
+    if (def.mount) {
+      // Lighting-plan symbols: a circle (crossed for a downlight), a half circle on the wall for a wall light.
+      const r = Math.max(5, (Math.min(def.w, 0.5) * s) / 2);
+      c.strokeStyle = selected ? ACCENT : '#a16207';
+      c.fillStyle = 'rgba(250, 204, 21, 0.28)';
+      c.lineWidth = selected ? 2 : 1.2;
+      c.beginPath();
+      if (def.mount === 'wall') c.arc(0, -d / 2, r, 0, Math.PI);
+      else c.arc(0, 0, r, 0, Math.PI * 2);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      if (it.type === 'downlight' || it.type === 'chandelier') {
+        const k = r * Math.SQRT1_2;
+        c.beginPath();
+        c.moveTo(-k, -k);
+        c.lineTo(k, k);
+        c.moveTo(k, -k);
+        c.lineTo(-k, k);
+        c.stroke();
+      } else if (it.type !== 'wallLight') {
+        c.beginPath();
+        c.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+        c.stroke();
+      }
+      c.restore();
+      return;
+    }
     c.fillStyle = def.flat ? (it.color ?? def.colors[0]!) : '#ffffff';
     c.globalAlpha *= def.flat ? 0.5 : 1;
     c.strokeStyle = selected ? ACCENT : '#475467';

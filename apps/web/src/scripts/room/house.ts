@@ -6,9 +6,11 @@
 import {
   BoxGeometry,
   BufferGeometry,
+  Color,
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  PointLight,
   LineBasicMaterial,
   LineLoop,
   Mesh,
@@ -16,11 +18,12 @@ import {
   MeshStandardMaterial,
   Shape,
   ShapeGeometry,
+  SpotLight,
   type Material,
   type Texture,
 } from 'three';
 import { FLOORS, FURNITURE, WALLS, type Finish } from './catalog';
-import { buildFurniture } from './furniture';
+import { buildFurniture, setFixtureGlow } from './furniture';
 import {
   DOOR_HEIGHT,
   RAIL_HEIGHT,
@@ -55,7 +58,7 @@ const DEG = Math.PI / 180;
 export class House {
   readonly root = new Group();
   walls: WallView[] = [];
-  readonly items = new Map<string, { group: Group; sig: string }>();
+  readonly items = new Map<string, { group: Group; sig: string; light?: SpotLight | PointLight; power: number }>();
   /** Centre and radius of the building, for framing and shadows. */
   bounds = { cx: 0, cz: 0, r: 6 };
 
@@ -393,7 +396,26 @@ export class House {
         group.userData.item = it.id;
         group.traverse((o) => (o.userData.item = it.id));
         this.furniture.add(group);
-        entry = { group, sig };
+        const def = FURNITURE[it.type];
+        let light: SpotLight | PointLight | undefined;
+        if (def?.light) {
+          // Off until setLights says otherwise; no shadows (each would cost a shadow map per frame).
+          if (def.light.kind === 'spot') {
+            const spot = new SpotLight('#ffffff', 0, 0, 0.62, 0.85, 2);
+            spot.position.set(0, def.light.y, 0);
+            spot.target.position.set(0, 0, 0);
+            group.add(spot.target);
+            light = spot;
+          } else {
+            light = new PointLight('#ffffff', 0, 0, 2);
+            light.position.set(0, def.light.y, 0);
+          }
+          light.visible = false;
+          group.add(light);
+        }
+        this.showFixtures(group);
+        entry = { group, sig, light, power: def?.light?.power ?? 0 };
+        this.lightsDirty = true;
         this.items.set(it.id, entry);
       }
       entry.group.position.set(it.x, 0, it.z);
@@ -403,7 +425,40 @@ export class House {
       if (!seen.has(id)) {
         this.furniture.remove(e.group);
         this.items.delete(id);
+        this.lightsDirty = true;
       }
+    if (this.lightsDirty) this.setLights(this.lighting.on, this.lighting.color, this.lighting.cap);
+  }
+
+  /** Whether ceiling and wall fittings are drawn (not in the dollhouse cut-away, where they would float). */
+  private fixturesShown = true;
+  private lightsDirty = false;
+  private lighting = { on: false, color: new Color('#ffd9a8'), cap: 16 };
+  setFixturesShown(on: boolean) {
+    this.fixturesShown = on;
+    for (const e of this.items.values()) this.showFixtures(e.group);
+  }
+  private showFixtures(g: Group) {
+    if (!g.userData.mount) return;
+    for (const c of g.children) if ((c as Mesh).isMesh) c.visible = this.fixturesShown;
+  }
+
+  /**
+   * Switches the light fittings on or off in a colour; at most `cap` of them emit (the brightest first) so a lit
+   * home stays smooth on modest GPUs, the rest still glow.
+   */
+  setLights(on: boolean, color: Color, cap: number) {
+    this.lighting = { on, color: color.clone(), cap };
+    this.lightsDirty = false;
+    const lit = [...this.items.values()].filter((e) => e.light).sort((a, b) => b.power - a.power);
+    lit.forEach((e, i) => {
+      const l = e.light!;
+      l.visible = on && i < cap;
+      l.color.copy(color);
+      // Output in this scene's units (the sun is about 4): a downlight lights the floor below like a 7 W LED.
+      l.intensity = (l instanceof SpotLight ? 7 : 3) * e.power;
+    });
+    setFixtureGlow(on, color);
   }
 
   /** Outlines the selected item's footprint on the floor. */

@@ -16,6 +16,13 @@ export interface FurnitureDef {
   group: string;
   /** Which part of a style's palette colours it: upholstery, cabinetry, timber, an accent, or fixed (sanitary ware). */
   role: 'fabric' | 'case' | 'wood' | 'accent' | 'fixed';
+  /** Fixed to the ceiling or a wall instead of standing on the floor: never collides with floor furniture. */
+  mount?: 'ceiling' | 'wall';
+  /**
+   * A light source: a downlight (spot, aimed down) or a lamp (point), at height y above the floor, with its output
+   * relative to a 60 W-equivalent bulb.
+   */
+  light?: { kind: 'spot' | 'point'; y: number; power: number };
 }
 
 export const FURNITURE: Record<string, FurnitureDef> = {
@@ -294,13 +301,14 @@ export const FURNITURE: Record<string, FurnitureDef> = {
     role: 'fabric',
   },
   nightstand: {
-    name: 'Nightstand',
+    name: 'Nightstand with lamp',
     w: 0.5,
     d: 0.4,
     h: 0.5,
     colors: ['#a87a4c', '#e7dfd2', '#3b3a38'],
     group: 'Beds',
     role: 'case',
+    light: { kind: 'point', y: 0.64, power: 0.4 },
   },
   wardrobe: {
     name: 'Wardrobe, 3 doors',
@@ -437,8 +445,64 @@ export const FURNITURE: Record<string, FurnitureDef> = {
     d: 0.4,
     h: 1.6,
     colors: ['#3b3a38', '#c8a77e', '#e7dfd2'],
-    group: 'Lamps',
+    group: 'Lighting',
     role: 'accent',
+    light: { kind: 'point', y: 1.45, power: 0.8 },
+  },
+  downlight: {
+    name: 'Downlight (recessed)',
+    w: 0.12,
+    d: 0.12,
+    h: 2.7,
+    colors: ['#f4f3f0', '#2b2d31'],
+    group: 'Lighting',
+    role: 'fixed',
+    mount: 'ceiling',
+    light: { kind: 'spot', y: 2.66, power: 1 },
+  },
+  ceilingLight: {
+    name: 'Ceiling light',
+    w: 0.5,
+    d: 0.5,
+    h: 2.7,
+    colors: ['#f4f3f0', '#c8a77e'],
+    group: 'Lighting',
+    role: 'accent',
+    mount: 'ceiling',
+    light: { kind: 'point', y: 2.55, power: 2 },
+  },
+  pendant: {
+    name: 'Pendant',
+    w: 0.42,
+    d: 0.42,
+    h: 2.7,
+    colors: ['#2b2d31', '#c8a77e', '#e7dfd2', '#5d6b5f'],
+    group: 'Lighting',
+    role: 'accent',
+    mount: 'ceiling',
+    light: { kind: 'point', y: 1.55, power: 1.4 },
+  },
+  chandelier: {
+    name: 'Chandelier',
+    w: 0.8,
+    d: 0.8,
+    h: 2.7,
+    colors: ['#c2a15e', '#2b2d31', '#e7dfd2'],
+    group: 'Lighting',
+    role: 'accent',
+    mount: 'ceiling',
+    light: { kind: 'point', y: 2.05, power: 2.6 },
+  },
+  wallLight: {
+    name: 'Wall light',
+    w: 0.18,
+    d: 0.12,
+    h: 1.95,
+    colors: ['#2b2d31', '#c8a77e', '#e7dfd2'],
+    group: 'Lighting',
+    role: 'accent',
+    mount: 'wall',
+    light: { kind: 'point', y: 1.8, power: 0.6 },
   },
   art: {
     name: 'Framed art (on the wall)',
@@ -466,7 +530,7 @@ export const GROUPS = [
   'Bathroom',
   'Rugs',
   'Plants',
-  'Lamps',
+  'Lighting',
   'Decor',
 ];
 
@@ -567,6 +631,11 @@ export const FURNITURE_PRICE: Record<string, number> = {
   rugRound: 320,
   plantPalm: 160,
   art: 240,
+  downlight: 35,
+  ceilingLight: 120,
+  pendant: 180,
+  chandelier: 650,
+  wallLight: 95,
 };
 
 /** Doors and windows, per piece, for the estimate. */

@@ -642,6 +642,11 @@ svg {
   font-weight: 500;
   color: var(--text-2);
 }
+.choices button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 .choices .primary {
   background: var(--accent);
   border-color: var(--accent);

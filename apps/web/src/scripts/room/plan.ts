@@ -50,6 +50,8 @@ export interface Item {
   /** Rotation in degrees, clockwise when seen from above. */
   rot: number;
   color?: string;
+  /** Placed by "Design the lighting" (and replaced when it runs again). */
+  auto?: boolean;
 }
 
 export interface RoomStyle {
@@ -67,6 +69,8 @@ export interface Plan {
   rooms: Record<string, RoomStyle>;
   /** Compass angle of north, degrees clockwise from "up" in the 2D plan. */
   north: number;
+  /** Artificial lighting: switched on (it also comes on by itself after dusk) and its colour temperature in kelvin. */
+  lights?: { on: boolean; kelvin: number };
   /** Interior design style (styles.ts), which shapes furniture, palettes and default finishes. */
   style?: string;
 }
@@ -159,7 +163,7 @@ function centroidOf(poly: Vec2[]): Vec2 {
 /** Puts an item against the nearest wall, facing into the room, if it is close to one. */
 export function snapToWall(p: Plan, it: Item, reach = 0.6) {
   const def = FURNITURE[it.type];
-  if (!def || def.flat) return false;
+  if (!def || def.flat || def.mount === 'ceiling') return false;
   const nodes = nodeMap(p);
   let best: { d: number; q: Vec2; n: Vec2; thick: number } | null = null;
   for (const w of p.walls) {

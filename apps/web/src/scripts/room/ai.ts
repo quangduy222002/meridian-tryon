@@ -86,6 +86,7 @@ Clearances and rules that always apply:
 - Do not block windows or glass doors with tall items (wardrobes, bookshelves, fridges); low pieces may sit under a window.
 - Backs of sofas, beds, desks and cabinets go against walls unless a floating layout is clearly better and keeps the clearances.
 - Use only what the request needs, at the scale the room can take: a small room gets fewer, well-chosen pieces.
+- Light the room in layers with the [Lighting] fittings (ceiling fittings never collide with floor furniture; wall lights go flush against a wall): general light from downlights about 1.2–1.5 m apart and 0.6–0.7 m from the walls, or one ceiling light in a small room; task light from a pendant centred over the dining table, a light over the vanity mirror, a floor lamp by a reading chair or desk; accent light from wall lights either side of the bed and near artwork. Add lighting unless the request says not to.
 - Colours: one palette for the whole room, one accent at most${st ? ' (use the style palette below)' : " (choose from each item's listed colours)"}.
 ${
   st

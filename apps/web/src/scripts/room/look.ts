@@ -33,6 +33,8 @@ export interface Look {
   setSize(w: number, h: number): void;
   /** Re-bakes the sky light for a sun direction (unit vector towards the sun) and elevation in radians. */
   setSun(dir: Vector3, elevation: number): void;
+  /** 1 by day, 0 at night: the backdrop darkens to a night blue. */
+  setDaylight(day: number): void;
 }
 
 export function createLook(
@@ -85,6 +87,8 @@ export function createLook(
     composer.addPass(new OutputPass());
   }
   const size = new Vector2();
+  const dayBack = new Color(BACKDROP);
+  const nightBack = new Color('#1b2029');
 
   return {
     render() {
@@ -97,6 +101,10 @@ export function createLook(
       composer.setPixelRatio(renderer.getPixelRatio());
       composer.setSize(w, h);
       gtao?.setSize(size.x, size.y);
+    },
+    setDaylight(day) {
+      (scene.background as Color).copy(nightBack).lerp(dayBack, day);
+      (scene.fog as Fog).color.copy(scene.background as Color);
     },
     setSun(dir, elevation) {
       (u.sunPosition!.value as Vector3).copy(dir);

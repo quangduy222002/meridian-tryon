@@ -13,6 +13,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   Raycaster,
+  SRGBColorSpace,
   Scene,
   Vector2,
   Vector3,
@@ -34,6 +35,7 @@ import { STYLES, styleColor, styleOf, styleSwatches } from './styles';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
 import { createLook } from './look';
+import { designLighting, kelvinColor } from './lighting';
 import {
   findRooms,
   len,
@@ -507,6 +509,44 @@ ${
     showPane('three');
   });
 
+  /* ---------- Lighting ---------- */
+  const lightDlg = $<HTMLDialogElement>('lightDlg');
+  const syncLightUi = () => {
+    const l = plan.lights ?? { on: false, kelvin: 3000 };
+    $('lightsOn').setAttribute('aria-pressed', String(l.on));
+    for (const b of document.querySelectorAll<HTMLElement>('#kelvins [data-kelvin]'))
+      b.setAttribute('aria-pressed', String(Number(b.dataset.kelvin) === l.kelvin));
+  };
+  const setLighting = (patch: Partial<{ on: boolean; kelvin: number }>) => {
+    plan.lights = { on: false, kelvin: 3000, ...plan.lights, ...patch };
+    syncLightUi();
+    three?.relight();
+    autosave(plan);
+  };
+  $('lightBtn').addEventListener('click', () => {
+    syncLightUi();
+    $('lightStatus').textContent = '';
+    lightDlg.showModal();
+  });
+  $('lightsOn').addEventListener('click', () => setLighting({ on: !(plan.lights?.on ?? false) }));
+  $('kelvins').addEventListener('click', (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[data-kelvin]');
+    if (b) setLighting({ kelvin: Number(b.dataset.kelvin) });
+  });
+  $('lightsAuto').addEventListener('click', () => {
+    if (!rooms.length) {
+      $('lightStatus').textContent = 'Draw or import a plan with closed rooms first.';
+      return;
+    }
+    const n = designLighting(plan, rooms);
+    plan.lights = { kelvin: 3000, ...plan.lights, on: true };
+    syncLightUi();
+    host.commit(`Lighting plan: ${n} fittings`);
+    three?.relight();
+    lightDlg.close();
+    showPane('three');
+  });
+
   /* ---------- Export ---------- */
   const exportDlg = $<HTMLDialogElement>('exportDlg');
   const exportStatus = $('exportStatus');
@@ -790,6 +830,12 @@ async function setupThree(
   const hourIn = $<HTMLInputElement>('hour');
   const northIn = $<HTMLInputElement>('north');
   const sunDir = new Vector3();
+  const daySky = new Color('#f6f2ea');
+  const nightSky = new Color('#5a6a8a');
+  const lampColor = new Color();
+  const white0 = new Color('#ffffff');
+  // How many fittings may emit at once (each light adds shading cost to every pixel).
+  const lightCap = quality.tier === 'high' ? 24 : quality.tier === 'mid' ? 12 : 6;
   const warm = new Color('#ffb067');
   const white = new Color('#fff0dc');
   /**
@@ -838,9 +884,20 @@ async function setupThree(
     );
     sun.target.position.set(cx, 0, cz);
     const k = smoothstep(4 * DEG, 40 * DEG, elev);
+    // Daylight fades out between 17:40 and 19:15; after that only the light fittings light the home.
+    const day = 1 - smoothstep(17.65, 19.25, h);
     sun.color.copy(warm).lerp(white, k);
-    sun.intensity = 1 + 3 * k;
-    hemi.intensity = 0.5 + 0.25 * k;
+    sun.intensity = (1 + 3 * k) * day;
+    hemi.intensity = (0.5 + 0.25 * k) * Math.max(day, 0.08);
+    hemi.color.copy(nightSky).lerp(daySky, day);
+    scene.environmentIntensity = 0.06 * Math.max(day, 0.12);
+    renderer.toneMappingExposure = 1 + (1 - day) * 0.35;
+    const lights = p.lights ?? { on: false, kelvin: 3000 };
+    const [lr, lg, lb] = kelvinColor(lights.kelvin);
+    // The eye adapts to warm light: tint white towards the colour temperature instead of using it raw.
+    lampColor.setRGB(lr, lg, lb, SRGBColorSpace).lerp(white0, 0.45);
+    house.setLights(lights.on || day < 0.5, lampColor, lightCap);
+    look.setDaylight(day);
     look.setSun(sunDir.copy(sun.position).sub(sun.target.position).normalize(), elev);
     Object.assign(sun.shadow.camera, { left: -r - 3, right: r + 3, top: r + 3, bottom: -r - 3, near: 1, far: 90 });
     sun.shadow.camera.updateProjectionMatrix();
@@ -885,6 +942,8 @@ async function setupThree(
       b.setAttribute('aria-pressed', String(b.dataset.view === m));
     viewer.classList.toggle('walking', m === 'walk');
     house.setCeilings(m === 'walk');
+    // Ceiling and wall fittings would float over the cut-away walls of the dollhouse: show them in orbit and walk.
+    house.setFixturesShown(m !== 'dollhouse');
     if (m === 'walk' && was !== 'walk') {
       controls.enabled = false;
       camera.fov = 68;
@@ -997,6 +1056,8 @@ async function setupThree(
       loop.invalidate();
     },
     walker: () => walker.pose,
+    /** Re-applies the sun and the lighting after the plan's lighting settings change. */
+    relight: () => updateSun(),
     /** Frame the whole home again after the plan is replaced. */
     reframe() {
       touched = false;
