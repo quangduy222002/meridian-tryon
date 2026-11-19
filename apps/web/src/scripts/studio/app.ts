@@ -20,6 +20,8 @@ export async function startStudio(gl: boolean) {
   const app = $('app');
   let drawing: Drawing | null = null;
   let region: Region | null = null;
+  /** Areas erased on the sheet (notes, legends, symbols): left out when building the plan. */
+  let masks: Region[] = [];
   /** The scale was set by hand: a new selection box must not overwrite it. */
   let scaleByHand = false;
   /**
@@ -205,6 +207,8 @@ export async function startStudio(gl: boolean) {
     sheet.cancelCalibration();
     drawing = d;
     region = null;
+    masks = [];
+    setErasing(false);
     scaleByHand = false;
     status.textContent = '';
     if (!d.segs.length) {
@@ -298,6 +302,12 @@ export async function startStudio(gl: boolean) {
     drawing: () => drawing,
     image: () => underlayImg,
     region: () => region,
+    masks: () => masks,
+    addMask(r) {
+      masks.push(r);
+      $('clearErase').hidden = false;
+      sheet.draw();
+    },
     setRegion(r) {
       region = r;
       // Scale from the dimensions inside the box is the most reliable when the sheet mixes several scales —
@@ -311,6 +321,13 @@ export async function startStudio(gl: boolean) {
         }
       }
       syncDetect();
+      // A crowded box (many notes and labels) builds better once they are erased.
+      if (drawing && r && !masks.length) {
+        const notes = drawing.texts.filter((t) => inRegion(r, t.x, t.y)).length;
+        if (notes > 60)
+          $('selectStatus').textContent =
+            `This area has ${notes} notes and labels. If the result looks messy, use “Erase notes and symbols” on legends, notes and furniture, then build again.`;
+      }
     },
     calibrating: syncCalibrate,
     firstPoint() {
@@ -346,21 +363,41 @@ export async function startStudio(gl: boolean) {
     $('sheet').focus();
   });
 
+  /* ---------- Erase notes and symbols ---------- */
+  function setErasing(on: boolean) {
+    sheet.erasing = on;
+    $('eraseBtn').setAttribute('aria-pressed', String(on));
+    $('eraseBtn').textContent = on ? 'Done erasing' : 'Erase notes and symbols';
+    if (on)
+      $('selectStatus').textContent =
+        'Drag boxes over notes, legends, title blocks or furniture to leave them out. Click “Done erasing” to select the flat again.';
+    sheet.draw();
+  }
+  $('eraseBtn').addEventListener('click', () => setErasing(!sheet.erasing));
+  $('clearErase').addEventListener('click', () => {
+    masks = [];
+    $('clearErase').hidden = true;
+    sheet.draw();
+  });
+
   $('detectBtn').addEventListener('click', () => {
     if ($('detectBtn').getAttribute('aria-disabled') === 'true' || !drawing || !region || !drawing.mmPerUnit) {
       // Say what's missing instead of doing nothing.
       syncDetect();
       return;
     }
-    const res = detectWalls(drawing, region);
+    if (sheet.erasing) setErasing(false);
+    // The drawing as the visitor cleaned it: erased areas left out.
+    const source = masks.length ? withoutMasks(drawing, masks) : drawing;
+    const res = detectWalls(source, region);
     if (!res.walls) {
       $('selectStatus').textContent = 'No walls found in that box. Try a slightly larger box, or check the scale.';
       return;
     }
-    const found = findSymbols(drawing, region);
+    const found = findSymbols(source, region);
     const furnished = furnish(res.plan, found);
-    const named = [...new Set(nameRooms(res.plan, drawing, region, found).values())];
-    const floorName = floorLabel(drawing, region);
+    const named = [...new Set(nameRooms(res.plan, source, region, found).values())];
+    const floorName = floorLabel(source, region);
     underlayOn = true;
     $('drawingBtn').setAttribute('aria-pressed', 'true');
     if (addingFloor) {
@@ -405,6 +442,17 @@ export async function startStudio(gl: boolean) {
   setStage('import');
 }
 
+/** A copy of the drawing without what lies in the erased areas. */
+function withoutMasks(d: Drawing, masks: Region[]): Drawing {
+  const out = (x: number, y: number) => !masks.some((m) => inRegion(m, x, y));
+  return {
+    ...d,
+    segs: d.segs.filter((s) => out((s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2)),
+    texts: d.texts.filter((t) => out(t.x, t.y)),
+    ...(d.blocks ? { blocks: d.blocks.filter((b) => out((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2)) } : {}),
+  };
+}
+
 /* ---------- Sheet viewer ---------- */
 
 interface SheetHost {
@@ -412,6 +460,9 @@ interface SheetHost {
   image(): HTMLImageElement | null;
   region(): Region | null;
   setRegion(r: Region | null): void;
+  /** Areas the visitor erased (notes, legends, symbols): left out of detection. */
+  masks(): Region[];
+  addMask(r: Region): void;
   /** Calibration mode switched on or off. */
   calibrating(on: boolean): void;
   /** The first calibration point is down. */
@@ -423,6 +474,8 @@ interface SheetHost {
 /** Shows the whole sheet (PDF raster or DXF lines); drag draws the selection box, wheel / pinch zooms. */
 class SheetView {
   private calibrating = false;
+  /** Erase mode: a dragged box masks an area out instead of selecting the flat. */
+  erasing = false;
   /** Pointer position in canvas pixels, for the calibration guide line. */
   private hover: { x: number; y: number } | null = null;
   /** Set once the current drawing has been framed, so the exposed view transform is meaningful. */
@@ -641,7 +694,10 @@ class SheetView {
       if (this.pointers.size < 2) this.pinch = null;
       return;
     }
-    if (this.drag?.mode === 'box' && this.box) this.host.setRegion(this.box);
+    if (this.drag?.mode === 'box' && this.box) {
+      if (this.erasing) this.host.addMask(this.box);
+      else this.host.setRegion(this.box);
+    }
     this.drag = null;
     this.box = null;
     this.draw();
@@ -689,8 +745,22 @@ class SheetView {
       }
       c.stroke();
     }
+    // Erased areas: red wash with a dashed edge.
+    c.setLineDash([5, 3]);
+    for (const m of [...this.host.masks(), ...(this.erasing && this.box ? [this.box] : [])]) {
+      const x = this.X(m.x0);
+      const y = this.Y(m.y1);
+      const w = (m.x1 - m.x0) * this.s;
+      const h = (m.y1 - m.y0) * this.s;
+      c.fillStyle = 'rgba(217, 45, 32, 0.16)';
+      c.fillRect(x, y, w, h);
+      c.strokeStyle = '#d92d20';
+      c.lineWidth = 1.5;
+      c.strokeRect(x, y, w, h);
+    }
+    c.setLineDash([]);
     // Selection: dim everything outside the box.
-    const r = this.box ?? this.host.region();
+    const r = (this.erasing ? null : this.box) ?? this.host.region();
     if (r) {
       const x = this.X(r.x0);
       const y = this.Y(r.y1);

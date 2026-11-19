@@ -1096,7 +1096,7 @@ svg {
   }
 }
 /* Mid-size screens: the action buttons keep their icons and accessible names, the words go first. */
-@media (min-width: 900px) and (max-width: 1380px) {
+@media (min-width: 900px) and (max-width: 1719px) {
   .actions button span,
   .actions .action-link span {
     display: none;
@@ -1106,7 +1106,7 @@ svg {
     padding: 0 10px;
   }
 }
-@media (min-width: 900px) and (max-width: 1180px) {
+@media (min-width: 900px) and (max-width: 1359px) {
   .brand span {
     display: none;
   }

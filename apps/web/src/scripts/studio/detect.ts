@@ -59,7 +59,9 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       };
     return null;
   };
-  const segs = d.segs.map(clip).filter((s): s is Segment => !!s);
+  const segs = withoutAnnotation(d)
+    .map(clip)
+    .filter((s): s is Segment => !!s);
 
   const H: Line[] = [];
   const V: Line[] = [];
@@ -470,6 +472,9 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
       }
     }
   }
+  // Small clusters of walls apart from the building, with no door or window, are notes and symbols read as walls
+  // (a legend box, a north arrow, a furniture block): keep only clusters of some size or joined to the main one.
+  dropStrayClusters(plan);
   // Short walls touching nothing are leftovers (dimension ticks, labels): drop them.
   const degree = new Map<string, number>();
   for (const w of plan.walls) for (const id of [w.a, w.b]) degree.set(id, (degree.get(id) ?? 0) + 1);
@@ -481,4 +486,120 @@ export function detectWalls(d: Drawing, region: Region): DetectResult {
   });
   tidy(plan);
   return { plan, walls: plan.walls.length, openings: plan.openings.length };
+}
+
+/* ---------- Noise: annotation, dimensions, stray clusters ---------- */
+
+/** Layers that hold annotation, not construction (Vietnamese and English CAD habits). */
+const ANNOTATION =
+  /dim|kich ?thuoc|\bkt\b|text|chu|note|ghi ?chu|anno|grid|axis|truc|hatch|vat ?lieu|furn|noi ?that|thiet ?bi|title|khung|symbol|ky ?hieu|level|cao ?do|section|mat ?cat|leader|defpoints/;
+const foldLayer = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[_\-.]+/g, ' ')
+    .toLowerCase();
+
+/**
+ * The segments wall detection should look at: without annotation layers (a DXF's dimensions, text, grid, hatch,
+ * furniture) and, in a PDF, without dimension chains — a line through two or more dimension ticks, and the
+ * extension lines that end at a tick.
+ */
+function withoutAnnotation(d: Drawing): Segment[] {
+  const segs = d.segs.filter((s) => {
+    if (!s.layer) return true;
+    const l = foldLayer(s.layer);
+    return WALL_LAYER.test(l) || !ANNOTATION.test(l);
+  });
+  if (d.kind !== 'pdf') return segs;
+  // Ticks: short oblique strokes, as scaleFromDimensions reads them.
+  const ticks: Segment[] = [];
+  for (const s of segs) {
+    const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    const dx = Math.abs(s.x2 - s.x1);
+    const dy = Math.abs(s.y2 - s.y1);
+    if (s.curve || L < 0.5 || L > 12 || dx < L * 0.35 || dy < L * 0.35) continue;
+    ticks.push(s);
+  }
+  if (ticks.length < 4) return segs;
+  const numbers = d.texts.filter((t) => /^\s*\d{2,5}\s*$/.test(t.str));
+  const tol = 0.8;
+  const axisOf = (s: Segment) => (Math.abs(s.y2 - s.y1) < 0.2 ? 'H' : Math.abs(s.x2 - s.x1) < 0.2 ? 'V' : null);
+  /** Ticks that cross the line (ends on both sides, centre on it): a hatch stroke only meets an edge from inside. */
+  const crossing = (s: Segment, o: 'H' | 'V') =>
+    ticks.filter((t) => {
+      const [e1, e2] = o === 'H' ? [t.y1 - s.y1, t.y2 - s.y1] : [t.x1 - s.x1, t.x2 - s.x1];
+      if (!(e1 * e2 < 0 && Math.abs(e1) > 0.2 && Math.abs(e2) > 0.2)) return false;
+      const along = o === 'H' ? (t.x1 + t.x2) / 2 : (t.y1 + t.y2) / 2;
+      const [lo, hi] =
+        o === 'H' ? [Math.min(s.x1, s.x2), Math.max(s.x1, s.x2)] : [Math.min(s.y1, s.y2), Math.max(s.y1, s.y2)];
+      return along >= lo - tol && along <= hi + tol;
+    });
+  // A dimension line: ticks across it and a dimension figure written along it.
+  const dimTicks = new Set<Segment>();
+  const dims = new Set<Segment>();
+  for (const s of segs) {
+    const o = axisOf(s);
+    if (!o) continue;
+    const xs = crossing(s, o);
+    if (xs.length < 2) continue;
+    const [lo, hi] =
+      o === 'H' ? [Math.min(s.x1, s.x2), Math.max(s.x1, s.x2)] : [Math.min(s.y1, s.y2), Math.max(s.y1, s.y2)];
+    // It stops just past its end ticks (a wall's edge runs on past a dimension that crosses it).
+    const at = xs.map((t) => (o === 'H' ? (t.x1 + t.x2) / 2 : (t.y1 + t.y2) / 2));
+    if (Math.min(...at) - lo > 4 || hi - Math.max(...at) > 4) continue;
+    const labelled = numbers.some((t) => {
+      const along = o === 'H' ? t.x : t.y;
+      const across = o === 'H' ? Math.abs(t.y - s.y1) : Math.abs(t.x - s.x1);
+      return along >= lo - t.h && along <= hi + t.h && across < t.h * 2.5;
+    });
+    if (!labelled) continue;
+    dims.add(s);
+    for (const t of xs) dimTicks.add(t);
+  }
+  if (!dims.size) return segs;
+  // Extension lines end at a dimension tick, at right angles to its dimension line.
+  return segs.filter((s) => {
+    if (dims.has(s)) return false;
+    const o = axisOf(s);
+    if (!o) return true;
+    const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    return !crossing(s, o).some((t) => {
+      if (!dimTicks.has(t)) return false;
+      const along = o === 'H' ? (t.x1 + t.x2) / 2 : (t.y1 + t.y2) / 2;
+      const [lo, hi] =
+        o === 'H' ? [Math.min(s.x1, s.x2), Math.max(s.x1, s.x2)] : [Math.min(s.y1, s.y2), Math.max(s.y1, s.y2)];
+      return Math.min(along - lo, hi - along) < Math.max(tol * 3, L * 0.08);
+    });
+  });
+}
+
+/** Removes small wall clusters that stand apart from the main building and have no openings. */
+function dropStrayClusters(plan: Plan) {
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    const p = parent.get(x) ?? x;
+    if (p === x) return x;
+    const r = find(p);
+    parent.set(x, r);
+    return r;
+  };
+  for (const w of plan.walls) parent.set(find(w.a), find(w.b));
+  const nodes = new Map(plan.nodes.map((n) => [n.id, n]));
+  const size = new Map<string, number>();
+  const opened = new Set<string>();
+  for (const w of plan.walls) {
+    const a = nodes.get(w.a)!;
+    const b = nodes.get(w.b)!;
+    const r = find(w.a);
+    size.set(r, (size.get(r) ?? 0) + Math.hypot(b.x - a.x, b.z - a.z));
+    if (plan.openings.some((o) => o.wall === w.id)) opened.add(r);
+  }
+  const main = Math.max(0, ...size.values());
+  plan.walls = plan.walls.filter((w) => {
+    const r = find(w.a);
+    const len = size.get(r) ?? 0;
+    return len === main || opened.has(r) || len >= Math.max(3, main * 0.2);
+  });
 }

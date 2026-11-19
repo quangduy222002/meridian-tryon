@@ -616,6 +616,48 @@ test('floor plan import builds a two-storey home from one drawing', async ({ pag
   expect(errors).toEqual([]);
 });
 
+test('floor plan import ignores annotation and erased areas', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const rect = (layer: string, x0: number, y0: number, x1: number, y1: number) =>
+    [
+      [x0, y0, x1, y0],
+      [x1, y0, x1, y1],
+      [x1, y1, x0, y1],
+      [x0, y1, x0, y0],
+    ].flatMap(([a, b, c, d]) => ['0', 'LINE', '8', layer, '10', a, '20', b, '11', c, '21', d]);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    // The flat: a 6 × 4 m room with 200 mm walls.
+    ...rect('WALL', 0, 0, 6000, 4000),
+    ...rect('WALL', 200, 200, 5800, 3800),
+    // Dimension and grid layers drawn as double lines: never walls.
+    ...rect('DIM', -800, -800, 6800, 4800),
+    ...rect('DIM', -600, -600, 6600, 4600),
+    ...rect('TRUC', 3000, -1200, 3150, 5200),
+    // A legend frame drawn on the wall layer beside the flat: erased by hand.
+    ...rect('WALL', 7500, 0, 11500, 3000),
+    ...rect('WALL', 7700, 200, 11300, 2800),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'noisy.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await page.locator('#eraseBtn').click();
+  await expect(page.locator('#eraseBtn')).toHaveAttribute('aria-pressed', 'true');
+  await boxOnSheet(page, 7300, -200, 11700, 3200);
+  await expect(page.locator('#clearErase')).not.toHaveAttribute('hidden', '');
+  await page.locator('#eraseBtn').click();
+  await boxOnSheet(page, -1000, -1500, 12000, 5300);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('Found 4 walls');
+  await expect(page.locator('.toast')).toContainText('1 closed room');
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');
