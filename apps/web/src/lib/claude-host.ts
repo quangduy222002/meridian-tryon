@@ -7,7 +7,7 @@
 export interface HostSample {
   json<T = unknown>(
     input: string,
-    options?: { modelTier?: 'quick' | 'default' | 'complex'; signal?: AbortSignal },
+    options?: { modelTier?: 'quick' | 'default' | 'complex'; signal?: AbortSignal; images?: Blob[] },
   ): Promise<T>;
 }
 
@@ -75,6 +75,9 @@ export function hostFailure(err: unknown): string {
     case 'capability_disabled':
     case 'capability_removed':
       return 'Claude is not allowed for this page. You can allow it from the artifact’s permissions.';
+    case 'images_unavailable':
+    case 'image_rejected':
+      return 'Pictures cannot be sent to Claude from this page here. Open it in claude.ai, or add an API key.';
     case 'rate_limited':
       return 'Claude is busy or your usage limit is reached — try again a little later.';
     case 'session_expired':

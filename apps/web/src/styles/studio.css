@@ -6,11 +6,13 @@
 /* Their words only show where the full toolbar fits them; the icons keep their accessible names. */
 @media (max-width: 1719px) {
   #drawingBtn span,
+  #readBtn span,
   #reimportBtn span {
     display: none;
   }
 }
-#drawingBtn:disabled {
+#drawingBtn:disabled,
+#readBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

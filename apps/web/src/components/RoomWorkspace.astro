@@ -258,6 +258,54 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
     <p class="ai-status" id="lightStatus" aria-live="polite"></p>
   </dialog>
 
+  <dialog id="createDlg" class="sheet" aria-labelledby="createTitle">
+    <header>
+      <h2 id="createTitle">Create an object with AI</h2>
+      <form method="dialog">
+        <button aria-label="Close">✕</button>
+      </form>
+    </header>
+    <form id="createForm" class="ai-form">
+      <label>
+        Describe it
+        <textarea
+          id="createPrompt"
+          rows="3"
+          required
+          placeholder="e.g. “A black steel spiral staircase, 1.6 m across, up to the next floor.”"
+        ></textarea>
+      </label>
+      <div class="choices">
+        <button type="submit" class="primary" id="createGo">
+          Create
+        </button>
+      </div>
+    </form>
+    <div class="ai-questions" id="createAsk" hidden></div>
+    <p class="ai-status" id="createStatus" aria-live="polite"></p>
+  </dialog>
+
+  <dialog id="readDlg" class="sheet" aria-labelledby="readTitle">
+    <header>
+      <h2 id="readTitle">Read the drawing with AI</h2>
+      <form method="dialog">
+        <button aria-label="Close">✕</button>
+      </form>
+    </header>
+    <p>
+      Claude looks at the drawing for what wall detection doesn't read — stairs of any shape, fixtures, built-ins,
+      furniture — asks you where it is unsure, and builds anything the catalogue lacks.
+    </p>
+    <div class="ai-questions" id="readAsk" hidden></div>
+    <ul class="read-list" id="readList" hidden></ul>
+    <div class="choices" id="readActions" hidden>
+      <button type="button" class="primary" id="readAdd">
+        Add to the plan
+      </button>
+    </div>
+    <p class="ai-status" id="readStatus" aria-live="polite"></p>
+  </dialog>
+
   <dialog id="exportDlg" class="sheet small" aria-labelledby="exportTitle">
     <header>
       <h2 id="exportTitle">Export</h2>
@@ -359,6 +407,10 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
       </button>
     </header>
     <p>Pick an item, then click the plan to place it — it snaps against the nearest wall.</p>
+    <button type="button" class="cat-create" id="createOpen">
+      <b>✦ Create with AI…</b>
+      <span>Something the catalogue doesn't have: a spiral staircase, a piano, an aquarium.</span>
+    </button>
     <div class="cat-grid" id="catGrid"></div>
   </div>
   <slot />

@@ -668,6 +668,124 @@ test('floor plan import ignores annotation and erased areas', async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+test('Claude reads the drawing, asks, and models objects the library lacks', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Stand-in for the claude.ai host: the page asks the viewer's own Claude through window.claude.
+  await page.addInitScript(() => {
+    const spiral = {
+      name: 'Spiral staircase',
+      w: 1.6,
+      d: 1.6,
+      h: 3.3,
+      opensAbove: true,
+      parts: [
+        { shape: 'cylinder', r: 0.06, h: 3.3, x: 0, y: 1.65, z: 0, material: 'metal', color: '#2b2d31' },
+        {
+          shape: 'box',
+          w: 0.68,
+          h: 0.04,
+          d: 0.3,
+          x: 0.4,
+          y: 0.18,
+          z: 0,
+          material: 'wood',
+          color: '#b58a5a',
+          repeat: { count: 18, dy: 0.183, ry: 22, pivot: [0, 0] },
+        },
+      ],
+    };
+    const w = window as unknown as { claude: unknown; __images: number };
+    w.__images = 0;
+    w.claude = {
+      use: async (name: string) =>
+        name !== 'sample'
+          ? null
+          : {
+              json: async (prompt: string, opts?: { images?: Blob[] }) => {
+                w.__images += opts?.images?.length ?? 0;
+                if (prompt.includes('3D modeller'))
+                  return prompt.includes('Already answered')
+                    ? { object: { ...spiral, name: 'Round coffee table' } }
+                    : { question: 'How tall is it?', options: ['45 cm', '60 cm'] };
+                if (prompt.includes('reading a floor plan'))
+                  return prompt.includes("client's answers")
+                    ? {
+                        items: [
+                          { label: 'Spiral staircase', type: 'custom:sp', x: 4.5, z: 1.5, rot: 0 },
+                          { label: 'Toilet', type: 'toilet', x: 1, z: 1, rot: 0 },
+                        ],
+                        customs: { sp: spiral },
+                      }
+                    : {
+                        questions: [
+                          {
+                            text: 'Is the circle a spiral stair or a round table?',
+                            options: ['Spiral stair', 'Table'],
+                          },
+                        ],
+                      };
+                return { items: [] };
+              },
+            },
+    };
+  });
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const rect = (x0: number, y0: number, x1: number, y1: number) =>
+    [
+      [x0, y0, x1, y0],
+      [x1, y0, x1, y1],
+      [x1, y1, x0, y1],
+      [x0, y1, x0, y0],
+    ].flatMap(([a, b, c, d]) => ['0', 'LINE', '8', 'WALL', '10', a, '20', b, '11', c, '21', d]);
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...rect(0, 0, 6000, 4000),
+    ...rect(200, 200, 5800, 3800),
+    ...['0', 'CIRCLE', '8', 'STAIR', '10', '4500', '20', '2500', '40', '800'],
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'room.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await boxOnSheet(page, -50, -50, 6050, 4050);
+  await page.locator('#detectBtn').click();
+  await expect(page.locator('.toast')).toContainText('Found 4 walls');
+
+  // Read the drawing: Claude sees a picture of it, asks first, then lists what it found.
+  await page.locator('#readBtn').click();
+  await expect(page.locator('#readAsk legend')).toContainText('spiral stair or a round table');
+  await page.locator('#readAsk [data-opt]').first().click();
+  await page.locator('#readAsk [data-act="answer"]').click();
+  await expect(page.locator('#readList')).toContainText('Spiral staircase');
+  await expect(page.locator('#readList')).toContainText('new object');
+  await page.locator('#readAdd').click();
+  await expect(page.locator('#readDlg')).not.toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __images: number }).__images)).toBeGreaterThan(0);
+
+  // Create an object the library doesn't have.
+  await page.locator('#furnBtn').click();
+  await page.locator('#createOpen').click();
+  await page.locator('#createPrompt').fill('A round coffee table in walnut');
+  await page.locator('#createGo').click();
+  await expect(page.locator('#createAsk legend')).toContainText('How tall');
+  await page.locator('#createAsk [data-opt]').first().click();
+  await page.locator('#createAsk [data-act="answer"]').click();
+  await expect(page.locator('#hint')).toContainText('round coffee table');
+
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}'));
+  await expect
+    .poll(async () => Object.keys((await saved()).customs ?? {}))
+    .toEqual(['spiral-staircase', 'round-coffee-table']);
+  const plan = await saved();
+  expect(plan.items.map((i: { type: string }) => i.type)).toEqual(
+    expect.arrayContaining(['custom:spiral-staircase', 'toilet']),
+  );
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

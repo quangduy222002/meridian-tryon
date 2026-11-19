@@ -888,6 +888,78 @@ svg {
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 8px;
 }
+.cat-create {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--accent);
+  background: var(--accent-soft);
+  text-align: left;
+}
+.cat-create b {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+}
+.cat-create span {
+  color: var(--mute);
+  font-size: 12px;
+}
+.ai-questions {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.ai-questions[hidden],
+.read-list[hidden] {
+  display: none;
+}
+.ai-questions fieldset {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.ai-questions legend {
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.ai-questions .opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-questions input[type='text'] {
+  padding: 7px 9px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  font-size: 13px;
+}
+.read-list {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 40vh;
+  overflow: auto;
+}
+.read-list label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.read-list small {
+  color: var(--mute);
+}
 .cat-grid h3 {
   grid-column: 1 / -1;
   margin: 8px 0 0;

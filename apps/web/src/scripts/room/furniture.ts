@@ -17,6 +17,7 @@ import {
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { FURNITURE } from './catalog';
+import { CUSTOM_PARTS, type CustomPart } from './custom';
 import { styleOf, type DesignStyle } from './styles';
 
 const geoCache = new Map<string, BufferGeometry>();
@@ -781,9 +782,76 @@ export function buildFurniture(type: string, color?: string, styleId?: string) {
     },
   };
   const build = builders[type];
-  if (def && build) build(add, m, def.w, def.d, def.h, look);
+  const parts = CUSTOM_PARTS.get(type);
+  if (parts) buildCustom(parts, look.sub(0, 0, 0));
+  else if (def && build) build(add, m, def.w, def.d, def.h, look);
+  else add(rbox(0.5, 0.5, 0.5), m, 0, 0.25, 0); // unknown type: a plain block
   if (def?.mount) g.userData.mount = def.mount;
-  else add(rbox(0.5, 0.5, 0.5), m, 0, 0.25, 0);
   soft = 1;
+  return g;
+}
+
+/* ---------- Objects Claude defined (custom.ts) ---------- */
+
+const customMat = (material: string, color: string) =>
+  cached(`x:${material}:${color}`, () => {
+    switch (material) {
+      case 'metal':
+        return std(color, 0.35, 0.85);
+      case 'glass':
+        return new MeshStandardMaterial({ color, roughness: 0.05, transparent: true, opacity: 0.3, depthWrite: false });
+      case 'fabric':
+        return std(color, 0.92);
+      case 'stone':
+        return std(color, 0.4);
+      case 'ceramic':
+        return std(color, 0.2);
+      case 'plant':
+        return std(color, 0.7);
+      case 'light':
+        return new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2, roughness: 0.5 });
+      case 'wood':
+        return std(color, 0.55);
+      default:
+        return std(color, 0.5);
+    }
+  });
+
+const DEG = Math.PI / 180;
+
+/** Builds a custom object's parts (repeats unrolled) with the given adder. */
+function buildCustom(parts: CustomPart[], add: Add) {
+  for (const p of parts) {
+    const geo =
+      p.shape === 'box'
+        ? rbox(p.w ?? 0.1, p.h ?? 0.1, p.d ?? 0.1, 0.006)
+        : p.shape === 'cylinder'
+          ? cyl(p.rTop ?? p.r ?? 0.1, p.r ?? 0.1, p.h ?? 0.1, 24)
+          : p.shape === 'cone'
+            ? cyl(0.001, p.r ?? 0.1, p.h ?? 0.1, 24)
+            : p.shape === 'sphere'
+              ? (sphereGeo(p.r ?? 0.1) as BufferGeometry)
+              : ring(p.r ?? 0.1, p.tube ?? 0.02);
+    const mat = customMat(p.material ?? 'plastic', p.color ?? '#d9d6cf');
+    const n = p.repeat?.count ?? 1;
+    const [px, pz] = p.repeat?.pivot ?? [0, 0];
+    for (let i = 0; i < n; i++) {
+      // Turn the part's position about the pivot, then step it.
+      const a = (p.repeat?.ry ?? 0) * i * DEG;
+      const ox = p.x - px;
+      const oz = p.z - pz;
+      const x = px + ox * Math.cos(a) + oz * Math.sin(a) + (p.repeat?.dx ?? 0) * i;
+      const z = pz - ox * Math.sin(a) + oz * Math.cos(a) + (p.repeat?.dz ?? 0) * i;
+      const y = p.y + (p.repeat?.dy ?? 0) * i;
+      const mesh = add(geo, mat, x, y, z);
+      mesh.rotation.set((p.rx ?? 0) * DEG, (p.ry ?? 0) * DEG + a, (p.rz ?? 0) * DEG);
+    }
+  }
+}
+
+const sphereGeos = new Map<number, SphereGeometry>();
+function sphereGeo(r: number) {
+  let g = sphereGeos.get(r);
+  if (!g) sphereGeos.set(r, (g = new SphereGeometry(r, 20, 14)));
   return g;
 }

@@ -636,7 +636,7 @@ export class PlanEditor {
     const below = this.host.ghost?.();
     // Stairs on the floor below open this floor: dashed outline, crossed, "Void".
     for (const it of below?.items ?? []) {
-      if (it.type !== 'stairs' && it.type !== 'stairsL') continue;
+      if (!FURNITURE[it.type]?.opensAbove) continue;
       const q = itemCorners(it);
       c.save();
       c.setLineDash([5, 4]);

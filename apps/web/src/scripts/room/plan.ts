@@ -4,6 +4,7 @@
  */
 
 import { DEFAULT_STYLE, FURNITURE, ROOM_DEFAULTS } from './catalog';
+import type { CustomDef } from './custom';
 import { styleFinish, styleOf } from './styles';
 
 export type Vec2 = [number, number];
@@ -83,6 +84,8 @@ export interface Plan {
    */
   storeys?: Storey[];
   storey?: number;
+  /** Objects Claude defined for this home (custom.ts), used by items of type `custom:<id>`. */
+  customs?: Record<string, CustomDef>;
   /** Artificial lighting: switched on (it also comes on by itself after dusk) and its colour temperature in kelvin. */
   lights?: { on: boolean; kelvin: number };
   /** Interior design style (styles.ts), which shapes furniture, palettes and default finishes. */
@@ -471,7 +474,7 @@ export function wallReach(p: Plan, nodes: Map<string, { x: number; z: number }>)
 /* ---------- Storeys ---------- */
 
 /** Settings that belong to the whole home, not one floor. */
-const HOME_WIDE = ['north', 'style', 'lights'] as const;
+const HOME_WIDE = ['north', 'style', 'lights', 'customs'] as const;
 
 const floorOnly = (p: Plan): Plan => {
   const { storeys: _s, storey: _i, ...rest } = p;
@@ -564,8 +567,7 @@ export function floorOpenings(floors: { storey: Storey; plan: Plan }[], i: numbe
     .filter((f) => f.storey.elevation < here.storey.elevation)
     .sort((a, b) => b.storey.elevation - a.storey.elevation)[0];
   for (const it of below?.plan.items ?? [])
-    if (it.type === 'stairs' || it.type === 'stairsL')
-      out.push({ poly: itemCorners(it), open: it.type === 'stairs' ? 0 : 1 });
+    if (FURNITURE[it.type]?.opensAbove) out.push({ poly: itemCorners(it), open: it.type === 'stairsL' ? 1 : 0 });
   return out;
 }
 
@@ -574,7 +576,7 @@ export function ceilingOpenings(floors: { storey: Storey; plan: Plan }[], i: num
   const here = floors[i];
   if (!here) return [];
   const out: FloorOpening[] = here.plan.items
-    .filter((it) => it.type === 'stairs' || it.type === 'stairsL')
+    .filter((it) => FURNITURE[it.type]?.opensAbove)
     .map((it) => ({ poly: itemCorners(it) }));
   const up = floors
     .filter((f) => f.storey.elevation > here.storey.elevation)

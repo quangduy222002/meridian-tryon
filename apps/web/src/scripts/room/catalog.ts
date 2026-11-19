@@ -23,6 +23,10 @@ export interface FurnitureDef {
    * relative to a 60 W-equivalent bulb.
    */
   light?: { kind: 'spot' | 'point'; y: number; power: number };
+  /** A stair (or lift) rising to the floor above, which is opened over it. */
+  opensAbove?: boolean;
+  /** Defined by Claude for this plan (custom.ts), not part of the built-in catalogue. */
+  custom?: true;
 }
 
 export const FURNITURE: Record<string, FurnitureDef> = {
@@ -513,6 +517,7 @@ export const FURNITURE: Record<string, FurnitureDef> = {
     colors: ['#c9a77c', '#7a5638', '#e9e3d8', '#3b3a38'],
     group: 'Stairs',
     role: 'wood',
+    opensAbove: true,
   },
   stairsL: {
     name: 'L-shaped stairs',
@@ -522,6 +527,7 @@ export const FURNITURE: Record<string, FurnitureDef> = {
     colors: ['#c9a77c', '#7a5638', '#e9e3d8', '#3b3a38'],
     group: 'Stairs',
     role: 'wood',
+    opensAbove: true,
   },
   void: {
     name: 'Double-height void (opening to the floor below)',

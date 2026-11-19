@@ -5,6 +5,7 @@
  */
 import { hostFailure, type HostSample } from '../../lib/claude-host';
 import { FURNITURE } from './catalog';
+import { CUSTOM_FORMAT, customId, registerCustoms, sanitizeCustom, type CustomDef } from './custom';
 import { STYLES } from './styles';
 import { nodeMap, pointInPoly, roomName, type Item, type Plan, type Room, type Vec2 } from './plan';
 
@@ -120,30 +121,6 @@ ${keep.length ? `Already in the room and staying (do not overlap them):\n${keep.
 The summary: one or two sentences in the language of the request, as you would explain the layout to the client — the zones and the main reason behind them (light, circulation, focal point), not a list of items.`;
 };
 
-const schema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['items', 'summary'],
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['type', 'x', 'z', 'rot', 'color'],
-        properties: {
-          type: { type: 'string', enum: Object.keys(FURNITURE) },
-          x: { type: 'number' },
-          z: { type: 'number' },
-          rot: { type: 'integer', enum: [0, 90, 180, 270] },
-          color: { type: 'string' },
-        },
-      },
-    },
-    summary: { type: 'string' },
-  },
-};
-
 /** Footprint corners of an item in plan space. */
 function corners(it: AiItem): Vec2[] {
   const d = FURNITURE[it.type]!;
@@ -169,51 +146,59 @@ function keepInside(it: AiItem, room: Room) {
   }
 }
 
-type Layout = { items: AiItem[]; summary: string };
+type Layout = { items: AiItem[]; summary: string; customs?: Record<string, unknown> };
 
-/** Through the host's Claude (claude.ai Artifact): the same brief, with the JSON shape spelled out. */
-async function askHost(
-  sample: HostSample,
-  request: string,
-  p: Plan,
-  room: Room,
-  keep: Item[],
-  styleId?: string,
-): Promise<Layout> {
-  const prompt = `${systemPrompt(p, room, keep, styleId)}
+/** Claude, through the host page (claude.ai Artifact) or the Anthropic API with a key. */
+export type Brain = string | HostSample;
 
-The request: ${request}
-
-Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": number, "rot": 0 | 90 | 180 | 270, "color": string}], "summary": string}.`;
-  try {
-    return await sample.json<Layout>(prompt);
-  } catch (err) {
-    throw new Error(hostFailure(err), { cause: err });
-  }
+/** The first JSON value in a reply (a fenced block, or from the first brace to the last). */
+function parseJson<T>(text: string): T {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text)?.[1];
+  const raw = fenced ?? text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  return JSON.parse(raw) as T;
 }
 
-/** Through the Anthropic API with the visitor's key. */
-async function askApi(
-  apiKey: string,
-  request: string,
-  p: Plan,
-  room: Room,
-  keep: Item[],
-  styleId?: string,
-): Promise<Layout> {
+async function toBase64(blob: Blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/**
+ * Asks Claude for JSON: `system` holds the brief, `user` the request; `images` (PNG) are shown with it. Throws an
+ * Error whose message is safe to show.
+ */
+export async function askJson<T>(brain: Brain, system: string, user: string, images: Blob[] = []): Promise<T> {
+  if (typeof brain !== 'string') {
+    try {
+      return await brain.json<T>(`${system}\n\n${user}`, images.length ? { images } : undefined);
+    } catch (err) {
+      throw new Error(hostFailure(err), { cause: err });
+    }
+  }
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const client = new Anthropic({ apiKey: brain, dangerouslyAllowBrowser: true });
   let res: Awaited<ReturnType<typeof client.beta.messages.create>>;
   try {
+    const content = [
+      ...(await Promise.all(
+        images.map(async (b) => ({
+          type: 'image' as const,
+          source: { type: 'base64' as const, media_type: 'image/png' as const, data: await toBase64(b) },
+        })),
+      )),
+      { type: 'text' as const, text: user },
+    ];
     res = await client.beta.messages.create({
       model: 'claude-opus-5-5',
       max_tokens: 16000,
       // If the model declines, the API retries on a fallback model inside the same call.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
-      system: systemPrompt(p, room, keep, styleId),
-      messages: [{ role: 'user', content: request }],
+      output_config: { effort: 'medium' },
+      system: `${system}\n\nReply with the JSON only.`,
+      messages: [{ role: 'user', content }],
       stream: false,
     });
   } catch (err) {
@@ -230,34 +215,50 @@ async function askApi(
     throw err;
   }
   if (res.stop_reason === 'refusal') throw new Error('The model declined this request. Try rephrasing it.');
-  if (res.stop_reason === 'max_tokens') throw new Error('The answer was cut off. Try a simpler request.');
+  if (res.stop_reason === 'max_tokens') throw new Error('The answer was cut off. Try asking for less at once.');
   const text = res.content.find((b) => b.type === 'text');
-  if (!text || text.type !== 'text') throw new Error('The model returned no layout. Try again.');
+  if (!text || text.type !== 'text') throw new Error('The model returned no answer. Try again.');
   try {
-    return JSON.parse(text.text) as Layout;
+    return parseJson<T>(text.text);
   } catch {
-    throw new Error('The model returned an unreadable layout. Try again.');
+    throw new Error('The model returned an unreadable answer. Try again.');
   }
 }
 
+/** Registers the customs an answer defined into the plan; returns their types (`custom:<id>`) by the answer's ids. */
+function adoptCustoms(p: Plan, raw: Record<string, unknown> | undefined) {
+  const types = new Map<string, string>();
+  for (const [key, def] of Object.entries(raw ?? {})) {
+    const clean = sanitizeCustom(def);
+    if (!clean) continue;
+    p.customs ??= {};
+    const id = customId(clean.name, p.customs);
+    p.customs[id] = clean;
+    types.set(key, `custom:${id}`);
+  }
+  registerCustoms(p.customs);
+  return types;
+}
+
 /**
- * Asks Claude for a layout — through the host page's Claude when given one, else the Anthropic API with a key.
+ * Asks Claude for a layout. Pieces the catalogue lacks may be defined on the way (they join plan.customs).
  * Throws an Error whose message is safe to show.
  */
-export async function furnishRoom(
-  brain: string | HostSample,
-  request: string,
-  p: Plan,
-  room: Room,
-  keep: Item[],
-  styleId?: string,
-) {
-  const out =
-    typeof brain === 'string'
-      ? await askApi(brain, request, p, room, keep, styleId)
-      : await askHost(brain, request, p, room, keep, styleId);
+export async function furnishRoom(brain: Brain, request: string, p: Plan, room: Room, keep: Item[], styleId?: string) {
+  const out = await askJson<Layout>(
+    brain,
+    systemPrompt(p, room, keep, styleId),
+    `The request: ${request}
+
+If the request needs something the list doesn't have (a piano, a spiral staircase, an aquarium, a built-in seat…), define it yourself under "customs" and use "custom:<its id>" as the item's type.
+${CUSTOM_FORMAT}
+
+Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": number, "rot": 0 | 90 | 180 | 270, "color": string}], "customs"?: {"<id>": <definition>}, "summary": string}.`,
+  );
   if (!out || !Array.isArray(out.items)) throw new Error('The model returned no layout. Try again.');
+  const customTypes = adoptCustoms(p, out.customs);
   const items = (out.items ?? [])
+    .map((i) => ({ ...i, type: i.type?.startsWith('custom:') ? (customTypes.get(i.type.slice(7)) ?? i.type) : i.type }))
     .filter((i) => FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
     .map((i) => {
       const def = FURNITURE[i.type]!;
@@ -274,4 +275,123 @@ export async function furnishRoom(
     });
   if (!items.length) throw new Error('The model placed nothing. Try describing the room differently.');
   return { items, summary: out.summary ?? '' };
+}
+
+/** A clarifying question from Claude, with likely answers to pick from. */
+export interface AiQuestion {
+  id: string;
+  text: string;
+  options?: string[];
+}
+
+/**
+ * Designs one object from a description ("a spiral staircase 1.6 m across", "a grand piano"). Claude may first ask
+ * one question when guessing would likely be wrong; `answers` carries what the client said so far.
+ */
+export async function designObject(
+  brain: Brain,
+  description: string,
+  answers: { q: string; a: string }[],
+  styleId?: string,
+): Promise<{ question: AiQuestion } | { def: CustomDef }> {
+  const st = styleId ? STYLES[styleId] : undefined;
+  const out = await askJson<{ question?: string; options?: string[]; object?: unknown }>(
+    brain,
+    `You are a 3D modeller for an interior design planner. You build objects the planner's catalogue doesn't have, at real size, as a kit of simple parts.
+${CUSTOM_FORMAT}
+${st ? `The home is in the ${st.name} style: use its materials and palette (timber ${st.wood}, metal ${st.metal}, upholstery ${st.fabric.join(' ')}, accents ${st.accent.join(' ')}).` : ''}
+If something essential is unclear and a guess would probably be wrong (for a staircase: how high it rises, its diameter or width; for furniture: its size or how many it seats), ask exactly one short question as {"question": string, "options": [2 to 4 likely answers]}. Ask at most two questions in total; otherwise, or once answered, reply {"object": <definition>}. Use the language of the client's description for questions.`,
+    `The client asks for: ${description}${answers.length ? `\n\nAlready answered:\n${answers.map((x) => `- ${x.q} → ${x.a}`).join('\n')}` : ''}`,
+  );
+  if (out.question && answers.length < 2)
+    return {
+      question: { id: 'q', text: out.question, options: out.options?.filter((o) => typeof o === 'string').slice(0, 4) },
+    };
+  const def = sanitizeCustom(out.object);
+  if (!def) throw new Error('The model could not build that object. Try describing it differently.');
+  return { def };
+}
+
+/** What Claude read on the drawing: questions for the client, then the pieces it found. */
+export interface DrawingReading {
+  questions: AiQuestion[];
+  found: { label: string; item: Omit<Item, 'id'>; custom?: boolean }[];
+  notes: string;
+}
+
+/**
+ * Reads the selected area of a drawing (an image of it) against the plan built from it: recognises symbols the
+ * detector doesn't (stairs of any shape, sanitary ware, built-ins, furniture, columns) and places them, with
+ * catalogue pieces where they fit and new objects where they don't. It may ask questions first; `answers` are the
+ * client's replies.
+ */
+export async function readDrawing(
+  brain: Brain,
+  image: Blob,
+  metresPerPixel: number,
+  size: { w: number; h: number },
+  p: Plan,
+  rooms: Room[],
+  answers: { q: string; a: string }[] = [],
+): Promise<DrawingReading> {
+  const roomList = rooms
+    .map((r) => {
+      const xs = r.poly.map((q) => q[0]);
+      const zs = r.poly.map((q) => q[1]);
+      return `- ${roomName(p, r)} ${r.area.toFixed(1)} m², x ${Math.min(...xs).toFixed(2)}–${Math.max(...xs).toFixed(2)}, z ${Math.min(...zs).toFixed(2)}–${Math.max(...zs).toFixed(2)}`;
+    })
+    .join('\n');
+  const catalogue = Object.entries(FURNITURE)
+    .filter(([, d]) => !d.custom)
+    .map(([t, d]) => `${t} (${d.name}, ${d.w}×${d.d} m)`)
+    .join('; ');
+  const out = await askJson<{
+    questions?: { text?: string; options?: string[] }[];
+    items?: { label?: string; type?: string; x?: number; z?: number; rot?: number }[];
+    customs?: Record<string, unknown>;
+    notes?: string;
+  }>(
+    brain,
+    `You are an architect reading a floor plan drawing for an interior planner. The image is the part of the drawing the client selected; walls, doors and windows have already been turned into the plan. Your job is everything else drawn there: stairs of any shape (straight, L, U, spiral), sanitary ware, kitchen fittings, built-in furniture, loose furniture, columns, planters, lifts, fireplaces.
+Coordinates: the image is ${size.w} × ${size.h} px; plan metres are x = px × ${metresPerPixel.toFixed(5)} to the right and z = py × ${metresPerPixel.toFixed(5)} downwards from the image's top-left corner.
+Rooms already found:
+${roomList || '- none'}
+Catalogue types: ${catalogue}.
+For each symbol: use a catalogue type when one matches (rot 0/90/180/270; the front faces +z at rot 0, back against the wall above), else define the object under "customs" and use "custom:<id>". A staircase that rises to another floor gets "opensAbove": true.
+${CUSTOM_FORMAT}
+Ask questions only where the drawing is genuinely ambiguous and the answer changes what you build (is this circle a spiral stair or a round table? does this stair go up or down? how high is the floor above?) — at most 3, each with 2–4 likely answers, in Vietnamese if the drawing's text is Vietnamese, else English. When questions remain unanswered, reply {"questions": [...]} only.
+Otherwise reply {"items": [{"label": what it is, "type", "x", "z", "rot"}], "customs"?: {...}, "notes": one sentence on anything you could not place}.`,
+    answers.length
+      ? `The client's answers:\n${answers.map((x) => `- ${x.q} → ${x.a}`).join('\n')}\nNow place everything; ask nothing more.`
+      : 'Read the drawing.',
+    [image],
+  );
+  if (out.questions?.length && !answers.length)
+    return {
+      questions: out.questions
+        .filter((q) => typeof q.text === 'string')
+        .slice(0, 3)
+        .map((q, i) => ({
+          id: `q${i}`,
+          text: q.text!,
+          options: q.options?.filter((o) => typeof o === 'string').slice(0, 4),
+        })),
+      found: [],
+      notes: '',
+    };
+  const customTypes = adoptCustoms(p, out.customs);
+  const found = (out.items ?? [])
+    .map((i) => ({ ...i, type: i.type?.startsWith('custom:') ? (customTypes.get(i.type.slice(7)) ?? i.type) : i.type }))
+    .filter((i) => i.type && FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
+    .map((i) => ({
+      label: String(i.label ?? FURNITURE[i.type!]!.name).slice(0, 60),
+      custom: i.type!.startsWith('custom:'),
+      item: {
+        type: i.type!,
+        x: i.x!,
+        z: i.z!,
+        rot: (((Math.round((i.rot ?? 0) / 90) * 90) % 360) + 360) % 360,
+      },
+    }));
+  return { questions: [], found, notes: typeof out.notes === 'string' ? out.notes : '' };
 }

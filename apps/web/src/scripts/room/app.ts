@@ -32,6 +32,8 @@ import {
 import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, GROUPS, WALLS } from './catalog';
 import { STYLES, styleColor, styleOf, styleSwatches } from './styles';
+import { customId, registerCustoms } from './custom';
+import type { AiQuestion, Brain, DrawingReading } from './ai';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
 import { createLook } from './look';
@@ -73,6 +75,16 @@ const HINTS: Record<Tool, string> = {
   place: 'Click the plan to place it — it snaps against the nearest wall. Esc cancels.',
 };
 
+/** An image of the drawing behind the plan, and how its pixels map to plan metres (plus the floor's shift). */
+export interface DrawingShot {
+  image: Blob;
+  metresPerPixel: number;
+  w: number;
+  h: number;
+  dx: number;
+  dz: number;
+}
+
 export interface RoomcraftOptions {
   /** localStorage key for this page's autosave. */
   storageKey?: string;
@@ -91,6 +103,8 @@ export interface RoomcraftApi {
   setPlan(p: Plan, message?: string): void;
   /** Records an edit made to plan() from outside (undo, save, redraw, 3D). */
   commit(message?: string): void;
+  /** Opens "Read the drawing with AI" on an image of the drawing the plan was built from. */
+  readDrawing(shot: DrawingShot): void;
   /** Adds a floor above the others from a plan (undoable) and switches to it. */
   addStorey(p: Plan, name?: string): void;
   redraw(): void;
@@ -118,6 +132,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
   /* ---------- 2D editor ---------- */
   let three: Awaited<ReturnType<typeof setupThree>> | null = null;
   const refresh = () => {
+    registerCustoms(plan.customs);
     rooms = findRooms(plan);
     three?.sync();
     editor.draw();
@@ -258,17 +273,26 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     for (const b of document.querySelectorAll<HTMLElement>('[popovertarget="catalog"]'))
       b.addEventListener('click', () => catalog.classList.toggle('open'));
   }
-  $('catGrid').innerHTML = GROUPS.map((g) => {
-    const items = Object.entries(FURNITURE).filter(([, d]) => d.group === g);
-    return items.length
-      ? `<h3>${esc(g)}</h3>${items
-          .map(
-            ([type, d]) =>
-              `<button type="button" data-type="${type}"><i style="background:${d.colors[0]}"></i>${esc(d.name)}<small>${(d.w * 100).toFixed(0)} × ${(d.d * 100).toFixed(0)} cm</small></button>`,
-          )
-          .join('')}`
-      : '';
-  }).join('');
+  registerCustoms(plan.customs);
+  const renderCatalog = () =>
+    ($('catGrid').innerHTML = [...GROUPS, 'Custom']
+      .map((g) => {
+        // Custom pieces: only this home's (FURNITURE keeps every one registered this visit).
+        const items = Object.entries(FURNITURE).filter(
+          ([t, d]) => d.group === g && (!d.custom || !!plan.customs?.[t.slice(7)]),
+        );
+        return items.length
+          ? `<h3>${esc(g)}</h3>${items
+              .map(
+                ([type, d]) =>
+                  `<button type="button" data-type="${type}"><i style="background:${d.colors[0]}"></i>${esc(d.name)}<small>${(d.w * 100).toFixed(0)} × ${(d.d * 100).toFixed(0)} cm</small></button>`,
+              )
+              .join('')}`
+          : '';
+      })
+      .join(''));
+  renderCatalog();
+  $('furnBtn').addEventListener('click', renderCatalog);
   $('catGrid').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-type]');
     if (!b) return;
@@ -607,6 +631,151 @@ ${
     showPane('three');
   });
 
+  /* ---------- Claude: questions, new objects, reading the drawing ---------- */
+  const brain = (): Brain | null => hostAi ?? (apiKey || null);
+  const needBrain = (status: HTMLElement) => {
+    const b = brain();
+    if (!b) status.textContent = 'Add your Anthropic API key in the AI dialog first (or open this page in claude.ai).';
+    return b;
+  };
+  /** Shows Claude's questions with its suggested answers (and a box for another); resolves with the replies. */
+  const ask = (box: HTMLElement, questions: AiQuestion[]) =>
+    new Promise<{ q: string; a: string }[]>((resolve) => {
+      box.hidden = false;
+      box.innerHTML = `${questions
+        .map(
+          (q, i) =>
+            `<fieldset data-q="${i}"><legend>${esc(q.text)}</legend><div class="opts">${(q.options ?? [])
+              .map(
+                (o) => `<button type="button" class="btn" data-opt="${esc(o)}" aria-pressed="false">${esc(o)}</button>`,
+              )
+              .join(
+                '',
+              )}</div><input type="text" placeholder="Or type your answer" aria-label="Your answer" /></fieldset>`,
+        )
+        .join('')}<div class="choices"><button type="button" class="primary" data-act="answer">Continue</button></div>`;
+      box.onclick = (e) => {
+        const b = (e.target as Element).closest<HTMLButtonElement>('button');
+        if (!b) return;
+        if (b.dataset.opt !== undefined) {
+          for (const x of b.parentElement!.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b));
+          return;
+        }
+        if (b.dataset.act !== 'answer') return;
+        const replies = questions.map((q, i) => {
+          const fs = box.querySelector<HTMLElement>(`[data-q="${i}"]`)!;
+          const typed = fs.querySelector<HTMLInputElement>('input')!.value.trim();
+          const picked = fs.querySelector<HTMLElement>('[aria-pressed="true"]')?.dataset.opt ?? '';
+          return { q: q.text, a: typed || picked || 'No preference — use your judgement' };
+        });
+        box.hidden = true;
+        box.onclick = null;
+        resolve(replies);
+      };
+    });
+
+  // Create an object the catalogue lacks.
+  const createDlg = $<HTMLDialogElement>('createDlg');
+  $('createOpen').addEventListener('click', () => {
+    hideCatalog();
+    $('createStatus').textContent = hostAi ? 'Uses your Claude account.' : '';
+    $('createAsk').hidden = true;
+    createDlg.showModal();
+  });
+  $<HTMLFormElement>('createForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = $('createStatus');
+    const b = needBrain(status);
+    const text = $<HTMLTextAreaElement>('createPrompt').value.trim();
+    if (!b || !text) return;
+    const go = $<HTMLButtonElement>('createGo');
+    go.disabled = true;
+    createDlg.classList.add('busy');
+    const answers: { q: string; a: string }[] = [];
+    try {
+      const { designObject } = await import('./ai');
+      for (;;) {
+        status.textContent = 'Designing it…';
+        const out = await designObject(b, text, answers, plan.style);
+        if ('def' in out) {
+          plan.customs ??= {};
+          const id = customId(out.def.name, plan.customs);
+          plan.customs[id] = out.def;
+          registerCustoms(plan.customs);
+          host.commit(`${out.def.name} created — click the plan to place it`);
+          createDlg.close();
+          showPane('plan');
+          editor.setTool('place', `custom:${id}`);
+          break;
+        }
+        createDlg.classList.remove('busy');
+        status.textContent = 'Claude needs a detail:';
+        answers.push(...(await ask($('createAsk'), [out.question])));
+        createDlg.classList.add('busy');
+      }
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+    } finally {
+      go.disabled = false;
+      createDlg.classList.remove('busy');
+    }
+  });
+
+  // Read a drawing (offered by Floorwise): questions first if needed, then a checklist of what was found.
+  const readDlg = $<HTMLDialogElement>('readDlg');
+  let found: DrawingReading['found'] = [];
+  const readDrawingFlow = async (shot: DrawingShot) => {
+    const status = $('readStatus');
+    $('readList').hidden = true;
+    $('readActions').hidden = true;
+    $('readAsk').hidden = true;
+    readDlg.showModal();
+    const b = needBrain(status);
+    if (!b) return;
+    readDlg.classList.add('busy');
+    try {
+      const { readDrawing } = await import('./ai');
+      status.textContent = 'Reading the drawing…';
+      let out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, rooms);
+      if (out.questions.length) {
+        readDlg.classList.remove('busy');
+        status.textContent = 'A few questions before placing anything:';
+        const answers = await ask($('readAsk'), out.questions);
+        readDlg.classList.add('busy');
+        status.textContent = 'Placing what it found…';
+        out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, rooms, answers);
+      }
+      found = out.found.map((f) => ({ ...f, item: { ...f.item, x: f.item.x + shot.dx, z: f.item.z + shot.dz } }));
+      registerCustoms(plan.customs);
+      if (!found.length) {
+        status.textContent = out.notes || 'Nothing more to add from this drawing.';
+        return;
+      }
+      $('readList').innerHTML = found
+        .map(
+          (f, i) =>
+            `<li><label><input type="checkbox" data-i="${i}" checked /> ${esc(f.label)} <small>${f.custom ? 'new object' : esc(FURNITURE[f.item.type]?.name ?? '')}</small></label></li>`,
+        )
+        .join('');
+      $('readList').hidden = false;
+      $('readActions').hidden = false;
+      status.textContent = out.notes;
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+    } finally {
+      readDlg.classList.remove('busy');
+    }
+  };
+  $('readAdd').addEventListener('click', () => {
+    const picked = [...document.querySelectorAll<HTMLInputElement>('#readList input:checked')].map(
+      (x) => found[Number(x.dataset.i)]!,
+    );
+    for (const f of picked) plan.items.push({ id: uid('i'), ...f.item });
+    readDlg.close();
+    host.commit(`${picked.length} pieces added from the drawing`);
+    showPane('three');
+  });
+
   /* ---------- Export ---------- */
   const exportDlg = $<HTMLDialogElement>('exportDlg');
   const exportStatus = $('exportStatus');
@@ -819,6 +988,7 @@ ${
       if (message) toast(message);
     },
     commit: (message) => host.commit(message),
+    readDrawing: (shot) => void readDrawingFlow(shot),
     addStorey(p, name) {
       replaceHome(addStorey(plan, p, name), `${name ?? 'New floor'} added`);
     },

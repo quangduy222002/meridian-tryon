@@ -3,7 +3,7 @@
  * then fix and furnish it in the Roomcraft workspace with the original drawing faintly underneath.
  */
 import { $, toast } from '../../lib/dom/chrome';
-import { startRoomcraft, type RoomcraftApi, type RoomcraftOptions } from '../room/app';
+import { startRoomcraft, type DrawingShot, type RoomcraftApi, type RoomcraftOptions } from '../room/app';
 import { findRooms, type Plan } from '../room/plan';
 import { inRegion, scaleFromDimensions, type Drawing, type Region } from './drawing';
 import { detectWalls } from './detect';
@@ -105,6 +105,7 @@ export async function startStudio(gl: boolean) {
       inWorkspace = true;
       // The drawing toggle only means something when the plan came from a drawing this visit.
       $<HTMLButtonElement>('drawingBtn').disabled = !builtNow();
+      $<HTMLButtonElement>('readBtn').disabled = !builtNow();
     }
   };
 
@@ -361,6 +362,67 @@ export async function startStudio(gl: boolean) {
     if (sheet.isCalibrating) sheet.cancelCalibration();
     else sheet.startCalibration();
     $('sheet').focus();
+  });
+
+  /* ---------- Read the drawing with AI ---------- */
+  /** The area the current floor was built from, as an image (erased areas blanked) with its pixel scale. */
+  const shoot = async (): Promise<DrawingShot | null> => {
+    const b = builtNow();
+    if (!b) return null;
+    const { d, r, k, dx, dz } = b;
+    const wDraw = r.x1 - r.x0;
+    const hDraw = r.y1 - r.y0;
+    const px = Math.min(1600 / wDraw, 1600 / hDraw);
+    const c = document.createElement('canvas');
+    c.width = Math.round(wDraw * px);
+    c.height = Math.round(hDraw * px);
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, c.width, c.height);
+    const X = (x: number) => (x - r.x0) * px;
+    const Y = (y: number) => (r.y1 - y) * px;
+    if (d.image && underlayImg?.complete) {
+      // Crop the page raster to the region.
+      const iw = underlayImg.naturalWidth / (d.image.x1 - d.image.x0);
+      const ih = underlayImg.naturalHeight / (d.image.y1 - d.image.y0);
+      g.drawImage(
+        underlayImg,
+        (r.x0 - d.image.x0) * iw,
+        (d.image.y1 - r.y1) * ih,
+        wDraw * iw,
+        hDraw * ih,
+        0,
+        0,
+        c.width,
+        c.height,
+      );
+    } else {
+      g.strokeStyle = '#000000';
+      g.lineWidth = 1;
+      g.beginPath();
+      for (const s of d.segs) {
+        if (!inRegion(r, s.x1, s.y1) && !inRegion(r, s.x2, s.y2)) continue;
+        g.moveTo(X(s.x1), Y(s.y1));
+        g.lineTo(X(s.x2), Y(s.y2));
+      }
+      g.stroke();
+      g.fillStyle = '#000000';
+      for (const t of d.texts) {
+        if (!inRegion(r, t.x, t.y)) continue;
+        g.font = `${Math.max(9, t.h * px)}px sans-serif`;
+        g.fillText(t.str, X(t.x), Y(t.y));
+      }
+    }
+    g.fillStyle = '#ffffff';
+    for (const m of masks) g.fillRect(X(m.x0), Y(m.y1), (m.x1 - m.x0) * px, (m.y1 - m.y0) * px);
+    const image = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
+    if (!image) return null;
+    return { image, metresPerPixel: k / 1000 / px, w: c.width, h: c.height, dx, dz };
+  };
+  $('readBtn').addEventListener('click', async () => {
+    const shot = await shoot();
+    if (!shot) return toast('Build the plan from a drawing first.');
+    api.readDrawing(shot);
   });
 
   /* ---------- Erase notes and symbols ---------- */
