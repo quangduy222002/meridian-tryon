@@ -4,9 +4,9 @@
  * else with the visitor's own Anthropic API key (no server either way). Loads only when someone presses "Furnish".
  */
 import { hostFailure, type HostSample } from '../../lib/claude-host';
-import { FURNITURE } from './catalog';
+import { FLOORS, FURNITURE, WALLS } from './catalog';
 import { CUSTOM_FORMAT, customId, registerCustoms, sanitizeCustom, type CustomDef } from './custom';
-import { STYLES } from './styles';
+import { STYLES, type DesignStyle, type Legs } from './styles';
 import { nodeMap, pointInPoly, roomName, type Item, type Plan, type Room, type Vec2 } from './plan';
 
 export interface AiItem {
@@ -166,7 +166,7 @@ async function toBase64(blob: Blob) {
 }
 
 /**
- * Asks Claude for JSON: `system` holds the brief, `user` the request; `images` (PNG) are shown with it. Throws an
+ * Asks Claude for JSON: `system` holds the brief, `user` the request; `images` (PNG or JPEG) are shown with it. Throws an
  * Error whose message is safe to show.
  */
 export async function askJson<T>(brain: Brain, system: string, user: string, images: Blob[] = []): Promise<T> {
@@ -185,7 +185,11 @@ export async function askJson<T>(brain: Brain, system: string, user: string, ima
       ...(await Promise.all(
         images.map(async (b) => ({
           type: 'image' as const,
-          source: { type: 'base64' as const, media_type: 'image/png' as const, data: await toBase64(b) },
+          source: {
+            type: 'base64' as const,
+            media_type: b.type === 'image/jpeg' ? ('image/jpeg' as const) : ('image/png' as const),
+            data: await toBase64(b),
+          },
         })),
       )),
       { type: 'text' as const, text: user },
@@ -244,16 +248,26 @@ function adoptCustoms(p: Plan, raw: Record<string, unknown> | undefined) {
  * Asks Claude for a layout. Pieces the catalogue lacks may be defined on the way (they join plan.customs).
  * Throws an Error whose message is safe to show.
  */
-export async function furnishRoom(brain: Brain, request: string, p: Plan, room: Room, keep: Item[], styleId?: string) {
+export async function furnishRoom(
+  brain: Brain,
+  request: string,
+  p: Plan,
+  room: Room,
+  keep: Item[],
+  styleId?: string,
+  /** The client's reference photo(s): the room should feel like them. */
+  references: Blob[] = [],
+) {
   const out = await askJson<Layout>(
     brain,
     systemPrompt(p, room, keep, styleId),
     `The request: ${request}
-
+${references.length ? "\nThe attached photo is the client's reference: match its mood, materials, palette and the kinds of pieces in it (the same sort of sofa, tables, plants, lighting), adapted to this room's size and plan.\n" : ''}
 If the request needs something the list doesn't have (a piano, a spiral staircase, an aquarium, a built-in seat…), define it yourself under "customs" and use "custom:<its id>" as the item's type.
 ${CUSTOM_FORMAT}
 
 Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": number, "rot": 0 | 90 | 180 | 270, "color": string}], "customs"?: {"<id>": <definition>}, "summary": string}.`,
+    references,
   );
   if (!out || !Array.isArray(out.items)) throw new Error('The model returned no layout. Try again.');
   const customTypes = adoptCustoms(p, out.customs);
@@ -394,4 +408,81 @@ Otherwise reply {"items": [{"label": what it is, "type", "x", "z", "rot"}], "cus
       },
     }));
   return { questions: [], found, notes: typeof out.notes === 'string' ? out.notes : '' };
+}
+
+const HEX6 = /^#[0-9a-f]{6}$/i;
+const LEGS: Legs[] = ['tapered', 'metal', 'plinth', 'turned', 'rattan'];
+const hexes = (v: unknown, n: number, dflt: string[]) => {
+  const out = Array.isArray(v) ? v.filter((c): c is string => typeof c === 'string' && HEX6.test(c)).slice(0, n) : [];
+  return out.length ? out : dflt;
+};
+const text = (v: unknown, n: number, dflt: string) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, n) : dflt);
+
+/** A style from Claude made safe to use: known finishes and leg types, real colours, catalogue pieces only. */
+function cleanStyle(raw: unknown, types: Map<string, string>): DesignStyle | null {
+  const o = raw as Partial<DesignStyle> | null;
+  if (!o || typeof o !== 'object') return null;
+  const base = STYLES.modern!;
+  const finishes: DesignStyle['finishes'] = {};
+  for (const [room, f] of Object.entries(o.finishes ?? {}).slice(0, 12)) {
+    const floor = f?.floor && FLOORS[f.floor] ? f.floor : undefined;
+    const wall = f?.wall && WALLS[f.wall] ? f.wall : undefined;
+    if (floor || wall)
+      finishes[room] = { floor: floor ?? base.finishes['*']!.floor, wall: wall ?? base.finishes['*']!.wall };
+  }
+  finishes['*'] ??= base.finishes['*']!;
+  const signature = (Array.isArray(o.signature) ? o.signature : [])
+    .map((t) => (typeof t === 'string' && t.startsWith('custom:') ? (types.get(t.slice(7)) ?? t) : t))
+    .filter((t): t is string => typeof t === 'string' && !!FURNITURE[t])
+    .slice(0, 8);
+  return {
+    name: text(o.name, 40, 'From your photo'),
+    vi: text(o.vi, 40, 'Theo ảnh mẫu'),
+    blurb: text(o.blurb, 140, 'Read from your reference photo.'),
+    wood: HEX6.test(o.wood ?? '') ? o.wood! : base.wood,
+    metal: HEX6.test(o.metal ?? '') ? o.metal! : base.metal,
+    legs: LEGS.includes(o.legs as Legs) ? o.legs! : base.legs,
+    round: typeof o.round === 'number' && Number.isFinite(o.round) ? Math.min(1.6, Math.max(0.4, o.round)) : 0.8,
+    fabric: hexes(o.fabric, 4, base.fabric),
+    cases: hexes(o.cases, 3, base.cases),
+    accent: hexes(o.accent, 2, base.accent),
+    finishes,
+    signature: signature.length ? signature : base.signature,
+    brief: text(o.brief, 700, base.brief),
+  };
+}
+
+/**
+ * Reads a client's reference photo of an interior as a design style for their home: its materials, palette, how
+ * the furniture stands, the finish of each kind of room and the pieces that make it read. Characteristic pieces the
+ * catalogue lacks (a tree-stump stool, a drum coffee table, a steel plant wall) are modelled on the way.
+ */
+export async function styleFromPhoto(brain: Brain, photo: Blob, note: string, p: Plan) {
+  const list = (o: Record<string, { name: string }>) =>
+    Object.entries(o)
+      .map(([k, f]) => `${k} (${f.name})`)
+      .join(', ');
+  const out = await askJson<{ style?: unknown; customs?: Record<string, unknown>; summary?: string }>(
+    brain,
+    `You are a senior interior designer. A client shows you a reference photo of an interior they like; you turn it into a design style for their own home in a 3D planner, the way you would brief your team: what makes the photo read, translated into the planner's materials and furniture.
+
+Look at: the floor and wall materials; the timber tone; metalwork; how furniture stands (slim tapered legs, black metal frames, solid plinths, turned legs, rattan); how soft the shapes are; the upholstery, cabinetry and accent colours (sample real hex colours from the photo); the decor (plants, rugs, lighting); the mood.
+
+The planner has these finishes. Floors: ${list(FLOORS)}. Walls: ${list(WALLS)}.
+Leg types: tapered, metal, plinth, turned, rattan.
+Catalogue pieces: ${Object.entries(FURNITURE)
+      .filter(([, d]) => d.group !== 'Stairs' && !d.custom)
+      .map(([t, d]) => `${t} (${d.name})`)
+      .join(', ')}.
+Pieces in the photo that make the style and that the catalogue lacks (a tree-stump side table, a drum coffee table, a steel shelving wall with plants, a leather sling chair…): define up to 4 of them under "customs" and name them in the signature as "custom:<id>".
+${CUSTOM_FORMAT}
+
+Reply {"style": {"name": English name of the style (e.g. "Industrial loft"), "vi": Vietnamese name, "blurb": one line, "wood": hex, "metal": hex, "legs": one leg type, "round": 0.4 crisp … 1.6 pillowy, "fabric": [2–4 hex, main upholstery first], "cases": [1–3 hex], "accent": [1–2 hex], "finishes": {"*": {"floor", "wall"}, "Bedroom": {...}, "Bathroom": {...}, "Kitchen": {...}, "Balcony": {...}} using the finish keys above, "signature": [4–8 piece types], "brief": what a designer furnishing a room in this style must do and avoid, in 2–4 sentences}, "customs"?: {"<id>": <definition>}, "summary": one or two sentences to the client, in Vietnamese, on what you took from the photo}.`,
+    note ? `What the client likes about it: ${note}` : 'Read the photo.',
+    [photo],
+  );
+  const types = adoptCustoms(p, out.customs);
+  const style = cleanStyle(out.style, types);
+  if (!style) throw new Error('Claude could not read a style from that photo. Try another one.');
+  return { style, summary: typeof out.summary === 'string' ? out.summary : '' };
 }

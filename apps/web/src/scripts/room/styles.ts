@@ -215,6 +215,15 @@ export const STYLES: Record<string, DesignStyle> = {
 
 export const DEFAULT_STYLE_ID = 'scandinavian';
 
+/** Ids of styles read from a client's reference photo start with this; one per home (plan.photoStyle). */
+export const PHOTO_PREFIX = 'photo-';
+
+/** Makes a home's photo style available by its id (and forgets any other), wherever STYLES is read. */
+export function registerPhotoStyle(photo: { id: string; style: DesignStyle } | undefined) {
+  for (const id of Object.keys(STYLES)) if (id.startsWith(PHOTO_PREFIX) && id !== photo?.id) delete STYLES[id];
+  if (photo) STYLES[photo.id] = photo.style;
+}
+
 export const styleOf = (id?: string): DesignStyle => STYLES[id ?? ''] ?? STYLES[DEFAULT_STYLE_ID]!;
 
 /** Floor and wall finish a style gives a room of this kind. */

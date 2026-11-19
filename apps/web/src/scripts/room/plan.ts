@@ -5,7 +5,7 @@
 
 import { DEFAULT_STYLE, FURNITURE, ROOM_DEFAULTS } from './catalog';
 import type { CustomDef } from './custom';
-import { styleFinish, styleOf } from './styles';
+import { styleFinish, styleOf, type DesignStyle } from './styles';
 
 export type Vec2 = [number, number];
 
@@ -90,6 +90,8 @@ export interface Plan {
   lights?: { on: boolean; kelvin: number };
   /** Interior design style (styles.ts), which shapes furniture, palettes and default finishes. */
   style?: string;
+  /** A style Claude read from the client's reference photo; `style` names it by its id when it is in use. */
+  photoStyle?: { id: string; style: DesignStyle };
 }
 
 export interface Room {
@@ -474,7 +476,7 @@ export function wallReach(p: Plan, nodes: Map<string, { x: number; z: number }>)
 /* ---------- Storeys ---------- */
 
 /** Settings that belong to the whole home, not one floor. */
-const HOME_WIDE = ['north', 'style', 'lights', 'customs'] as const;
+const HOME_WIDE = ['north', 'style', 'lights', 'customs', 'photoStyle'] as const;
 
 const floorOnly = (p: Plan): Plan => {
   const { storeys: _s, storey: _i, ...rest } = p;

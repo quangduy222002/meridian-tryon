@@ -222,6 +222,37 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
       wall finish of each room. Rooms you finished by hand are reset to the style.
     </p>
     <div class="style-grid" id="styleGrid" role="group" aria-label="Styles"></div>
+    <form id="photoForm" class="photo-style">
+      <h3>Match a reference photo</h3>
+      <p>
+        Show Claude an interior you like. It reads the materials, palette and pieces, makes a style of them for this
+        home and models the pieces the library lacks.
+      </p>
+      <div class="photo-row">
+        <label class="photo-pick">
+          <input type="file" id="photoIn" accept="image/*" />
+          <img id="photoPrev" alt="Your reference photo" hidden />
+          <span id="photoPick">Choose a photo</span>
+        </label>
+        <div class="photo-opts">
+          <input
+            type="text"
+            id="photoNote"
+            placeholder="What do you like in it? (optional)"
+            aria-label="What you like"
+          />
+          <label class="check">
+            <input type="checkbox" id="photoFurnish" checked /> Furnish the main room like it
+          </label>
+          <div class="choices">
+            <button type="submit" class="primary" id="photoGo">
+              Make my style
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="ai-status" id="photoStatus" aria-live="polite"></p>
+    </form>
   </dialog>
 
   <dialog id="lightDlg" class="sheet small" aria-labelledby="lightTitle">

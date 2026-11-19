@@ -786,6 +786,90 @@ test('Claude reads the drawing, asks, and models objects the library lacks', asy
   expect(errors).toEqual([]);
 });
 
+test('Claude reads a style from a reference photo and furnishes the main room like it', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    const drum = {
+      name: 'Drum coffee table',
+      w: 0.8,
+      d: 0.8,
+      h: 0.4,
+      parts: [{ shape: 'cylinder', r: 0.4, h: 0.4, x: 0, y: 0.2, z: 0, material: 'metal', color: '#2a2a2a' }],
+    };
+    const w = window as unknown as { claude: unknown; __photos: string[] };
+    w.__photos = [];
+    w.claude = {
+      use: async (name: string) =>
+        name !== 'sample'
+          ? null
+          : {
+              json: async (prompt: string, opts?: { images?: Blob[] }) => {
+                for (const b of opts?.images ?? []) w.__photos.push(b.type);
+                if (prompt.includes('reference photo of an interior'))
+                  return {
+                    style: {
+                      name: 'Industrial loft',
+                      vi: 'Công nghiệp',
+                      wood: '#8b5a35',
+                      metal: '#262626',
+                      legs: 'metal',
+                      fabric: ['#b08a6a', '#3e4a52'],
+                      finishes: {
+                        '*': { floor: 'concrete', wall: 'plaster' },
+                        Bedroom: { floor: 'walnut', wall: 'brick' },
+                      },
+                      signature: ['sofa', 'custom:drum', 'not-a-piece'],
+                    },
+                    customs: { drum },
+                    summary: 'Phong cách công nghiệp.',
+                  };
+                // The furnishing call: a sofa and the new drum table in the middle of the room.
+                const pts = [...prompt.matchAll(/from \((-?[\d.]+), (-?[\d.]+)\)/g)].map((m) => [+m[1]!, +m[2]!]);
+                const x = pts.reduce((s, q) => s + q[0]!, 0) / pts.length;
+                const z = pts.reduce((s, q) => s + q[1]!, 0) / pts.length;
+                const drumType = /- (custom:drum[\w-]*):/.exec(prompt)?.[1];
+                return {
+                  items: [
+                    { type: 'sofa', x, z: z - 1, rot: 0 },
+                    { type: drumType, x, z, rot: 0 },
+                  ],
+                  summary: 'Phòng khách kiểu loft.',
+                };
+              },
+            },
+    };
+  });
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  await page.locator('#styleBtn').click();
+  // A small generated picture stands in for the client's photo.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  await page.locator('#photoIn').setInputFiles({ name: 'loft.png', mimeType: 'image/png', buffer: png });
+  await expect(page.locator('#photoPrev')).not.toHaveAttribute('hidden', '');
+  await page.locator('#photoGo').click();
+  await expect(page.locator('#styleDlg')).not.toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.toast')).toContainText('loft');
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('roomcraft.plan') ?? '{}'));
+  await expect.poll(async () => (await saved()).photoStyle?.style.name).toBe('Industrial loft');
+  const plan = await saved();
+  expect(plan.style).toBe(plan.photoStyle.id);
+  // Unknown finishes and pieces were dropped; the new piece the photo needed is in the style and the room.
+  expect(plan.photoStyle.style.signature).toEqual(['sofa', 'custom:drum-coffee-table']);
+  expect(plan.items.map((i: { type: string }) => i.type)).toContain('custom:drum-coffee-table');
+  // Both calls saw the photo, as a JPEG.
+  expect(await page.evaluate(() => (window as unknown as { __photos: string[] }).__photos)).toEqual([
+    'image/jpeg',
+    'image/jpeg',
+  ]);
+  // The style is offered in the style dialog with the built-in ones.
+  await page.locator('#styleBtn').click();
+  await expect(page.locator('#styleGrid')).toContainText('Industrial loft');
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import keeps a hand-set scale, selects by keyboard and goes back to the plan', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

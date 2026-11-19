@@ -31,7 +31,7 @@ import {
 } from '@meridian/three-core';
 import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, GROUPS, WALLS } from './catalog';
-import { STYLES, styleColor, styleOf, styleSwatches } from './styles';
+import { PHOTO_PREFIX, STYLES, registerPhotoStyle, styleColor, styleOf, styleSwatches } from './styles';
 import { customId, registerCustoms } from './custom';
 import type { AiQuestion, Brain, DrawingReading } from './ai';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
@@ -133,6 +133,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
   let three: Awaited<ReturnType<typeof setupThree>> | null = null;
   const refresh = () => {
     registerCustoms(plan.customs);
+    registerPhotoStyle(plan.photoStyle);
     rooms = findRooms(plan);
     three?.sync();
     editor.draw();
@@ -274,6 +275,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
       b.addEventListener('click', () => catalog.classList.toggle('open'));
   }
   registerCustoms(plan.customs);
+  registerPhotoStyle(plan.photoStyle);
   const renderCatalog = () =>
     ($('catGrid').innerHTML = [...GROUPS, 'Custom']
       .map((g) => {
@@ -584,6 +586,86 @@ ${
   $('styleBtn').addEventListener('click', () => {
     renderStyles();
     styleDlg.showModal();
+  });
+  // A style from the client's reference photo. The photo stays in memory for this visit, so later AI furnishing in
+  // that style can look at it too; the style itself is saved with the plan.
+  let refPhoto: Blob | null = null;
+  const photoIn = $<HTMLInputElement>('photoIn');
+  photoIn.addEventListener('change', async () => {
+    const file = photoIn.files?.[0];
+    if (!file) return;
+    try {
+      const bmp = await createImageBitmap(file);
+      const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k);
+      c.height = Math.round(bmp.height * k);
+      c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
+      bmp.close();
+      refPhoto = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.86));
+      const prev = $<HTMLImageElement>('photoPrev');
+      prev.src = c.toDataURL('image/jpeg', 0.7);
+      prev.hidden = false;
+      $('photoPick').textContent = 'Change photo';
+      $('photoStatus').textContent = '';
+    } catch {
+      $('photoStatus').textContent = 'That file could not be read as a picture.';
+    }
+  });
+  $<HTMLFormElement>('photoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = $('photoStatus');
+    const go = $<HTMLButtonElement>('photoGo');
+    if (!refPhoto) {
+      status.textContent = 'Choose a photo first.';
+      return;
+    }
+    const b = needBrain(status);
+    if (!b || go.getAttribute('aria-disabled') === 'true') return;
+    go.setAttribute('aria-disabled', 'true');
+    styleDlg.classList.add('busy');
+    status.textContent = 'Claude is looking at the photo…';
+    try {
+      const { styleFromPhoto, furnishRoom } = await import('./ai');
+      const note = $<HTMLInputElement>('photoNote').value.trim();
+      const out = await styleFromPhoto(b, refPhoto, note, plan);
+      const id = `${PHOTO_PREFIX}${Date.now().toString(36)}`;
+      plan.photoStyle = { id, style: out.style };
+      registerPhotoStyle(plan.photoStyle);
+      applyStyle(id);
+      let said = out.summary || `Style: ${out.style.name}`;
+      // Then the main room, furnished the way the photo is.
+      const main = [...rooms]
+        .filter((r) => !/Bathroom|Balcony|Hall|Shaft|Kitchen/.test(roomName(plan, r)))
+        .sort((x, y) => y.area - x.area)[0];
+      if ($<HTMLInputElement>('photoFurnish').checked && main) {
+        status.textContent = `Furnishing the ${roomName(plan, main).toLowerCase()} like the photo…`;
+        const inRoom = (it: { x: number; z: number }) => pointInPoly([it.x, it.z], main.poly);
+        const laid = await furnishRoom(
+          b,
+          `Furnish this room like the reference photo${note ? ` (${note})` : ''}.`,
+          plan,
+          main,
+          [],
+          id,
+          [refPhoto],
+        );
+        plan.items = plan.items.filter((i) => !inRoom(i));
+        for (const it of laid.items) plan.items.push({ id: uid('i'), ...it });
+        editor.select({ kind: 'room', id: main.key });
+        host.commit(laid.summary || `${roomName(plan, main)} furnished like the photo`);
+        said = laid.summary || said;
+      }
+      status.textContent = '';
+      styleDlg.close();
+      toast(said);
+      showPane('three');
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Something went wrong. Try again.';
+    } finally {
+      go.removeAttribute('aria-disabled');
+      styleDlg.classList.remove('busy');
+    }
   });
   $('styleGrid').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-style]');
@@ -931,7 +1013,8 @@ ${
           delete r.wall;
         }
       }
-      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep, styleId || undefined);
+      const photo = styleId.startsWith(PHOTO_PREFIX) && refPhoto ? [refPhoto] : [];
+      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep, styleId || undefined, photo);
       if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z));
       for (const it of out.items) plan.items.push({ id: uid('i'), ...it });
       aiDlg.close();

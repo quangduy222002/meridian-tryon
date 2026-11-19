@@ -1186,3 +1186,86 @@ svg {
     display: none;
   }
 }
+
+/* Style from a reference photo */
+.photo-style {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+}
+.photo-style h3 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.photo-style > p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.photo-row {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.photo-pick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--mute);
+}
+.photo-pick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.photo-pick img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-pick img:not([hidden]) + span {
+  position: absolute;
+  bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+}
+.photo-opts {
+  display: grid;
+  gap: 8px;
+}
+.photo-opts input[type='text'] {
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-strong);
+  font: inherit;
+  font-size: 13px;
+}
+.photo-opts .check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+}
+.photo-opts .choices {
+  justify-content: flex-start;
+}
+@media (max-width: 560px) {
+  .photo-row {
+    grid-template-columns: 1fr;
+  }
+}
