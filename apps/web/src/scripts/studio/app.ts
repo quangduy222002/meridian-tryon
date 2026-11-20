@@ -42,6 +42,22 @@ export async function startStudio(gl: boolean) {
   let inWorkspace = false;
   let underlayOn = true;
   let underlayImg: HTMLImageElement | null = null;
+  /** The page raster of each drawing: floors built from different sheets each keep their own underlay. */
+  const images = new WeakMap<Drawing, HTMLImageElement>();
+  const imageFor = (d: Drawing): HTMLImageElement | null => {
+    if (!d.image) return null;
+    let img = images.get(d);
+    if (!img) {
+      img = new Image();
+      img.src = d.image.url;
+      img.onload = () => {
+        sheet.draw();
+        api.redraw();
+      };
+      images.set(d, img);
+    }
+    return img;
+  };
 
   const underlay: RoomcraftOptions['underlay'] = (c, X, Z) => {
     const b = builtNow();
@@ -49,12 +65,13 @@ export async function startStudio(gl: boolean) {
     const { d, r, k, dx, dz } = b;
     const mx = (x: number) => ((x - r.x0) * k) / 1000 + dx;
     const mz = (y: number) => ((r.y1 - y) * k) / 1000 + dz;
+    const img = imageFor(d);
     c.save();
     c.globalAlpha = 0.32;
-    if (d.image && underlayImg?.complete) {
+    if (d.image && img?.complete) {
       const left = X(mx(d.image.x0));
       const top = Z(mz(d.image.y1));
-      c.drawImage(underlayImg, left, top, X(mx(d.image.x1)) - left, Z(mz(d.image.y0)) - top);
+      c.drawImage(img, left, top, X(mx(d.image.x1)) - left, Z(mz(d.image.y0)) - top);
     } else {
       c.strokeStyle = '#475467';
       c.lineWidth = 0.7;
@@ -86,6 +103,7 @@ export async function startStudio(gl: boolean) {
     plan: emptyPlan(),
     underlay,
     addFloorFromDrawing: () => startAddingFloor(),
+    drawingShot: () => shoot(),
   });
   floorIndex = () => api.plan().storey ?? 0;
 
@@ -162,13 +180,21 @@ export async function startStudio(gl: boolean) {
           toast(`Opened the Floorwise plan saved in ${name}.`);
           return;
         }
+        sheetCount = 1;
+        sheetNow = 1;
+        openSheet = null;
         useDrawing(d);
       } else if (!/\.pdf$/i.test(name) && new TextDecoder().decode(data.slice(0, 5)) !== '%PDF-') {
         status.textContent = 'That isn’t a PDF or DXF. A DWG has to be saved as DXF or plotted to PDF first.';
       } else {
         const pdf = await import('./import-pdf');
         const { pages, doc } = await pdf.openPdf(data);
-        if (pages === 1) return useDrawing(await pdf.readPdfPage(doc, 1, name));
+        sheetCount = pages;
+        openSheet = async (n: number) => {
+          sheetNow = n;
+          useDrawing(await pdf.readPdfPage(doc, n, pages > 1 ? `${name} · sheet ${n}` : name));
+        };
+        if (pages === 1) return openSheet(1);
         // Several sheets: let the visitor pick the one with the plan.
         status.textContent = `${pages} sheets — pick the one with your floor plan.`;
         const box = $('pages');
@@ -184,7 +210,7 @@ export async function startStudio(gl: boolean) {
             box.setAttribute('aria-busy', 'true');
             status.textContent = `Reading sheet ${n}…`;
             try {
-              useDrawing(await pdf.readPdfPage(doc, n, `${name} · sheet ${n}`));
+              await openSheet!(n);
             } catch (err) {
               console.error(err);
               status.textContent = `Sheet ${n} could not be read. Try another sheet or file.`;
@@ -219,18 +245,12 @@ export async function startStudio(gl: boolean) {
       status.textContent = 'No lines found — this looks like a scanned PDF. Vector PDFs and DXF files work.';
       return;
     }
-    if (d.image) {
-      underlayImg = new Image();
-      underlayImg.src = d.image.url;
-      underlayImg.onload = () => {
-        sheet.draw();
-        api.redraw();
-      };
-    } else underlayImg = null;
+    underlayImg = imageFor(d);
     updateScale();
     syncDetect();
     views = findViews(d);
     renderViews();
+    renderSheets();
     setStage('select');
   };
   $<HTMLInputElement>('file').addEventListener('change', async (e) => {
@@ -363,7 +383,32 @@ export async function startStudio(gl: boolean) {
   };
   const sheet = new SheetView($<HTMLCanvasElement>('sheet'), sheetHost);
 
-  /* ---------- Plans found on the sheet ---------- */
+  /* ---------- Sheets of a PDF, and plans found on the sheet ---------- */
+  // Any sheet of the file can be opened from the select step, so the next floor can come from another sheet.
+  let sheetCount = 1;
+  let sheetNow = 1;
+  let openSheet: ((n: number) => Promise<void>) | null = null;
+  const renderSheets = () => {
+    $('sheetSwitch').hidden = sheetCount < 2 || !openSheet;
+    $('sheetChips').innerHTML = Array.from(
+      { length: sheetCount },
+      (_, i) =>
+        `<button type="button" class="view-chip" data-sheet="${i + 1}" aria-pressed="${sheetNow === i + 1}">Sheet ${i + 1}</button>`,
+    ).join('');
+  };
+  $('sheetChips').addEventListener('click', async (e) => {
+    const b = (e.target as Element).closest<HTMLElement>('[data-sheet]');
+    const n = Number(b?.dataset.sheet);
+    if (!n || n === sheetNow || !openSheet) return;
+    $('selectStatus').textContent = `Reading sheet ${n}…`;
+    try {
+      await openSheet(n);
+      $('selectStatus').textContent = addingFloor ? 'Drag a box around the next floor on the sheet.' : '';
+    } catch (err) {
+      console.error(err);
+      $('selectStatus').textContent = `Sheet ${n} could not be read.`;
+    }
+  });
   let views: PlanView[] = [];
   const renderViews = () => {
     const box = $('views');
@@ -371,16 +416,25 @@ export async function startStudio(gl: boolean) {
     $('viewChips').innerHTML = views
       .map(
         (v, i) =>
-          `<button type="button" class="view-chip" data-view="${i}" aria-pressed="${!!region && region.x0 === v.region.x0 && region.y0 === v.region.y0}">${v.name}${v.scale ? `<small>1:${v.scale}</small>` : ''}</button>`,
+          `<button type="button" class="view-chip" data-view="${i}" aria-pressed="${!!region && region.x0 === v.region.x0 && region.y0 === v.region.y0}">${v.name}</button>`,
       )
       .join('');
     $('buildAll').hidden = views.length < 2;
+    $('buildAllAiRow').hidden = views.length < 2;
     $('buildAll').textContent = `Build all ${views.length} floors`;
   };
   const chooseView = (v: PlanView) => {
     sheetHost.setRegion({ ...v.region });
     sheet.draw();
     renderViews();
+    // The scale written under the plan and the one its dimensions measure differ when the sheet was printed reduced.
+    if (v.scale && drawing?.kind === 'pdf' && drawing.mmPerUnit) {
+      const measured = Math.round(drawing.mmPerUnit / (25.4 / 72));
+      $('selectStatus').textContent =
+        Math.abs(measured - v.scale) / v.scale > 0.05
+          ? `The title says 1:${v.scale}, but the dimensions measure 1:${measured} on this sheet (printed reduced): Floorwise uses 1:${measured}.`
+          : '';
+    }
   };
   $('viewChips').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-view]');
@@ -388,14 +442,29 @@ export async function startStudio(gl: boolean) {
     if (v) chooseView(v);
   });
   // Every floor in turn, bottom up: the first builds the plan, each next one is added as the floor above.
-  $('buildAll').addEventListener('click', () => {
+  // With "read the furniture", Claude then reads each floor's drawing as it is built, so the 3D is furnished as drawn.
+  $('buildAll').addEventListener('click', async () => {
     const list = [...views];
+    const read = $<HTMLInputElement>('buildAllAi').checked;
+    let added = 0;
+    let failed = '';
     for (const [i, v] of list.entries()) {
       if (i) startAddingFloor();
       chooseView(v);
       $('detectBtn').click();
+      if (!read || failed) continue;
+      toast(`Reading the furniture on ${v.name} (${i + 1} of ${list.length})…`, 60_000);
+      try {
+        const shot = await shoot();
+        if (shot) added += await api.readFurniture(shot);
+      } catch (err) {
+        failed = err instanceof Error ? err.message : 'Reading the furniture failed.';
+      }
     }
-    toast(`Built ${list.length} floors: ${list.map((v) => v.name).join(', ')} — check each against the drawing.`, 6000);
+    toast(
+      `Built ${list.length} floors: ${list.map((v) => v.name).join(', ')}${read && !failed ? `, with ${added} pieces read from the drawing` : ''} — check each against the drawing.${failed ? ` ${failed}` : ''}`,
+      8000,
+    );
   });
   $('sheetIn').addEventListener('click', () => sheet.zoom(1.25));
   $('sheetOut').addEventListener('click', () => sheet.zoom(0.8));
@@ -423,12 +492,15 @@ export async function startStudio(gl: boolean) {
     g.fillRect(0, 0, c.width, c.height);
     const X = (x: number) => (x - r.x0) * px;
     const Y = (y: number) => (r.y1 - y) * px;
-    if (d.image && underlayImg?.complete) {
+    // This floor's own sheet (it may not be the one on screen).
+    const img = imageFor(d);
+    await img?.decode().catch(() => undefined);
+    if (d.image && img?.complete && img.naturalWidth) {
       // Crop the page raster to the region.
-      const iw = underlayImg.naturalWidth / (d.image.x1 - d.image.x0);
-      const ih = underlayImg.naturalHeight / (d.image.y1 - d.image.y0);
+      const iw = img.naturalWidth / (d.image.x1 - d.image.x0);
+      const ih = img.naturalHeight / (d.image.y1 - d.image.y0);
       g.drawImage(
-        underlayImg,
+        img,
         (r.x0 - d.image.x0) * iw,
         (d.image.y1 - r.y1) * ih,
         wDraw * iw,

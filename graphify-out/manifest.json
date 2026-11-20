@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1795142037.625638,
-    "seen": 1795142292.0744262,
-    "ast_hash": "799f725b2c177e95f3e1982118fa6024",
+    "mtime": 1795144378.2974563,
+    "seen": 1795144665.4394581,
+    "ast_hash": "6c6bdb7c8dcac429dae7945c9e4cafa7",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1795141742.13274,
-    "seen": 1795142292.074388,
-    "ast_hash": "1a53545de02fe41cba9fc76b53e94ad4",
+    "mtime": 1795144147.6699917,
+    "seen": 1795144665.439421,
+    "ast_hash": "7a495c1648e5ae3b6a6d4c4b40cf94cc",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
-    "mtime": 1795072232.0888572,
-    "seen": 1795072717.290433,
-    "ast_hash": "192f1ea9484738965d43b45c7100b30e",
+    "mtime": 1795144368.2950747,
+    "seen": 1795144665.439428,
+    "ast_hash": "a27f1d5a66f929576c2ff3c183b7936f",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/textures.ts": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/ai.ts": {
-    "mtime": 1795072264.4600556,
-    "seen": 1795072717.290425,
-    "ast_hash": "4fbebb41fd3eb6454e8df18da224b45c",
+    "mtime": 1795143951.7722418,
+    "seen": 1795144665.43942,
+    "ast_hash": "3de1987c7989babf1c9df7d2a0ac24fc",
     "semantic_hash": ""
   },
   "apps/web/src/components/RoomWorkspace.astro": {
@@ -624,15 +624,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/studio/index.astro": {
-    "mtime": 1795083426.157802,
-    "seen": 1795084393.286027,
-    "ast_hash": "d24118cc04a15551685b3671cb378f46",
+    "mtime": 1795144138.811686,
+    "seen": 1795144665.439401,
+    "ast_hash": "5d8734da0450bf52ad9beef9dc2a8380",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/app.ts": {
-    "mtime": 1795083425.103455,
-    "seen": 1795084393.28606,
-    "ast_hash": "7ef9a72e12556f16c6d8aee57a286e43",
+    "mtime": 1795144138.8125246,
+    "seen": 1795144665.439432,
+    "ast_hash": "37dae1c67db24b3f48d4b52733ab66aa",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/detect.ts": {

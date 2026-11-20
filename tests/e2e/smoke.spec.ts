@@ -246,6 +246,33 @@ test('room planner walks and shares', async ({ page, context }, info) => {
   expect(errors).toEqual([]);
 });
 
+test('room planner sets each floor height from the section', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // Two floors: the ground floor 2.8 m floor to floor (as a section gives it), the top floor 3.45 m.
+  await page.locator('#storeys [data-act="floor"]').click();
+  await page.locator('#storeys [data-storey="0"]').click();
+  await page.locator('#storeyH').fill('2.8');
+  await page.locator('#storeyH').dispatchEvent('change');
+  await page.locator('#storeys [data-storey="1"]').click();
+  await page.locator('#storeyH').fill('3.45');
+  await page.locator('#storeyH').dispatchEvent('change');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        JSON.stringify(
+          (JSON.parse(localStorage.getItem('roomcraft.plan') ?? '{}').storeys ?? []).map(
+            (s: { elevation: number; height?: number }) => [s.elevation, s.height ?? null],
+          ),
+        ),
+      ),
+    )
+    .toBe('[[0,null],[2.8,3.45]]');
+  await expect(page.locator('#storeyH')).toHaveValue('3.45');
+  expect(errors).toEqual([]);
+});
+
 test('room planner furnishes a room with AI', async ({ page }) => {
   const errors = watchErrors(page);
   // Stand-in for the Anthropic API, which the page calls from the browser with the visitor's key.

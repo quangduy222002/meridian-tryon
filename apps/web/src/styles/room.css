@@ -346,6 +346,23 @@ svg {
 .storeys .add {
   color: var(--accent);
 }
+.storeys .storey-h {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.storeys .storey-h input {
+  width: 58px;
+  min-block-size: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font: 500 12px var(--mono, inherit);
+  color: var(--text);
+}
 
 /* ---------- Inspector ---------- */
 .inspector {

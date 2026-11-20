@@ -257,17 +257,25 @@ export async function furnishRoom(
   styleId?: string,
   /** The client's reference photo(s): the room should feel like them. */
   references: Blob[] = [],
+  /** The drawing the plan was built from, with how its pixels map to plan metres: the layout follows what it shows. */
+  drawing?: { image: Blob; metresPerPixel: number; dx: number; dz: number },
 ) {
+  const mpp = drawing?.metresPerPixel.toFixed(5);
   const out = await askJson<Layout>(
     brain,
     systemPrompt(p, room, keep, styleId),
     `The request: ${request}
-${references.length ? "\nThe attached photo is the client's reference: match its mood, materials, palette and the kinds of pieces in it (the same sort of sofa, tables, plants, lighting), adapted to this room's size and plan.\n" : ''}
+${references.length ? "\nThe attached photo is the client's reference: match its mood, materials, palette and the kinds of pieces in it (the same sort of sofa, tables, plants, lighting), adapted to this room's size and plan.\n" : ''}${
+      drawing
+        ? `\nThe ${references.length ? 'last' : ''} attached image is the architect's floor plan drawing this plan was built from. Plan metres from its pixels: x = px × ${mpp} + ${drawing.dx.toFixed(3)}, z = py × ${mpp} + ${drawing.dz.toFixed(3)} (px to the right, py down from the image's top-left corner). Where the drawing shows furniture, kitchen units, sanitary ware or parking in this room, place the matching pieces where it draws them, with the same kind and count (an L sofa stays an L sofa, six chairs stay six). Fill in only what the drawing leaves open, and follow the request where it asks for more.\n`
+        : ''
+    }
+Stairs, double-height voids and the pieces listed as staying are part of the building: never move, cover or replace them, and keep a 0.9 m way clear to every stair.
 If the request needs something the list doesn't have (a piano, a spiral staircase, an aquarium, a built-in seat…), define it yourself under "customs" and use "custom:<its id>" as the item's type.
 ${CUSTOM_FORMAT}
 
 Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": number, "rot": 0 | 90 | 180 | 270, "color": string}], "customs"?: {"<id>": <definition>}, "summary": string}.`,
-    references,
+    drawing ? [...references, drawing.image] : references,
   );
   if (!out || !Array.isArray(out.items)) throw new Error('The model returned no layout. Try again.');
   const customTypes = adoptCustoms(p, out.customs);

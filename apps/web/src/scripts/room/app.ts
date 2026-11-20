@@ -43,6 +43,7 @@ import {
   addStorey,
   ceilingOpenings,
   findRooms,
+  fitIntoRooms,
   floorOpenings,
   len,
   nodeMap,
@@ -50,6 +51,8 @@ import {
   roomName,
   roomStyle,
   samplePlan,
+  setStoreyHeight,
+  storeyHeight,
   storeysOf,
   switchStorey,
   uid,
@@ -74,6 +77,12 @@ const HINTS: Record<Tool, string> = {
   place: 'Click the plan to place it — it snaps against the nearest wall. Esc cancels.',
 };
 
+/** Stairs and voids belong to the building: furnishing (by hand-off to the AI) never replaces them. */
+const structural = (type: string) => {
+  const def = FURNITURE[type];
+  return !!def && (def.group === 'Stairs' || !!def.opensAbove);
+};
+
 /** An image of the drawing behind the plan, and how its pixels map to plan metres (plus the floor's shift). */
 export interface DrawingShot {
   image: Blob;
@@ -92,6 +101,8 @@ export interface RoomcraftOptions {
   underlay?: EditorHost['underlay'];
   /** Offered in the floor switcher: bring another floor in from the imported drawing (Floorwise). */
   addFloorFromDrawing?: () => void;
+  /** An image of the drawing this floor was built from, for AI furnishing to follow (Floorwise). */
+  drawingShot?: () => Promise<DrawingShot | null>;
 }
 
 /** What a page embedding the workspace can do with it. */
@@ -104,6 +115,11 @@ export interface RoomcraftApi {
   commit(message?: string): void;
   /** Opens "Read the drawing with AI" on an image of the drawing the plan was built from. */
   readDrawing(shot: DrawingShot): void;
+  /**
+   * Reads the current floor's drawing with Claude and adds everything it finds, without asking (its questions get
+   * "use your judgement"). Resolves with how many pieces were added; throws a message safe to show.
+   */
+  readFurniture(shot: DrawingShot): Promise<number>;
   /** Adds a floor above the others from a plan (undoable) and switches to it. */
   addStorey(p: Plan, name?: string): void;
   redraw(): void;
@@ -153,7 +169,7 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
             )
             .join('')
         : ''
-    }<button type="button" class="add" data-act="floor" title="Add an empty floor above, with this floor's walls">+ Floor</button>${
+    }<label class="storey-h" title="Floor-to-floor height of this floor, as the section gives it">Height <input type="number" id="storeyH" min="2" max="9" step="0.05" value="${storeyHeight(plan).toFixed(2)}" aria-label="Floor-to-floor height in metres" /> m</label><button type="button" class="add" data-act="floor" title="Add an empty floor above, with this floor's walls">+ Floor</button>${
       opts.addFloorFromDrawing
         ? '<button type="button" class="add" data-act="floor-drawing" title="Select another floor on the imported drawing">+ From drawing</button>'
         : ''
@@ -173,6 +189,13 @@ export async function startRoomcraft(gl = true, opts: RoomcraftOptions = {}): Pr
     requestAnimationFrame(() => editor.fit());
     if (message) toast(message);
   };
+  $('storeys').addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    if (input.id !== 'storeyH') return;
+    const h = Number(input.value);
+    if (!Number.isFinite(h) || h < 2 || h > 9) return void (input.value = storeyHeight(plan).toFixed(2));
+    replaceHome(setStoreyHeight(plan, plan.storey ?? 0, h), `Floor height: ${h.toFixed(2)} m`);
+  });
   $('storeys').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('button');
     if (!b) return;
@@ -621,11 +644,12 @@ ${
           `Furnish this room like the reference photo${note ? ` (${note})` : ''}.`,
           plan,
           main,
-          [],
+          plan.items.filter((i) => inRoom(i) && structural(i.type)),
           id,
           [refPhoto],
+          (await opts.drawingShot?.()) ?? undefined,
         );
-        plan.items = plan.items.filter((i) => !inRoom(i));
+        plan.items = plan.items.filter((i) => !inRoom(i) || structural(i.type));
         for (const it of laid.items) plan.items.push({ id: uid('i'), ...it });
         editor.select({ kind: 'room', id: main.key });
         host.commit(laid.summary || `${roomName(plan, main)} furnished like the photo`);
@@ -793,16 +817,27 @@ ${
     try {
       const { readDrawing } = await import('./ai');
       status.textContent = 'Reading the drawing…';
-      let out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, rooms);
+      // Claude reads positions off the image, so it is told the rooms in the image's frame: an upper floor is shifted
+      // in the plan to sit over the one below, and rooms given with that shift put pieces off the drawing.
+      const shift = (q: Vec2): Vec2 => [q[0] - shot.dx, q[1] - shot.dz];
+      const seen = rooms.map((r) => ({ ...r, poly: r.poly.map(shift), centroid: shift(r.centroid) }));
+      let out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, seen);
       if (out.questions.length) {
         readDlg.classList.remove('busy');
         status.textContent = 'A few questions before placing anything:';
         const answers = await ask($('readAsk'), out.questions);
         readDlg.classList.add('busy');
         status.textContent = 'Placing what it found…';
-        out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, rooms, answers);
+        out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, seen, answers);
       }
       found = out.found.map((f) => ({ ...f, item: { ...f.item, x: f.item.x + shot.dx, z: f.item.z + shot.dz } }));
+      // Every piece must stand in the home: one overhanging a wall is nudged in, one that landed just outside is pulled
+      // into the nearest room, and one far outside is left out (and said so).
+      const before = found.length;
+      found = found.filter((f) => fitIntoRooms(f.item as Parameters<typeof fitIntoRooms>[0], rooms));
+      const dropped = before - found.length;
+      if (dropped)
+        out.notes = `${out.notes ? `${out.notes} ` : ''}${dropped === 1 ? '1 piece' : `${dropped} pieces`} fell outside the home and ${dropped === 1 ? 'was' : 'were'} left out.`;
       registerCustoms(plan.customs);
       if (!found.length) {
         status.textContent = out.notes || 'Nothing more to add from this drawing.';
@@ -973,7 +1008,7 @@ ${
     }
     const replace = $<HTMLInputElement>('aiReplace').checked;
     const inRoom = (x: number, z: number) => pointInPoly([x, z], room.poly);
-    const keep = replace ? [] : plan.items.filter((i) => inRoom(i.x, i.z));
+    const keep = plan.items.filter((i) => inRoom(i.x, i.z) && (!replace || structural(i.type)));
     go.setAttribute('aria-disabled', 'true');
     aiDlg.classList.add('busy');
     aiStatus.textContent = 'Arranging the room…';
@@ -989,8 +1024,9 @@ ${
         }
       }
       const photo = styleId.startsWith(PHOTO_PREFIX) && refPhoto ? [refPhoto] : [];
-      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep, styleId || undefined, photo);
-      if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z));
+      const drawing = (await opts.drawingShot?.()) ?? undefined;
+      const out = await furnishRoom(hostAi ?? apiKey, request, plan, room, keep, styleId || undefined, photo, drawing);
+      if (replace) plan.items = plan.items.filter((i) => !inRoom(i.x, i.z) || structural(i.type));
       for (const it of out.items) plan.items.push({ id: uid('i'), ...it });
       aiDlg.close();
       editor.select({ kind: 'room', id: room.key });
@@ -1047,6 +1083,34 @@ ${
     },
     commit: (message) => host.commit(message),
     readDrawing: (shot) => void readDrawingFlow(shot),
+    async readFurniture(shot) {
+      const b = brain();
+      if (!b) throw new Error('Claude is not available here: open the page in claude.ai or add an API key.');
+      const { readDrawing } = await import('./ai');
+      const shift = (q: Vec2): Vec2 => [q[0] - shot.dx, q[1] - shot.dz];
+      const seen = rooms.map((r) => ({ ...r, poly: r.poly.map(shift), centroid: shift(r.centroid) }));
+      let out = await readDrawing(b, shot.image, shot.metresPerPixel, shot, plan, seen);
+      if (out.questions.length)
+        out = await readDrawing(
+          b,
+          shot.image,
+          shot.metresPerPixel,
+          shot,
+          plan,
+          seen,
+          out.questions.map((q) => ({ q: q.text, a: 'No preference — use your judgement' })),
+        );
+      registerCustoms(plan.customs);
+      let added = 0;
+      for (const f of out.found) {
+        const it = { id: uid('i'), ...f.item, x: f.item.x + shot.dx, z: f.item.z + shot.dz };
+        if (!fitIntoRooms(it, rooms)) continue;
+        plan.items.push(it);
+        added++;
+      }
+      if (added) host.commit(`${added} pieces read from the drawing`);
+      return added;
+    },
     addStorey(p, name) {
       replaceHome(addStorey(plan, p, name), `${name ?? 'New floor'} added`);
     },
@@ -1123,7 +1187,7 @@ async function setupThree(
       }
       // Walls run up to the floor above, so the storeys read as one building.
       const above = list.filter((g) => g.storey.elevation > f.storey.elevation).map((g) => g.storey.elevation);
-      h.wallHeight = above.length ? Math.min(...above) - f.storey.elevation : WALL_HEIGHT;
+      h.wallHeight = above.length ? Math.min(...above) - f.storey.elevation : (f.storey.height ?? WALL_HEIGHT);
       h.syncStructure(f.plan, findRooms(f.plan), floorOpenings(list, i), ceilingOpenings(list, i));
       h.syncItems(f.plan);
       h.root.position.y = f.storey.elevation - base;
@@ -1373,6 +1437,9 @@ async function setupThree(
       if (Number(northIn.value) !== (p.north ?? 0)) northIn.value = String(p.north ?? 0);
       const floors = storeysOf(p);
       const here = floors.findIndex((f) => f.active);
+      // Walls rise to the floor above (or the top floor's own height), so a 2.6 m mezzanine reads lower than a 3.45 m
+      // top floor.
+      house.wallHeight = storeyHeight(p, here);
       const rebuilt = house.syncStructure(p, getRooms(), floorOpenings(floors, here), ceilingOpenings(floors, here));
       house.syncItems(p);
       syncStoreys(p);

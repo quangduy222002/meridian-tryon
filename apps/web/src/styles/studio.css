@@ -416,3 +416,19 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
+.views .check {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-2);
+}
+.views .check input {
+  margin-top: 2px;
+}
+.views[hidden],
+.views .check[hidden] {
+  display: none;
+}

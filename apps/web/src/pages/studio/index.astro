@@ -124,12 +124,19 @@ import '../../styles/studio.css';
           <button type="button" id="clearErase" class="btn-link" hidden>
             Clear erased areas
           </button>
+          <div class="views" id="sheetSwitch" hidden>
+            <p class="views-label">Sheets in this file:</p>
+            <div class="view-chips" id="sheetChips" role="group" aria-label="Sheets"></div>
+          </div>
           <div class="views" id="views" hidden>
             <p class="views-label">Plans found on this sheet — pick one, or build them all:</p>
             <div class="view-chips" id="viewChips" role="group" aria-label="Plans on this sheet"></div>
             <button type="button" id="buildAll" class="btn-line" hidden>
               Build all floors
             </button>
+            <label class="check" id="buildAllAiRow" hidden>
+              <input type="checkbox" id="buildAllAi" /> Also read the furniture on each floor with Claude
+            </label>
           </div>
           <button type="button" id="detectBtn" class="btn-ink" aria-disabled="true">
             Build the plan

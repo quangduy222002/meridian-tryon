@@ -65,6 +65,8 @@ export interface Storey {
   name: string;
   /** Finished floor level above the lowest floor, in metres. */
   elevation: number;
+  /** Floor-to-floor height of the top floor (lower floors take theirs from the floor above), in metres. */
+  height?: number;
   /** This floor's plan while another floor is being edited. */
   plan?: Plan;
 }
@@ -498,6 +500,40 @@ function emptyFloor(p: Plan): Plan {
   return { nodes: [], walls: [], openings: [], items: [], rooms: {}, north: p.north };
 }
 
+/**
+ * Floor-to-floor height of floor `i`: up to the next floor above it, or the top floor's own height (by default the
+ * usual 2.7 m room height).
+ */
+export function storeyHeight(p: Plan, i = p.storey ?? 0): number {
+  const list = storeysOf(p).map((f) => f.storey);
+  const me = list[i];
+  if (!me) return WALL_HEIGHT;
+  const above = list.filter((s) => s.elevation > me.elevation + 1e-6).map((s) => s.elevation);
+  return above.length ? Math.min(...above) - me.elevation : (me.height ?? WALL_HEIGHT);
+}
+
+/**
+ * Sets floor `i`'s floor-to-floor height (as the section gives it: 2.8 m ground floor, 2.6 m mezzanine…): every
+ * floor above moves up or down with it, so stairs and storeys stay stacked.
+ */
+export function setStoreyHeight(p: Plan, i: number, h: number): Plan {
+  const next = structuredClone(p);
+  next.storeys ??= [{ name: 'Floor 1', elevation: 0 }];
+  next.storey ??= 0;
+  const me = next.storeys[i];
+  if (!me) return next;
+  const delta = h - storeyHeight(p, i);
+  const level = me.elevation;
+  let top = true;
+  for (const s of next.storeys)
+    if (s.elevation > level + 1e-6) {
+      s.elevation = Math.round((s.elevation + delta) * 1000) / 1000;
+      top = false;
+    }
+  if (top) me.height = h;
+  return next;
+}
+
 /** The same home with floor `i` being edited. */
 export function switchStorey(p: Plan, i: number): Plan {
   const list = structuredClone(p.storeys ?? [{ name: 'Floor 1', elevation: 0 }]);
@@ -524,7 +560,7 @@ export function addStorey(p: Plan, floor?: Plan, name?: string, height = 3.3): P
     ? floorOnly(structuredClone(floor))
     : { ...emptyFloor(p), nodes: structuredClone(p.nodes), walls: structuredClone(p.walls) };
   // The floor that was being edited keeps its plan in the list; the new one is the active plan.
-  list.push({ name: name ?? `Floor ${list.length + 1}`, elevation: top + height });
+  list.push({ name: name ?? `Floor ${list.length + 1}`, elevation: Math.round((top + height) * 1000) / 1000 });
   const next: Plan = { ...fresh, storeys: list, storey: list.length - 1 };
   for (const k of HOME_WIDE) (next as unknown as Record<string, unknown>)[k] = p[k];
   return next;
@@ -547,6 +583,42 @@ export function itemCorners(it: Item): Vec2[] {
       [-d.w / 2, d.d / 2],
     ] as Vec2[]
   ).map(([x, z]) => [it.x + x * c - z * s, it.z + x * s + z * c] as Vec2);
+}
+
+/**
+ * Brings a piece placed by the AI inside the home: whole, if its footprint already lies in a room; nudged towards
+ * the room's middle when it overhangs a wall; pulled into the nearest room when it landed just outside (up to
+ * `reach` metres). Returns false when it is nowhere near a room, so the caller can leave it out.
+ */
+export function fitIntoRooms(it: Item, rooms: Room[], reach = 1.5): boolean {
+  if (!rooms.length) return true;
+  const inside = (r: Room) => itemCorners(it).every((q) => pointInPoly(q, r.poly));
+  if (rooms.some(inside)) return true;
+  const edgeDist = (p: Vec2, poly: Vec2[]) => {
+    let best = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!;
+      const b = poly[(i + 1) % poly.length]!;
+      const ex = b[0] - a[0];
+      const ez = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ez) / (ex * ex + ez * ez || 1)));
+      best = Math.min(best, Math.hypot(p[0] - a[0] - ex * t, p[1] - a[1] - ez * t));
+    }
+    return best;
+  };
+  const room =
+    rooms.find((r) => pointInPoly([it.x, it.z], r.poly)) ??
+    [...rooms].sort((a, b) => edgeDist([it.x, it.z], a.poly) - edgeDist([it.x, it.z], b.poly))[0]!;
+  if (!pointInPoly([it.x, it.z], room.poly) && edgeDist([it.x, it.z], room.poly) > reach) return false;
+  for (let i = 0; i < 120 && !inside(room); i++) {
+    const dx = room.centroid[0] - it.x;
+    const dz = room.centroid[1] - it.z;
+    const l = Math.hypot(dx, dz);
+    if (l < 0.05) break;
+    it.x += (dx / l) * 0.05;
+    it.z += (dz / l) * 0.05;
+  }
+  return pointInPoly([it.x, it.z], room.poly);
 }
 
 /** A hole in a floor: its outline, and the edge (index of corner → next corner) left open where a stair arrives. */
