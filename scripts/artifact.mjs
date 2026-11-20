@@ -13,7 +13,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -91,11 +91,27 @@ if (existsSync(join(dist, 'studio/A26.pdf'))) {
 const modelsDir = join(dist, 'models');
 if (existsSync(modelsDir)) {
   cpSync(modelsDir, join(out, 'models'), { recursive: true });
+  // The Artifact serves neither .gltf nor .bin: each model becomes one .json (its buffers inlined as data URIs;
+  // textures stay beside it as .jpg/.png), which room/library.ts asks for in this build.
   const walk = (dir, rel) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const r = `${rel}/${entry.name}`;
-      if (entry.isDirectory()) walk(join(dir, entry.name), r);
-      else files[r] = join(out, r);
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path, r);
+      else if (entry.name.endsWith('.gltf')) {
+        const gltf = JSON.parse(readFileSync(path, 'utf8'));
+        for (const b of gltf.buffers ?? []) {
+          if (!b.uri || b.uri.startsWith('data:')) continue;
+          const bin = join(dir, b.uri);
+          b.uri = `data:application/octet-stream;base64,${readFileSync(bin).toString('base64')}`;
+          rmSync(bin);
+          delete files[`${rel}/${basename(bin)}`];
+        }
+        const json = path.replace(/\.gltf$/, '.json');
+        writeFileSync(json, JSON.stringify(gltf));
+        rmSync(path);
+        files[r.replace(/\.gltf$/, '.json')] = json;
+      } else if (!entry.name.endsWith('.bin')) files[r] = path;
     }
   };
   walk(join(out, 'models'), 'models');

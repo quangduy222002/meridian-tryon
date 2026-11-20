@@ -148,6 +148,8 @@ export function libraryDefs(): Record<string, FurnitureDef> {
 /** Where the models are served: beside the page in the Artifact build, under the site's base path otherwise. */
 export function modelUrl(src: string) {
   const base = import.meta.env.BASE_URL;
-  if (base === '/' || base === './') return new URL(`models/${src}`, location.href.replace(/[^/]*$/, '')).href;
+  // The Artifact build packs each model as one .json (scripts/artifact.mjs): it serves no .gltf or .bin files.
+  if (base === '/' || base === './')
+    return new URL(`models/${src.replace(/\.gltf$/, '.json')}`, location.href.replace(/[^/]*$/, '')).href;
   return `${base.replace(/\/$/, '')}/models/${src}`;
 }
