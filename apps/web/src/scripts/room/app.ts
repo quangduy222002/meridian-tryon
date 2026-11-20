@@ -33,9 +33,10 @@ import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, GROUPS, WALLS } from './catalog';
 import { PHOTO_PREFIX, STYLES, registerPhotoStyle, styleColor, styleOf, styleSwatches } from './styles';
 import { customId, registerCustoms } from './custom';
-import type { AiQuestion, Brain, DrawingReading } from './ai';
+import type { AiQuestion, Brain, DrawingReading, FloorReview } from './ai';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
 import { House } from './house';
+import { onModelLoaded } from './furniture';
 import { createLook } from './look';
 import { designLighting, kelvinColor } from './lighting';
 import {
@@ -52,9 +53,11 @@ import {
   roomStyle,
   samplePlan,
   setStoreyHeight,
+  splitWall,
   storeyHeight,
   storeysOf,
   switchStorey,
+  tidy,
   uid,
   wallEnds,
   type Plan,
@@ -120,6 +123,19 @@ export interface RoomcraftApi {
    * "use your judgement"). Resolves with how many pieces were added; throws a message safe to show.
    */
   readFurniture(shot: DrawingShot): Promise<number>;
+  /** The viewer's Claude (in a claude.ai Artifact) or the visitor's API key; null when neither is there. */
+  claude(): Brain | null;
+  /** Sets the current floor's floor-to-floor height (metres), moving the floors above with it. */
+  setFloorHeight(h: number): void;
+  /**
+   * Applies Claude's check of the current floor (see ai.reviewFloor): `rooms` are the rooms as numbered on the image
+   * it saw. Returns what changed, for the report.
+   */
+  applyReview(
+    review: FloorReview,
+    shot: DrawingShot,
+    rooms: Room[],
+  ): { dropped: number; added: number; openings: number; named: number; items: number };
   /** Adds a floor above the others from a plan (undoable) and switches to it. */
   addStorey(p: Plan, name?: string): void;
   redraw(): void;
@@ -1083,6 +1099,106 @@ ${
     },
     commit: (message) => host.commit(message),
     readDrawing: (shot) => void readDrawingFlow(shot),
+    claude: () => brain(),
+    setFloorHeight(h) {
+      if (Number.isFinite(h) && h >= 2 && h <= 9) replaceHome(setStoreyHeight(plan, plan.storey ?? 0, h));
+    },
+    applyReview(review, shot, seenRooms) {
+      const at = (q: [number, number]): Vec2 => [
+        q[0] * shot.metresPerPixel + shot.dx,
+        q[1] * shot.metresPerPixel + shot.dz,
+      ];
+      // Room names are tied to where the rooms were, since wall changes give rooms new keys.
+      const names = review.rooms.flatMap((r) => {
+        const room = seenRooms[r.index];
+        return room ? [{ at: room.centroid, name: r.name }] : [];
+      });
+      const drop = new Set(review.dropWalls.map((i) => plan.walls[i]?.id).filter((id): id is string => !!id));
+      plan.walls = plan.walls.filter((w) => !drop.has(w.id));
+      plan.openings = plan.openings.filter((o) => !drop.has(o.wall));
+      tidy(plan);
+      const ends = (w: (typeof plan.walls)[number]) => wallEnds(plan, w);
+      /** A point on the plan as a node: an existing corner close by, a point along a wall close by, or a new one. */
+      const nodeAt = (q: Vec2) => {
+        let best: { id: string; d: number } | null = null;
+        for (const n of plan.nodes) {
+          const d = Math.hypot(n.x - q[0], n.z - q[1]);
+          if (d < 0.4 && (!best || d < best.d)) best = { id: n.id, d };
+        }
+        if (best) return best.id;
+        for (const w of plan.walls) {
+          const [a, b] = ends(w);
+          const ex = b[0] - a[0];
+          const ez = b[1] - a[1];
+          const t = ((q[0] - a[0]) * ex + (q[1] - a[1]) * ez) / (ex * ex + ez * ez || 1);
+          if (t <= 0.02 || t >= 0.98) continue;
+          if (Math.hypot(a[0] + ex * t - q[0], a[1] + ez * t - q[1]) < 0.3) return splitWall(plan, w, t).id;
+        }
+        const n = { id: uid('n'), x: Math.round(q[0] * 1000) / 1000, z: Math.round(q[1] * 1000) / 1000 };
+        plan.nodes.push(n);
+        return n.id;
+      };
+      let added = 0;
+      for (const w of review.addWalls) {
+        const a = nodeAt(at(w.from));
+        const b = nodeAt(at(w.to));
+        if (a === b) continue;
+        plan.walls.push({ id: uid('w'), a, b, thick: Math.round(w.thick * 100) / 100 });
+        added++;
+      }
+      let openings = 0;
+      for (const o of review.openings) {
+        const q = at(o.at);
+        let best: { w: (typeof plan.walls)[number]; t: number; d: number; L: number } | null = null;
+        for (const w of plan.walls) {
+          const [a, b] = ends(w);
+          const ex = b[0] - a[0];
+          const ez = b[1] - a[1];
+          const L = Math.hypot(ex, ez);
+          const t = Math.max(0, Math.min(1, ((q[0] - a[0]) * ex + (q[1] - a[1]) * ez) / (L * L || 1)));
+          const d = Math.hypot(a[0] + ex * t - q[0], a[1] + ez * t - q[1]);
+          if (d < Math.max(0.35, (w.thick ?? 0.15) + 0.1) && L > 0.4 && (!best || d < best.d)) best = { w, t, d, L };
+        }
+        if (!best) continue;
+        const width = Math.min(o.width, best.L - 0.1);
+        const t = Math.min(1 - width / 2 / best.L, Math.max(width / 2 / best.L, best.t));
+        const shape =
+          o.kind === 'window'
+            ? { kind: 'window' as const }
+            : o.kind === 'sliding'
+              ? { kind: 'window' as const, tall: true }
+              : o.kind === 'double' || o.kind === 'folding'
+                ? { kind: 'door' as const, leaves: 2 as const }
+                : { kind: 'door' as const };
+        // An opening already there is re-typed (a door drawn as a curved slider); else a new one is cut.
+        const there = plan.openings.find((x) => x.wall === best.w.id && Math.abs(x.t - t) * best.L < width / 2 + 0.2);
+        if (there) {
+          delete there.leaves;
+          delete there.tall;
+          Object.assign(there, shape, { width });
+        } else plan.openings.push({ id: uid('o'), wall: best.w.id, t, width, flip: 1, ...shape });
+        openings++;
+      }
+      tidy(plan);
+      const now = findRooms(plan);
+      let named = 0;
+      for (const n of names) {
+        const r = now.find((x) => pointInPoly(n.at, x.poly));
+        if (!r) continue;
+        plan.rooms[r.key] = { ...plan.rooms[r.key], name: n.name };
+        named++;
+      }
+      registerCustoms(plan.customs);
+      let items = 0;
+      for (const f of review.found) {
+        const it = { id: uid('i'), ...f.item, x: f.item.x + shot.dx, z: f.item.z + shot.dz };
+        if (!fitIntoRooms(it, now)) continue;
+        plan.items.push(it);
+        items++;
+      }
+      host.commit('Claude checked this floor against the drawing');
+      return { dropped: drop.size, added, openings, named, items };
+    },
     async readFurniture(shot) {
       const b = brain();
       if (!b) throw new Error('Claude is not available here: open the page in claude.ai or add an API key.');
@@ -1404,6 +1520,11 @@ async function setupThree(
     toast('The 3D view lost its graphics context. Reload the page to bring it back.', 8000);
   });
   renderer.domElement.addEventListener('webglcontextrestored', () => loop.invalidate());
+  // Library models arrive after their placeholders: draw them (and their shadows) as they come.
+  onModelLoaded(() => {
+    renderer.shadowMap.needsUpdate = true;
+    loop.invalidate();
+  });
   let touched = false; // stop re-framing on resize once the visitor has moved the camera
   controls.addEventListener('start', () => (touched = true));
   const resize = () => {

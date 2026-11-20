@@ -1,4 +1,5 @@
 /** Furniture and finish catalogues: plain data shared by the 2D plan, the 3D builder and the AI. */
+import { libraryDefs } from './library';
 
 export interface FurnitureDef {
   name: string;
@@ -551,6 +552,9 @@ export const FURNITURE: Record<string, FurnitureDef> = {
 };
 
 /** Catalogue sections in display order. */
+// Ready-made models (library.ts) join the built-in pieces.
+Object.assign(FURNITURE, libraryDefs());
+
 export const GROUPS = [
   'Sofas',
   'Armchairs',

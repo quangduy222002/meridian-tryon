@@ -27,7 +27,7 @@ export default defineConfig({
           manualChunks: (id) =>
             id.includes('node_modules/three/') &&
             !id.includes('TransformControls') &&
-            !/examples\/jsm\/(postprocessing|shaders|objects|math)\//.test(id)
+            !/examples\/jsm\/(postprocessing|shaders|objects|math|loaders|utils)\//.test(id)
               ? 'three'
               : undefined,
         },

@@ -867,6 +867,95 @@ test('floor plan import finds each floor on a sheet and builds them all', async 
   expect(errors).toEqual([]);
 });
 
+test('Claude reads the whole sheet, checks each floor and furnishes it from the library', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Stand-in for the viewer's Claude: the sheet reading names the floors and their heights; each floor check names
+  // the room, re-types a door as a sliding one and places a library sofa.
+  await page.addInitScript(() => {
+    const w = window as unknown as { claude: unknown };
+    w.claude = {
+      use: async (name: string) =>
+        name !== 'sample'
+          ? null
+          : {
+              json: async (prompt: string) => {
+                if (prompt.includes('reading a drawing sheet'))
+                  return {
+                    floors: [
+                      { view: 'P1', name: 'Tầng 1', height: 3.0 },
+                      { view: 'P2', name: 'Tầng 2', height: 3.2 },
+                    ],
+                    report: '## Thông tin\n- Nhà 8 × 6 m, 2 tầng.',
+                  };
+                return {
+                  dropWalls: [],
+                  addWalls: [],
+                  openings: [],
+                  rooms: [{ id: 'R1', name: 'Phòng khách' }],
+                  items: [{ label: 'Sofa', type: 'ph:Sofa_01', x: 2, z: 1, rot: 0 }],
+                  notes: '',
+                };
+              },
+            },
+    };
+  });
+  await page.goto('studio/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  const line = (x1: number, y1: number, x2: number, y2: number) => [
+    ...['0', 'LINE', '8', 'WALL', '10', x1, '20', y1],
+    ...['11', x2, '21', y2],
+  ];
+  const rect = (x0: number, y0: number, x1: number, y1: number) => [
+    ...line(x0, y0, x1, y0),
+    ...line(x1, y0, x1, y1),
+    ...line(x1, y1, x0, y1),
+    ...line(x0, y1, x0, y0),
+  ];
+  const text = (x: number, y: number, h: number, s: string) => [
+    ...['0', 'TEXT', '8', 'TEXT', '10', x, '20', y],
+    ...['40', h, '1', s],
+  ];
+  const floor = (ox: number, title: string) => [
+    ...rect(ox, 0, ox + 8000, 6000),
+    ...rect(ox + 200, 200, ox + 7800, 5800),
+    ...line(ox + 4000, 200, ox + 4000, 5800),
+    ...line(ox + 4100, 200, ox + 4100, 5800),
+    ...text(ox + 1500, 3000, 150, 'P. NGỦ'),
+    ...text(ox + 5500, 3000, 150, 'P. KHÁCH'),
+    ...text(ox, -900, 400, title),
+  ];
+  const dxf = [
+    ...['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '0', 'ENDSEC'],
+    ...['0', 'SECTION', '2', 'ENTITIES'],
+    ...floor(0, 'MẶT BẰNG TẦNG 1 TL 1/100'),
+    ...floor(12000, 'MẶT BẰNG TẦNG 2 TL 1/100'),
+    ...rect(26000, 0, 32000, 6000),
+    ...line(26000, 3000, 32000, 3000),
+    ...text(26000, -900, 400, 'MẶT CẮT A-A TL 1/100'),
+    ...['0', 'ENDSEC', '0', 'EOF'],
+  ].join('\n');
+  await page
+    .locator('#file')
+    .setInputFiles({ name: 'house.dxf', mimeType: 'application/dxf', buffer: Buffer.from(dxf) });
+  await expect(page.locator('#stepSelect')).toBeVisible();
+  await page.locator('#aiSheet').click();
+  await expect(page.locator('#analysisDlg')).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#analysisBody')).toContainText('Nhà 8 × 6 m');
+  await expect(page.locator('#analysisBody')).toContainText('Tầng 2 (3.2 m)');
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('floorwise.plan') ?? '{}'));
+  await expect
+    .poll(async () =>
+      JSON.stringify(
+        ((await saved()).storeys ?? []).map((s: { name: string; elevation: number }) => [s.name, s.elevation]),
+      ),
+    )
+    .toBe('[["Tầng 1",0],["Tầng 2",3]]');
+  await expect.poll(async () => JSON.stringify((await saved()).items ?? [])).toContain('ph:Sofa_01');
+  const plan = await saved();
+  expect(Object.values(plan.rooms).map((r) => (r as { name?: string }).name)).toContain('Phòng khách');
+  expect(errors).toEqual([]);
+});
+
 test('floor plan import ignores annotation and erased areas', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('studio/');

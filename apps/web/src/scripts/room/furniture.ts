@@ -5,6 +5,7 @@
  * recessed plinth, turned legs or rattan) and how soft their edges are.
  */
 import {
+  Box3,
   Color,
   CylinderGeometry,
   Group,
@@ -12,11 +13,13 @@ import {
   MeshStandardMaterial,
   SphereGeometry,
   TorusGeometry,
+  Vector3,
   type BufferGeometry,
   type Material,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { FURNITURE } from './catalog';
+import { LIBRARY, modelUrl } from './library';
 import { CUSTOM_PARTS, type CustomPart } from './custom';
 import { styleOf, type DesignStyle } from './styles';
 
@@ -733,7 +736,71 @@ export function buildFurniture(type: string, color?: string, styleId?: string): 
   }
 }
 
+/* ---------- Library models (library.ts) ---------- */
+
+const models = new Map<string, Promise<Group>>();
+let modelLoaded: () => void = () => {};
+/** Called whenever a library model arrives and has replaced its placeholder (to redraw and refresh shadows). */
+export function onModelLoaded(f: () => void) {
+  modelLoaded = f;
+}
+
+/** Loads a library model once: centred on its footprint, standing on the floor, front towards +z. */
+function loadModel(type: string): Promise<Group> {
+  let p = models.get(type);
+  if (!p) {
+    const m = LIBRARY[type]!;
+    p = import('three/addons/loaders/GLTFLoader.js')
+      .then(({ GLTFLoader }) => new GLTFLoader().loadAsync(modelUrl(m.src)))
+      .then((gltf) => {
+        const inner = gltf.scene;
+        inner.rotation.y = ((m.turn ?? 0) * Math.PI) / 180;
+        const outer = new Group();
+        outer.add(inner);
+        // A file at the wrong scale is fitted to the catalogue size; one at its real size is left as it is.
+        let box = new Box3().setFromObject(outer);
+        const size = box.getSize(new Vector3());
+        const ratios = [m.def.w / size.x, m.def.h / size.y, m.def.d / size.z].filter(Number.isFinite);
+        if (ratios.some((r) => r < 0.7 || r > 1.4)) inner.scale.multiplyScalar(Math.min(...ratios));
+        box = new Box3().setFromObject(outer);
+        const c = box.getCenter(new Vector3());
+        inner.position.set(inner.position.x - c.x, inner.position.y - box.min.y, inner.position.z - c.z);
+        outer.traverse((o) => {
+          const mesh = o as Mesh;
+          if (mesh.isMesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+          }
+        });
+        return outer;
+      });
+    models.set(type, p);
+  }
+  return p;
+}
+
+/** A library piece: a quiet block of its size at once, the model in its place when it has loaded. */
+function buildModel(type: string) {
+  const def = FURNITURE[type]!;
+  const g = new Group();
+  const block = new Mesh(rbox(def.w, def.h, def.d, 0.02), mainMat('#d9d6cf', 'block'));
+  block.position.y = def.h / 2;
+  g.add(block);
+  loadModel(type)
+    .then((model) => {
+      const copy = model.clone(true);
+      const item = g.userData.item as string | undefined;
+      copy.traverse((o) => (o.userData.item = item));
+      g.remove(block);
+      g.add(copy);
+      modelLoaded();
+    })
+    .catch((err) => console.warn(`Could not load ${type}; keeping a block.`, err));
+  return g;
+}
+
 function buildPiece(type: string, color?: string, styleId?: string) {
+  if (LIBRARY[type]) return buildModel(type);
   const def = FURNITURE[type];
   const style = styleOf(styleId);
   soft = Number.isFinite(style.round) ? style.round : 1;

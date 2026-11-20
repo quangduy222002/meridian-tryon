@@ -5,7 +5,8 @@
  *
  * 1. Builds apps/web with ARTIFACT=1 (relative asset URLs, into apps/web/dist-artifact).
  * 2. Copies the studio page and only the files it reaches into apps/web/dist-artifact/publish/:
- *    index.html (the page content without its document skeleton, which the Artifact adds), assets/…, A26.pdf.
+ *    index.html (the page content without its document skeleton, which the Artifact adds), assets/…, A26.pdf and
+ *    the furniture models under models/.
  * 3. Writes publish/files.json: the `files` map for the Artifact tool.
  *
  * Usage: node scripts/artifact.mjs [--no-build]
@@ -85,6 +86,19 @@ const files = Object.fromEntries([...reached].sort().map((n) => [`assets/${n}`, 
 if (existsSync(join(dist, 'studio/A26.pdf'))) {
   cpSync(join(dist, 'studio/A26.pdf'), join(out, 'A26.pdf'));
   files['A26.pdf'] = join(out, 'A26.pdf');
+}
+// Ready-made furniture models (room/library.ts), loaded beside the page as models/…
+const modelsDir = join(dist, 'models');
+if (existsSync(modelsDir)) {
+  cpSync(modelsDir, join(out, 'models'), { recursive: true });
+  const walk = (dir, rel) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const r = `${rel}/${entry.name}`;
+      if (entry.isDirectory()) walk(join(dir, entry.name), r);
+      else files[r] = join(out, r);
+    }
+  };
+  walk(join(out, 'models'), 'models');
 }
 writeFileSync(join(out, 'files.json'), JSON.stringify(files, null, 2));
 const bytes = Object.values(files).reduce((s, f) => s + readFileSync(f).length, 0);

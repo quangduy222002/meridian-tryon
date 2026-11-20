@@ -105,9 +105,16 @@ import '../../styles/studio.css';
         </div>
         <aside class="wiz-panel">
           <h2>Select your flat</h2>
+          <button type="button" id="aiSheet" class="btn-ink ai-sheet">
+            ✦ Read the whole sheet with Claude
+          </button>
+          <p class="ai-sheet-note">
+            Claude finds every floor plan, the floor heights in the section, the walls, doors, room names and the
+            interior drawn on each floor, and builds the whole house. Uses your Claude.
+          </p>
           <p>
-            Drag a box around <b>your flat only</b> — leave out neighbouring units, the title block and notes. Scroll or
-            pinch to zoom; drag with the right mouse button or two fingers to pan.
+            Or by hand: drag a box around <b>your flat only</b> — leave out neighbouring units, the title block and
+            notes. Scroll or pinch to zoom; drag with the right mouse button or two fingers to pan.
           </p>
           <dl class="scale">
             <dt>Scale</dt>
@@ -148,6 +155,16 @@ import '../../styles/studio.css';
         </aside>
       </div>
     </section>
+
+    <dialog id="analysisDlg" class="sheet" aria-labelledby="analysisTitle">
+      <header>
+        <h2 id="analysisTitle">Claude's reading of the drawing</h2>
+        <form method="dialog">
+          <button aria-label="Close">✕</button>
+        </form>
+      </header>
+      <div class="analysis" id="analysisBody"></div>
+    </dialog>
 
     <dialog id="calDlg" class="sheet small" aria-labelledby="calTitle">
       <h2 id="calTitle">How long is that line?</h2>

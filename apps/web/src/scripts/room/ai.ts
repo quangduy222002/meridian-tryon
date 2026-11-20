@@ -503,3 +503,172 @@ Reply {"style": {"name": English name of the style (e.g. "Industrial loft"), "vi
   if (!style) throw new Error('Claude could not read a style from that photo. Try another one.');
   return { style, summary: typeof out.summary === 'string' ? out.summary : '' };
 }
+
+/* ---------- Reading a whole drawing sheet (Floorwise) ---------- */
+
+/** One floor plan Claude found on the sheet. */
+export interface SheetFloor {
+  /** A candidate view the app outlined (P1, P2…) or Claude's own box, in sheet-image pixels. */
+  view?: number;
+  box?: [number, number, number, number];
+  name: string;
+  /** Floor-to-floor height in metres, from the section when the sheet has one. */
+  height?: number;
+}
+
+export interface SheetReading {
+  floors: SheetFloor[];
+  /** The architect's reading for the client: project, plot, floors, strengths, issues (markdown, in Vietnamese). */
+  report: string;
+}
+
+/**
+ * Claude reads a whole drawing sheet as an architect would: which drawings are floor plans and of which floor (bottom
+ * up), each floor's height from the section, and a short professional reading of the design. The image shows the
+ * sheet with the views the app found outlined and numbered; Claude picks among them or draws its own box.
+ */
+export async function analyseSheet(
+  brain: Brain,
+  image: Blob,
+  size: { w: number; h: number },
+  views: { box: [number, number, number, number]; name: string }[],
+): Promise<SheetReading> {
+  const out = await askJson<{
+    floors?: { view?: string | number; box?: number[]; name?: string; height?: number | string }[];
+    report?: string;
+  }>(
+    brain,
+    `You are a senior Vietnamese architect reading a drawing sheet (one page of a set: floor plans, roof, sections, elevations, foundations, details, a site plan, a title block) so a 3D model of the house can be built from it.
+The image is ${size.w} × ${size.h} px. The app outlined the drawings it found in red and numbered them:
+${views.map((v, i) => `- P${i + 1}: "${v.name}" at [${v.box.map((n) => Math.round(n)).join(', ')}] (x0, y0, x1, y1 px)`).join('\n') || '- none'}
+1. List every FLOOR PLAN of the building (ground floor, mezzanine/lửng, upper floors; not the roof plan, foundation, site plan, sections, elevations or details), from the lowest floor up. For each, give the outlined view it is ("view": "P3"), or, if the app missed it or outlined it wrongly, your own box around the whole plan with its dimension lines ("box": [x0, y0, x1, y1] px). Name it as the drawing does (e.g. "Tầng 1", "Lửng", "Tầng 2"). Give its floor-to-floor height in metres from the section or level marks when the sheet shows them (e.g. +0.200 to +3.000 → 2.8).
+2. Write "report": a professional reading for the client in Vietnamese markdown, short: project and plot (address, size, building footprint, floors, total height), what each floor holds (rooms, stairs, voids, balconies), interior design drawn on the plans (furniture, kitchen, sanitary ware, special doors such as curved sliding doors or folding gates), strengths, and issues to check (heights, stairs, setbacks, missing drawings or data). Only what the sheet shows; say when something is unclear.
+Reply {"floors": [{"view"?: "P1", "box"?: [x0, y0, x1, y1], "name": string, "height"?: number}], "report": string}.`,
+    'Read the sheet.',
+    [image],
+  );
+  const floors: SheetFloor[] = [];
+  for (const f of out.floors ?? []) {
+    const view = typeof f.view === 'string' ? Number(f.view.replace(/\D/g, '')) - 1 : Number(f.view) - 1;
+    const box = Array.isArray(f.box) && f.box.length === 4 && f.box.every((n) => Number.isFinite(Number(n)));
+    const height = Number(f.height);
+    floors.push({
+      ...(Number.isInteger(view) && view >= 0 && view < views.length ? { view } : {}),
+      ...(box ? { box: f.box!.map(Number) as [number, number, number, number] } : {}),
+      name: text(f.name, 30, `Floor ${floors.length + 1}`),
+      ...(Number.isFinite(height) && height >= 2 && height <= 9 ? { height } : {}),
+    });
+  }
+  return { floors: floors.filter((f) => f.view !== undefined || f.box), report: text(out.report, 6000, '') };
+}
+
+/** What Claude changes on one floor the app built: walls, openings, room names, and the interior drawn on it. */
+export interface FloorReview {
+  /** Indexes (W1 → 0) of detected walls that are not walls. */
+  dropWalls: number[];
+  /** Walls the app missed, as centre lines in image pixels, with their thickness in metres. */
+  addWalls: { from: [number, number]; to: [number, number]; thick: number }[];
+  openings: {
+    at: [number, number];
+    kind: 'door' | 'double' | 'sliding' | 'folding' | 'window';
+    width: number;
+    curved?: boolean;
+  }[];
+  /** Names by room index (R1 → 0). */
+  rooms: { index: number; name: string }[];
+  found: DrawingReading['found'];
+  notes: string;
+}
+
+/**
+ * Claude reviews one floor the app built: the image is the floor's drawing with the detected walls in red (W1, W2…)
+ * and the rooms found in blue (R1, R2…). The geometry stays the app's: Claude says which walls to drop, where
+ * missing ones run (snapped to the plan afterwards), what each opening really is, what each room is called, and
+ * every piece of the interior drawn there (library and built-in pieces, or new objects it models).
+ */
+export async function reviewFloor(
+  brain: Brain,
+  image: Blob,
+  metresPerPixel: number,
+  size: { w: number; h: number },
+  p: Plan,
+  walls: number,
+  rooms: number,
+): Promise<FloorReview> {
+  const catalogue = Object.entries(FURNITURE)
+    .filter(([, d]) => !d.custom)
+    .map(([t, d]) => `${t} (${d.name}, ${d.w}×${d.d}×${d.h} m)`)
+    .join('; ');
+  const mpp = metresPerPixel.toFixed(5);
+  const out = await askJson<{
+    dropWalls?: (string | number)[];
+    addWalls?: { from?: number[]; to?: number[]; thick?: number }[];
+    openings?: { at?: number[]; kind?: string; width?: number; curved?: boolean }[];
+    rooms?: { id?: string | number; name?: string }[];
+    items?: { label?: string; type?: string; x?: number; z?: number; rot?: number | string }[];
+    customs?: Record<string, unknown>;
+    notes?: string;
+  }>(
+    brain,
+    `You are a senior architect checking the 3D model an app built from one floor plan drawing, so that what the drawing shows is what the model has.
+The image (${size.w} × ${size.h} px, ${mpp} m per px) is the drawing. Drawn over it in red are the ${walls} walls the app detected, numbered W1…W${walls} at their middles, and in blue the ${rooms} closed rooms it found, R1…R${rooms}.
+Check it against the drawing:
+- "dropWalls": walls that are not walls of the building (furniture, kitchen units, stair treads, dimension or hatch lines, landscape), by number.
+- "addWalls": walls (and railings of balconies) the drawing has that no red line covers: their centre line from one end to the other in image px, ending where they meet the walls they join; "thick" in metres. A curved wall: a run of short straight pieces along it.
+- "openings": every door and window that matters, at the middle of its opening in px, with "kind" "door" | "double" | "sliding" | "folding" | "window", its clear width in metres, and "curved": true for one in a curved wall (a curved sliding door).
+- "rooms": the name of each R room as written on the drawing (Vietnamese as written, e.g. "Phòng khách", "WC", "Bếp + ăn", "Chỗ để xe", "Sân sau"), else what it clearly is.
+- "items": everything of the interior drawn on the plan: furniture, kitchen units, sanitary ware, stairs of any shape, voids (thông tầng), planters. Positions in plan metres from the image's top-left: x = px × ${mpp}, z = py × ${mpp}; rot 0/90/180/270 (front faces +z at 0, back against the wall above). Use a catalogue type when one matches its kind and size (prefer the "ph:" models for sofas, armchairs, tables, chairs, cabinets: they are real scanned pieces); otherwise model it under "customs" and use "custom:<id>" (a spiral stair, a curved WC partition, an L kitchen of the drawn length). Stairs and lifts rising to the floor above get "opensAbove": true.
+Catalogue types: ${catalogue}.
+${CUSTOM_FORMAT}
+Do not repeat red walls that are right; do not invent what the drawing does not show. Reply {"dropWalls": ["W3"], "addWalls": [{"from": [x, y], "to": [x, y], "thick": 0.1}], "openings": [{"at": [x, y], "kind": "door", "width": 0.8}], "rooms": [{"id": "R1", "name": string}], "items": [{"label": string, "type": string, "x": number, "z": number, "rot": 0}], "customs"?: {...}, "notes": one or two sentences in Vietnamese on what you could not read}.`,
+    'Check this floor.',
+    [image],
+  );
+  const num = (v: unknown) => Number(v);
+  const pt = (a: unknown): [number, number] | null =>
+    Array.isArray(a) && a.length === 2 && a.every((n) => Number.isFinite(num(n))) ? [num(a[0]), num(a[1])] : null;
+  const idx = (v: unknown, n: number) => {
+    const i = (typeof v === 'string' ? Number(v.replace(/\D/g, '')) : Number(v)) - 1;
+    return Number.isInteger(i) && i >= 0 && i < n ? i : -1;
+  };
+  const kinds = ['door', 'double', 'sliding', 'folding', 'window'] as const;
+  const customTypes = adoptCustoms(p, out.customs);
+  const found = (out.items ?? [])
+    .map((i) => ({
+      ...i,
+      x: Number(i.x),
+      z: Number(i.z),
+      type: i.type?.startsWith('custom:') ? (customTypes.get(i.type.slice(7)) ?? i.type) : i.type,
+    }))
+    .filter((i) => i.type && FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
+    .map((i) => ({
+      label: String(i.label ?? FURNITURE[i.type!]!.name).slice(0, 60),
+      custom: i.type!.startsWith('custom:'),
+      item: { type: i.type!, x: i.x, z: i.z, rot: quarterTurn(i.rot) },
+    }));
+  return {
+    dropWalls: (out.dropWalls ?? []).map((v) => idx(v, walls)).filter((i) => i >= 0),
+    addWalls: (out.addWalls ?? []).flatMap((w) => {
+      const a = pt(w.from);
+      const b = pt(w.to);
+      const t = num(w.thick);
+      return a && b ? [{ from: a, to: b, thick: Number.isFinite(t) ? Math.min(0.5, Math.max(0.05, t)) : 0.1 }] : [];
+    }),
+    openings: (out.openings ?? []).flatMap((o) => {
+      const at = pt(o.at);
+      const kind = kinds.find((k) => k === o.kind);
+      const width = num(o.width);
+      return at && kind
+        ? [{ at, kind, width: Number.isFinite(width) ? Math.min(6, Math.max(0.4, width)) : 0.8, curved: !!o.curved }]
+        : [];
+    }),
+    rooms: (out.rooms ?? []).flatMap((r) => {
+      const index = idx(r.id, rooms);
+      return index >= 0 && typeof r.name === 'string' && r.name.trim()
+        ? [{ index, name: r.name.trim().slice(0, 40) }]
+        : [];
+    }),
+    found,
+    notes: text(out.notes, 400, ''),
+  };
+}

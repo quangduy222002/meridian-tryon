@@ -23,6 +23,8 @@
   (`src/lib/claude-host.ts`) instead of an API key, and Export saves through the `downloads` capability (a DXF goes
   inside a ZIP there); publish the folder with `capabilities: {sample: {images: true}, downloads: true}` ("Read" sends
   Claude a picture of the drawing; objects the catalogue lacks are modelled as primitives in `room/custom.ts`).
+  "Read the whole sheet with Claude" (`ai.analyseSheet` + `ai.reviewFloor`) finds the floor plans and heights, then
+  checks each floor the geometry built (walls numbered on the image) and places the drawn interior.
 
 ## 3D work: performance comes first
 
@@ -33,7 +35,9 @@
 - Static scenes: `renderer.shadowMap.autoUpdate = false` and set `needsUpdate` only when geometry changes.
 - Heavy canvas/procedural work goes in a Web Worker via `exposeTextureWorker` + `generateTextures` (see
   `scripts/chair/textures*.ts`). Always pass `renderer` so textures reach the GPU before the worker is terminated.
-- Prefer animating in shaders over per-frame buffer uploads; build models in code instead of shipping files.
+- Prefer animating in shaders over per-frame buffer uploads; build models in code instead of shipping files. The
+  exception is the furniture library (`room/library.ts`): CC0 glTF models under `apps/web/public/models/`, loaded
+  only when a piece is placed (GLTFLoader stays out of the shared `three` chunk).
 
 ## Checks
 

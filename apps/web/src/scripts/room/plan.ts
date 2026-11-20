@@ -556,6 +556,12 @@ export function addStorey(p: Plan, floor?: Plan, name?: string, height = 3.3): P
   const cur = p.storey ?? 0;
   list[cur] = { ...list[cur]!, plan: floorOnly(structuredClone(p)) };
   const top = Math.max(...list.map((s) => s.elevation));
+  // The new floor sits one floor height above the top one: its own height when one was set (from the section).
+  const below = list.find((s) => s.elevation === top);
+  if (below?.height) {
+    height = below.height;
+    delete below.height;
+  }
   const fresh: Plan = floor
     ? floorOnly(structuredClone(floor))
     : { ...emptyFloor(p), nodes: structuredClone(p.nodes), walls: structuredClone(p.walls) };

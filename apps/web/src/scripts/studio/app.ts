@@ -4,7 +4,7 @@
  */
 import { $, toast } from '../../lib/dom/chrome';
 import { startRoomcraft, type DrawingShot, type RoomcraftApi, type RoomcraftOptions } from '../room/app';
-import { findRooms, type Plan } from '../room/plan';
+import { findRooms, type Plan, type Room } from '../room/plan';
 import { inRegion, scaleFromDimensions, type Drawing, type Region } from './drawing';
 import { detectWalls } from './detect';
 import { alignTo, floorLabel } from './floors';
@@ -36,6 +36,8 @@ export async function startStudio(gl: boolean) {
   const builtNow = () => builtFloors.get(floorIndex()) ?? null;
   /** Bringing another floor in from the drawing: the next "Build" adds a floor instead of replacing the plan. */
   let addingFloor = false;
+  /** A floor name Claude read, used by the next build instead of the one read from the title. */
+  let floorNameOverride: string | null = null;
   /** The name read from the drawing for the first floor, used once a second floor makes names matter. */
   let firstFloorName: string | null = null;
   /** A plan is open in the workspace this visit, so "back" can return to it as it is. */
@@ -477,7 +479,7 @@ export async function startStudio(gl: boolean) {
 
   /* ---------- Read the drawing with AI ---------- */
   /** The area the current floor was built from, as an image (erased areas blanked) with its pixel scale. */
-  const shoot = async (): Promise<DrawingShot | null> => {
+  const shoot = async (overlay = false): Promise<DrawingShot | null> => {
     const b = builtNow();
     if (!b) return null;
     const { d, r, k, dx, dz } = b;
@@ -529,10 +531,217 @@ export async function startStudio(gl: boolean) {
     }
     g.fillStyle = '#ffffff';
     for (const m of masks) g.fillRect(X(m.x0), Y(m.y1), (m.x1 - m.x0) * px, (m.y1 - m.y0) * px);
+    if (overlay) {
+      // The plan as built, over the drawing: walls in red numbered W1…, rooms in blue numbered R1…
+      const p = api.plan();
+      const mpp = k / 1000 / px;
+      const P = (x: number, z: number) => [(x - dx) / mpp, (z - dz) / mpp] as const;
+      const nodes = new Map(p.nodes.map((n) => [n.id, n]));
+      g.lineCap = 'round';
+      g.font = `bold ${Math.round(Math.max(11, c.width / 110))}px sans-serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      p.walls.forEach((w, i) => {
+        const a = nodes.get(w.a);
+        const b = nodes.get(w.b);
+        if (!a || !b) return;
+        const [x1, y1] = P(a.x, a.z);
+        const [x2, y2] = P(b.x, b.z);
+        g.strokeStyle = 'rgba(220, 38, 38, 0.45)';
+        g.lineWidth = Math.max(3, (w.thick ?? 0.15) / mpp);
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.lineTo(x2, y2);
+        g.stroke();
+        g.fillStyle = '#b91c1c';
+        g.fillText(`W${i + 1}`, (x1 + x2) / 2, (y1 + y2) / 2);
+      });
+      findRooms(p).forEach((r, i) => {
+        const [x, y] = P(r.centroid[0], r.centroid[1]);
+        g.fillStyle = '#1d4ed8';
+        g.fillText(`R${i + 1}`, x, y);
+      });
+    }
     const image = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
     if (!image) return null;
     return { image, metresPerPixel: k / 1000 / px, w: c.width, h: c.height, dx, dz };
   };
+  /* ---------- Claude reads the whole sheet ---------- */
+  /** The whole sheet as an image (long side 2400 px) with the plans the app found outlined and numbered. */
+  const sheetShot = async () => {
+    const d = drawing!;
+    const b = d.bounds;
+    const W = b.x1 - b.x0;
+    const H = b.y1 - b.y0;
+    const px = 2400 / Math.max(W, H);
+    const c = document.createElement('canvas');
+    c.width = Math.round(W * px);
+    c.height = Math.round(H * px);
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, c.width, c.height);
+    const X = (x: number) => (x - b.x0) * px;
+    const Y = (y: number) => (b.y1 - y) * px;
+    const img = imageFor(d);
+    await img?.decode().catch(() => undefined);
+    if (d.image && img?.complete && img.naturalWidth) {
+      const iw = img.naturalWidth / (d.image.x1 - d.image.x0);
+      const ih = img.naturalHeight / (d.image.y1 - d.image.y0);
+      g.drawImage(img, (b.x0 - d.image.x0) * iw, (d.image.y1 - b.y1) * ih, W * iw, H * ih, 0, 0, c.width, c.height);
+    } else {
+      g.strokeStyle = '#000000';
+      g.lineWidth = 1;
+      g.beginPath();
+      for (const s of d.segs) {
+        g.moveTo(X(s.x1), Y(s.y1));
+        g.lineTo(X(s.x2), Y(s.y2));
+      }
+      g.stroke();
+    }
+    const boxes = views.map((v) => ({
+      name: v.name,
+      box: [X(v.region.x0), Y(v.region.y1), X(v.region.x1), Y(v.region.y0)] as [number, number, number, number],
+    }));
+    g.strokeStyle = '#dc2626';
+    g.lineWidth = 3;
+    g.fillStyle = '#dc2626';
+    g.font = `bold ${Math.round(c.width / 60)}px sans-serif`;
+    boxes.forEach((v, i) => {
+      g.strokeRect(v.box[0], v.box[1], v.box[2] - v.box[0], v.box[3] - v.box[1]);
+      g.fillText(`P${i + 1}`, v.box[0] + 6, v.box[1] + c.width / 55);
+    });
+    const image = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
+    /** A box in image pixels back to drawing units. */
+    const toRegion = (q: [number, number, number, number]): Region => ({
+      x0: b.x0 + Math.min(q[0], q[2]) / px,
+      x1: b.x0 + Math.max(q[0], q[2]) / px,
+      y0: b.y1 - Math.max(q[1], q[3]) / px,
+      y1: b.y1 - Math.min(q[1], q[3]) / px,
+    });
+    return { image, size: { w: c.width, h: c.height }, boxes, toRegion };
+  };
+  /** A little markdown (headings, bullets, bold, tables) as HTML, escaped. */
+  const md = (src: string) => {
+    const esc = (t: string) =>
+      t
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    const out: string[] = [];
+    let list = false;
+    let table: string[][] = [];
+    const flush = () => {
+      if (list) out.push('</ul>');
+      list = false;
+      if (table.length) {
+        const [head, ...rows] = table.filter((r) => !r.every((c) => /^:?-+:?$/.test(c)));
+        out.push(
+          `<table><thead><tr>${head!.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows
+            .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
+            .join('')}</tbody></table>`,
+        );
+      }
+      table = [];
+    };
+    for (const line of src.split('\n')) {
+      const l = line.trim();
+      if (l.startsWith('|')) {
+        if (list) flush();
+        table.push(
+          l
+            .replace(/^\||\|$/g, '')
+            .split('|')
+            .map((c) => c.trim()),
+        );
+        continue;
+      }
+      if (table.length) flush();
+      const h = /^(#{1,4})\s+(.*)/.exec(l);
+      if (h) {
+        flush();
+        out.push(`<h${Math.min(4, h[1]!.length + 1)}>${esc(h[2]!)}</h${Math.min(4, h[1]!.length + 1)}>`);
+      } else if (/^[-*]\s+/.test(l)) {
+        if (!list) out.push('<ul>');
+        list = true;
+        out.push(`<li>${esc(l.replace(/^[-*]\s+/, ''))}</li>`);
+      } else if (l) {
+        flush();
+        out.push(`<p>${esc(l)}</p>`);
+      } else flush();
+    }
+    flush();
+    return out.join('');
+  };
+  $('aiSheet').addEventListener('click', async () => {
+    const btn = $<HTMLButtonElement>('aiSheet');
+    const status = $('selectStatus');
+    if (!drawing || btn.getAttribute('aria-busy') === 'true') return;
+    const brain = api.claude();
+    if (!brain) {
+      status.textContent =
+        'Claude is not available here: open Floorwise in claude.ai (or add an API key in the AI dialog).';
+      return;
+    }
+    if (!drawing.mmPerUnit) {
+      status.textContent = 'Set the scale first: the dimensions on this sheet could not be read.';
+      return;
+    }
+    btn.setAttribute('aria-busy', 'true');
+    btn.disabled = true;
+    const log: string[] = [];
+    try {
+      const { analyseSheet, reviewFloor } = await import('../room/ai');
+      status.textContent = 'Claude is reading the sheet…';
+      const shot = await sheetShot();
+      if (!shot.image) throw new Error('The sheet could not be drawn.');
+      const reading = await analyseSheet(brain, shot.image, shot.size, shot.boxes);
+      if (!reading.floors.length) throw new Error('Claude found no floor plan on this sheet. Select one by hand.');
+      const floors = reading.floors.map((f) => ({
+        ...f,
+        region: f.view !== undefined ? { ...views[f.view]!.region } : shot.toRegion(f.box!),
+      }));
+      for (const [i, f] of floors.entries()) {
+        status.textContent = `Building ${f.name} (${i + 1} of ${floors.length})…`;
+        if (i) startAddingFloor();
+        sheetHost.setRegion(f.region);
+        floorNameOverride = f.name;
+        $('detectBtn').click();
+        if (f.height) api.setFloorHeight(f.height);
+        status.textContent = `Claude is checking ${f.name} (${i + 1} of ${floors.length})…`;
+        toast(`Claude is checking ${f.name} (${i + 1} of ${floors.length})…`, 90_000);
+        const floorShot = await shoot(true);
+        if (!floorShot) continue;
+        const rooms: Room[] = findRooms(api.plan());
+        try {
+          const review = await reviewFloor(
+            brain,
+            floorShot.image,
+            floorShot.metresPerPixel,
+            floorShot,
+            api.plan(),
+            api.plan().walls.length,
+            rooms.length,
+          );
+          const done = api.applyReview(review, floorShot, rooms);
+          log.push(
+            `- **${f.name}**${f.height ? ` (${f.height} m)` : ''}: ${done.dropped} walls removed, ${done.added} added, ${done.openings} doors/windows set, ${done.named} rooms named, ${done.items} pieces placed.${review.notes ? ` ${review.notes}` : ''}`,
+          );
+        } catch (err) {
+          log.push(`- **${f.name}**: ${err instanceof Error ? err.message : 'the check failed'}`);
+        }
+      }
+      $('analysisBody').innerHTML = md(`${reading.report}\n\n## What Floorwise built\n${log.join('\n')}`);
+      $<HTMLDialogElement>('analysisDlg').showModal();
+      toast(`Built ${floors.length} floors from Claude's reading: ${floors.map((f) => f.name).join(', ')}.`, 8000);
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Reading the sheet failed. Try again.';
+    } finally {
+      btn.removeAttribute('aria-busy');
+      btn.disabled = false;
+    }
+  });
+
   $('readBtn').addEventListener('click', async () => {
     const shot = await shoot();
     if (!shot) return toast('Build the plan from a drawing first.');
@@ -573,7 +782,8 @@ export async function startStudio(gl: boolean) {
     const found = findSymbols(source, region);
     const furnished = furnish(res.plan, found);
     const named = [...new Set(nameRooms(res.plan, source, region, found).values())];
-    const floorName = floorLabel(source, region);
+    const floorName = floorNameOverride ?? floorLabel(source, region);
+    floorNameOverride = null;
     underlayOn = true;
     $('drawingBtn').setAttribute('aria-pressed', 'true');
     if (addingFloor) {
@@ -587,7 +797,8 @@ export async function startStudio(gl: boolean) {
         it.x += dx;
         it.z += dz;
       }
-      const renamed = api.plan().storeys?.length ? null : firstFloorName;
+      const list = api.plan().storeys;
+      const renamed = !list?.length || (list.length === 1 && list[0]!.name === 'Floor 1') ? firstFloorName : null;
       api.addStorey(res.plan, floorName ?? undefined);
       const p = api.plan();
       if (renamed && p.storeys?.[0]) {
