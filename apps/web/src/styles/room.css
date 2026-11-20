@@ -684,61 +684,6 @@ svg {
   border-color: var(--accent);
   color: #fff;
 }
-.est-scroll {
-  overflow-x: auto;
-}
-.est {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-.est th,
-.est td {
-  padding: 7px 6px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: top;
-}
-.est thead th {
-  font: 500 11.5px var(--sans);
-  color: var(--mute);
-}
-.est .n {
-  text-align: right;
-  white-space: nowrap;
-}
-.est small {
-  display: block;
-  color: var(--mute);
-  font-size: 11.5px;
-}
-.est tfoot td {
-  font-weight: 700;
-  border-bottom: none;
-}
-.est-totals {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-  margin: 4px 0 14px;
-}
-.est-totals div {
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--line);
-  background: var(--bg);
-}
-.est-totals small {
-  display: block;
-  font: 500 11.5px var(--sans);
-  color: var(--mute);
-}
-.est-totals b {
-  font: 600 20px/1.3 var(--sans);
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
 .est h3 {
   margin: 16px 0 4px;
   font-size: 13px;

@@ -131,12 +131,13 @@
 - **EN:** "Walk through it at eye level, and check the light at any time of day."
 - **VI:** "Đi dạo trong nhà ở tầm mắt, và xem ánh sáng vào bất kỳ giờ nào trong ngày."
 
-### Cảnh 9 — Dự toán (1:14–1:18)
+### Cảnh 9 — Chiếu sáng (1:14–1:18)
 
-- **Thao tác:** bấm **"Estimate"** → bảng diện tích từng phòng, chi phí sàn, sơn tường, nội thất, cửa. Đóng bảng.
-- **Chữ trên hình:** `Areas and an indicative cost, per room`
-- **EN:** "Areas and an indicative cost, room by room."
-- **VI:** "Diện tích và chi phí ước tính cho từng phòng."
+- **Thao tác:** bấm **"Lighting"** → **"Design the lighting"**, rồi kéo thanh **"Sun"** qua 19:00: đèn âm trần, đèn
+  thả bàn ăn và đèn đầu giường bật sáng.
+- **Chữ trên hình:** `A lighting plan for every room`
+- **EN:** "A lighting plan for every room, and the home at night."
+- **VI:** "Bố trí đèn cho từng phòng, và ngôi nhà về đêm."
 
 ### Cảnh 10 — Xuất file (1:18–1:26)
 
@@ -171,7 +172,6 @@
 ## 6. Những điều không được làm
 
 - Không nói hay ghi rằng nhận diện luôn chính xác 100%: app tự ghi "check them against the drawing".
-- Không gọi số liệu "Estimate" là báo giá: đó là chi phí ước tính để so sánh phương án.
 - Không quay ô nhập API key, email, tên tài khoản hay bất kỳ thông tin cá nhân nào.
 - Không quay hộp xin phép của claude.ai (cắt bỏ).
 - Không dùng tên, logo hay giao diện của sản phẩm khác.

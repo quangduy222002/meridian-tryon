@@ -1,4 +1,4 @@
-/** Furniture and finish catalogues: plain data shared by the 2D plan, the 3D builder, the estimate and the AI. */
+/** Furniture and finish catalogues: plain data shared by the 2D plan, the 3D builder and the AI. */
 
 export interface FurnitureDef {
   name: string;
@@ -577,39 +577,37 @@ export interface Finish {
   /** Tint applied to the texture, or the paint colour. */
   color: string;
   roughness: number;
-  /** Supply + fit, USD per m². */
-  price: number;
 }
 
 export const FLOORS: Record<string, Finish> = {
-  oak: { name: 'Oak planks', tex: 'planks', color: '#d9b48a', roughness: 0.6, price: 42 },
-  walnut: { name: 'Walnut planks', tex: 'planks', color: '#8a5f3f', roughness: 0.55, price: 64 },
-  tile: { name: 'Porcelain tile', tex: 'tile', color: '#e6e2db', roughness: 0.35, price: 34 },
-  terrazzo: { name: 'Terrazzo', tex: 'terrazzo', color: '#ebe6dd', roughness: 0.4, price: 78 },
-  concrete: { name: 'Polished concrete', tex: 'concrete', color: '#bdb7ad', roughness: 0.5, price: 28 },
-  carpet: { name: 'Wool carpet', tex: 'carpet', color: '#c7bba8', roughness: 0.95, price: 24 },
-  herringbone: { name: 'Herringbone oak', tex: 'herringbone', color: '#c9a173', roughness: 0.55, price: 72 },
-  bamboo: { name: 'Bamboo strand', tex: 'planks', color: '#c9a46b', roughness: 0.6, price: 38 },
-  marble: { name: 'Marble', tex: 'marble', color: '#f1eeea', roughness: 0.2, price: 120 },
-  encaustic: { name: 'Cement tiles (gạch bông)', tex: 'encaustic', color: '#ffffff', roughness: 0.45, price: 55 },
-  terracotta: { name: 'Terracotta tiles', tex: 'tile', color: '#c98a64', roughness: 0.7, price: 32 },
+  oak: { name: 'Oak planks', tex: 'planks', color: '#d9b48a', roughness: 0.6 },
+  walnut: { name: 'Walnut planks', tex: 'planks', color: '#8a5f3f', roughness: 0.55 },
+  tile: { name: 'Porcelain tile', tex: 'tile', color: '#e6e2db', roughness: 0.35 },
+  terrazzo: { name: 'Terrazzo', tex: 'terrazzo', color: '#ebe6dd', roughness: 0.4 },
+  concrete: { name: 'Polished concrete', tex: 'concrete', color: '#bdb7ad', roughness: 0.5 },
+  carpet: { name: 'Wool carpet', tex: 'carpet', color: '#c7bba8', roughness: 0.95 },
+  herringbone: { name: 'Herringbone oak', tex: 'herringbone', color: '#c9a173', roughness: 0.55 },
+  bamboo: { name: 'Bamboo strand', tex: 'planks', color: '#c9a46b', roughness: 0.6 },
+  marble: { name: 'Marble', tex: 'marble', color: '#f1eeea', roughness: 0.2 },
+  encaustic: { name: 'Cement tiles (gạch bông)', tex: 'encaustic', color: '#ffffff', roughness: 0.45 },
+  terracotta: { name: 'Terracotta tiles', tex: 'tile', color: '#c98a64', roughness: 0.7 },
 };
 
 export const WALLS: Record<string, Finish> = {
-  chalk: { name: 'Chalk white', color: '#f1ede6', roughness: 0.9, price: 6 },
-  sand: { name: 'Warm sand', color: '#e4d3bb', roughness: 0.9, price: 6 },
-  sage: { name: 'Sage', color: '#b9c4b1', roughness: 0.9, price: 6 },
-  clay: { name: 'Terracotta', color: '#cf9a7e', roughness: 0.9, price: 6 },
-  ink: { name: 'Ink blue', color: '#4f5d70', roughness: 0.85, price: 7 },
-  brick: { name: 'Brick slips', tex: 'brick', color: '#c98f74', roughness: 0.85, price: 58 },
-  plaster: { name: 'Lime plaster', tex: 'concrete', color: '#e2dbd0', roughness: 0.95, price: 22 },
-  zellige: { name: 'Zellige tile', tex: 'tile', color: '#9fbfb9', roughness: 0.3, price: 95 },
-  greige: { name: 'Greige', color: '#d9d3ca', roughness: 0.9, price: 6 },
-  limewash: { name: 'Limewash', tex: 'concrete', color: '#ece3d3', roughness: 0.95, price: 18 },
-  slats: { name: 'Timber slats', tex: 'slats', color: '#d1b18a', roughness: 0.7, price: 85 },
-  panel: { name: 'Panelled walls', tex: 'panel', color: '#efe7d8', roughness: 0.8, price: 65 },
-  tile: { name: 'White wall tiles', tex: 'tile', color: '#f2f1ee', roughness: 0.3, price: 40 },
-  marble: { name: 'Marble slabs', tex: 'marble', color: '#f1eeea', roughness: 0.25, price: 140 },
+  chalk: { name: 'Chalk white', color: '#f1ede6', roughness: 0.9 },
+  sand: { name: 'Warm sand', color: '#e4d3bb', roughness: 0.9 },
+  sage: { name: 'Sage', color: '#b9c4b1', roughness: 0.9 },
+  clay: { name: 'Terracotta', color: '#cf9a7e', roughness: 0.9 },
+  ink: { name: 'Ink blue', color: '#4f5d70', roughness: 0.85 },
+  brick: { name: 'Brick slips', tex: 'brick', color: '#c98f74', roughness: 0.85 },
+  plaster: { name: 'Lime plaster', tex: 'concrete', color: '#e2dbd0', roughness: 0.95 },
+  zellige: { name: 'Zellige tile', tex: 'tile', color: '#9fbfb9', roughness: 0.3 },
+  greige: { name: 'Greige', color: '#d9d3ca', roughness: 0.9 },
+  limewash: { name: 'Limewash', tex: 'concrete', color: '#ece3d3', roughness: 0.95 },
+  slats: { name: 'Timber slats', tex: 'slats', color: '#d1b18a', roughness: 0.7 },
+  panel: { name: 'Panelled walls', tex: 'panel', color: '#efe7d8', roughness: 0.8 },
+  tile: { name: 'White wall tiles', tex: 'tile', color: '#f2f1ee', roughness: 0.3 },
+  marble: { name: 'Marble slabs', tex: 'marble', color: '#f1eeea', roughness: 0.25 },
 };
 
 export const DEFAULT_STYLE = { floor: 'oak', wall: 'chalk' };
@@ -620,62 +618,3 @@ export const ROOM_DEFAULTS: Record<string, { floor: string; wall: string }> = {
   Balcony: { floor: 'tile', wall: 'plaster' },
   Shaft: { floor: 'concrete', wall: 'plaster' },
 };
-
-/** Furniture rough price, for the estimate. */
-export const FURNITURE_PRICE: Record<string, number> = {
-  sofa: 1450,
-  armchair: 620,
-  coffee: 280,
-  rug: 390,
-  tv: 540,
-  dining: 1250,
-  kitchen: 4200,
-  fridge: 1100,
-  bed: 1300,
-  nightstand: 160,
-  wardrobe: 980,
-  desk: 420,
-  chair: 140,
-  bookshelf: 360,
-  bathtub: 1150,
-  toilet: 420,
-  sink: 690,
-  plant: 85,
-  lamp: 190,
-  sofa2: 990,
-  sofaL: 2400,
-  armchairWing: 890,
-  armchairRattan: 380,
-  ottoman: 120,
-  bench: 260,
-  coffeeRound: 320,
-  teaTable: 650,
-  sideTable: 110,
-  diningRound: 1300,
-  dining6: 1900,
-  dresser: 520,
-  sideboard: 880,
-  console: 340,
-  shoe: 310,
-  altar: 1600,
-  bookshelfLow: 290,
-  bedSingle: 720,
-  bedKing: 1750,
-  wardrobe2: 690,
-  washer: 520,
-  shower: 780,
-  rugRound: 320,
-  plantPalm: 160,
-  art: 240,
-  downlight: 35,
-  ceilingLight: 120,
-  pendant: 180,
-  chandelier: 650,
-  wallLight: 95,
-  stairs: 3200,
-  stairsL: 4600,
-  void: 450,
-};
-
-/** Doors and windows, per piece, for the estimate. */
-export const OPENING_PRICE = { door: 480, window: 620 };

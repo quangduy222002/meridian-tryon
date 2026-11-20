@@ -58,7 +58,6 @@ import {
   type Room,
   type Vec2,
 } from './plan';
-import { estimate } from './estimate';
 import { Walker, solidsOf } from './walk';
 import { autosave, clearLinkHash, loadInitial, shareUrl, useStorageKey } from './store';
 import { roomSpecs, type RoomTexture } from './textures';
@@ -367,7 +366,7 @@ ${
           )
             .map(
               ([k, f]) =>
-                `<button type="button" class="finish" data-${kind}="${k}" aria-pressed="${st[kind] === k}"><i style="background:${f.color}"></i>${esc(f.name)}<small>$${f.price}/m²</small></button>`,
+                `<button type="button" class="finish" data-${kind}="${k}" aria-pressed="${st[kind] === k}"><i style="background:${f.color}"></i>${esc(f.name)}</button>`,
             )
             .join('')}</div>`;
         html = `<h2>${esc(roomName(p, r))}<small>${r.area.toFixed(1)} m²</small></h2>
@@ -489,40 +488,6 @@ ${
     if (choice === 'blank') editor.setTool('wall');
   });
 
-  /* ---------- Estimate ---------- */
-  const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
-  $('estimateBtn').addEventListener('click', () => {
-    const e = estimate(plan, rooms);
-    $('estBody').innerHTML = `<div class="est-totals">
-  <div><small>Floor area</small><b>${e.totalArea.toFixed(1)} m²</b></div>
-  <div><small>Finishes</small><b>${usd(e.finishes)}</b></div>
-  <div><small>Furniture</small><b>${usd(e.furnitureTotal)}</b></div>
-  <div><small>Total</small><b>${usd(e.total)}</b></div>
-</div>
-<div class="est-scroll"><table class="est">
-  <caption class="sr-only">Rooms, finishes and costs</caption>
-  <thead><tr><th scope="col">Room</th><th scope="col" class="n">Area</th><th scope="col">Floor</th><th scope="col">Walls</th><th scope="col" class="n">Cost</th></tr></thead>
-  <tbody>${e.rooms
-    .map(
-      (r) =>
-        `<tr><th scope="row">${esc(r.name)}</th><td class="n">${r.area.toFixed(1)} m²</td><td>${esc(r.floor.name)}<small>${usd(r.floor.cost)}</small></td><td>${esc(r.wall.name)}<small>${r.wallArea.toFixed(0)} m² · ${usd(r.wall.cost)}</small></td><td class="n">${usd(r.floor.cost + r.wall.cost)}</td></tr>`,
-    )
-    .join('')}</tbody>
-</table></div>
-<h3>Furniture, doors and windows</h3>
-<div class="est-scroll"><table class="est">
-  <tbody>${e.furniture
-    .map(
-      (f) =>
-        `<tr><th scope="row">${esc(f.name)}</th><td class="n">× ${f.qty}</td><td class="n">${usd(f.cost)}</td></tr>`,
-    )
-    .join('')}
-  <tr><th scope="row">Doors and windows</th><td class="n">${e.openings.doors} + ${e.openings.windows}</td><td class="n">${usd(e.openings.cost)}</td></tr></tbody>
-  <tfoot><tr><td>Total</td><td></td><td class="n">${usd(e.total)}</td></tr></tfoot>
-</table></div>`;
-    $<HTMLDialogElement>('estimate').showModal();
-  });
-
   /* ---------- Share: native share sheet on phones, else copy the link ---------- */
   const shareTip = document.querySelector<HTMLElement>('.share-tip')!;
   let tipTimer = 0;
@@ -595,14 +560,24 @@ ${
     const file = photoIn.files?.[0];
     if (!file) return;
     try {
-      const bmp = await createImageBitmap(file);
-      const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+      // Decoded through an <img>, which every browser (and headless test runner) handles for any picture type.
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      try {
+        await img.decode();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+      const k = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight));
       const c = document.createElement('canvas');
-      c.width = Math.round(bmp.width * k);
-      c.height = Math.round(bmp.height * k);
-      c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
-      bmp.close();
-      refPhoto = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.86));
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      refPhoto =
+        (await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/jpeg', 0.86))) ??
+        (await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/png')));
+      if (!refPhoto) throw new Error('unreadable');
       const prev = $<HTMLImageElement>('photoPrev');
       prev.src = c.toDataURL('image/jpeg', 0.7);
       prev.hidden = false;

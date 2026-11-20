@@ -5,6 +5,8 @@ const PORT = 4321;
 export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 90_000,
+  // CI runners render WebGL in software and run plan detection several times slower than a laptop.
+  expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

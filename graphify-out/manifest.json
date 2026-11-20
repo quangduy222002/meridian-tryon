@@ -324,9 +324,9 @@
     "semantic_hash": ""
   },
   "playwright.config.ts": {
-    "mtime": 1794879915.7966585,
-    "seen": 1794883115.7220118,
-    "ast_hash": "bb72c4299c625d7f76e3b3de3d8562c0",
+    "mtime": 1795142287.6148727,
+    "seen": 1795142292.0744221,
+    "ast_hash": "2b09e62ff87b3dafee06d9f8bc288a56",
     "semantic_hash": ""
   },
   "scripts/check-bundle.mjs": {
@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1795084087.3153214,
-    "seen": 1795084393.2860868,
-    "ast_hash": "acc68549a7f2370d2d0ec279f5abbd8e",
+    "mtime": 1795142037.625638,
+    "seen": 1795142292.0744262,
+    "ast_hash": "799f725b2c177e95f3e1982118fa6024",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,15 +552,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1795072252.7897468,
-    "seen": 1795072717.290426,
-    "ast_hash": "1df6724cc21ea9a702a3167d4c9a127f",
+    "mtime": 1795141742.13274,
+    "seen": 1795142292.074388,
+    "ast_hash": "1a53545de02fe41cba9fc76b53e94ad4",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
-    "mtime": 1795067020.9965153,
-    "seen": 1795067697.9396439,
-    "ast_hash": "142f2f9f6555cf18b2ef1811172d3458",
+    "mtime": 1795141770.4841418,
+    "seen": 1795142292.074389,
+    "ast_hash": "b0d12338a477d43fc177383772dc33ed",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/editor2d.ts": {
@@ -599,12 +599,6 @@
     "ast_hash": "300771b503a2f2be7846beca929df6f4",
     "semantic_hash": ""
   },
-  "apps/web/src/scripts/room/estimate.ts": {
-    "mtime": 1794896048.8681521,
-    "seen": 1794896290.5268018,
-    "ast_hash": "07707b8089316480281533a9edfa3b51",
-    "semantic_hash": ""
-  },
   "apps/web/src/scripts/room/store.ts": {
     "mtime": 1794879915.7872794,
     "seen": 1794883115.7219908,
@@ -624,9 +618,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/RoomWorkspace.astro": {
-    "mtime": 1795072378.6520338,
-    "seen": 1795072717.290393,
-    "ast_hash": "1964223ae0cdb334b762920663afebf8",
+    "mtime": 1795141728.75599,
+    "seen": 1795142292.074356,
+    "ast_hash": "6d17c61408a3ed76ff08f4af00ecd71a",
     "semantic_hash": ""
   },
   "apps/web/src/pages/studio/index.astro": {
@@ -714,9 +708,9 @@
     "semantic_hash": ""
   },
   "docs/demo-clip.md": {
-    "mtime": 1794915654.4779222,
-    "seen": 1794916083.583776,
-    "ast_hash": "0ef88d9911b8c1a8c5123a80cad57b88",
+    "mtime": 1795141768.797547,
+    "seen": 1795142292.07443,
+    "ast_hash": "5c1fcbb177b4b20f2b31d7f977f4eab2",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/lighting.ts": {

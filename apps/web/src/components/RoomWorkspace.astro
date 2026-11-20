@@ -93,12 +93,6 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
         </svg>
         <span>Lighting</span>
       </button>
-      <button type="button" id="estimateBtn" aria-label="Estimate" title="Areas and cost estimate">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 3h14v18H5zM8 7h8M8 11h2M12 11h2M8 15h2M12 15h4"></path>
-        </svg>
-        <span>Estimate</span>
-      </button>
       <button
         type="button"
         id="exportBtn"
@@ -198,17 +192,6 @@ const { brand, tagline, heading, stage = 'workspace' } = Astro.props;
       3D
     </button>
   </nav>
-
-  <dialog id="estimate" class="sheet" aria-labelledby="estTitle">
-    <header>
-      <h2 id="estTitle">Areas &amp; estimate</h2>
-      <form method="dialog">
-        <button aria-label="Close estimate">✕</button>
-      </form>
-    </header>
-    <div id="estBody"></div>
-    <p class="note">Indicative supply-and-fit prices in USD, for comparing options — not a quote.</p>
-  </dialog>
 
   <dialog id="styleDlg" class="sheet" aria-labelledby="styleTitle">
     <header>
