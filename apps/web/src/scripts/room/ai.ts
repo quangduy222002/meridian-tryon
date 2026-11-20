@@ -19,6 +19,13 @@ export interface AiItem {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** A rotation from the model (90, "90", "90°", nonsense) as 0, 90, 180 or 270. */
+function quarterTurn(v: unknown): number {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? 0));
+  if (!Number.isFinite(n)) return 0;
+  return (((Math.round(n / 90) * 90) % 360) + 360) % 360;
+}
+
 /** Compass point a plan direction faces, given where north is (degrees clockwise from "up" on the plan). */
 function compass(dx: number, dz: number, north: number) {
   const bearing = ((Math.atan2(dx, -dz) * 180) / Math.PI - north + 720) % 360;
@@ -281,6 +288,7 @@ Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": num
   const customTypes = adoptCustoms(p, out.customs);
   const items = (out.items ?? [])
     .map((i) => ({ ...i, type: i.type?.startsWith('custom:') ? (customTypes.get(i.type.slice(7)) ?? i.type) : i.type }))
+    .map((i) => ({ ...i, x: Number(i.x), z: Number(i.z) }))
     .filter((i) => FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
     .map((i) => {
       const def = FURNITURE[i.type]!;
@@ -288,7 +296,7 @@ Reply with only a JSON object: {"items": [{"type": string, "x": number, "z": num
         type: i.type,
         x: i.x,
         z: i.z,
-        rot: (((Math.round((i.rot ?? 0) / 90) * 90) % 360) + 360) % 360,
+        rot: quarterTurn(i.rot),
         // Any palette colour the model chose (styles bring their own), else the piece's default.
         color: /^#[0-9a-f]{6}$/i.test(i.color ?? '') ? i.color : def.colors[0]!,
       };
@@ -404,6 +412,7 @@ Otherwise reply {"items": [{"label": what it is, "type", "x", "z", "rot"}], "cus
   const customTypes = adoptCustoms(p, out.customs);
   const found = (out.items ?? [])
     .map((i) => ({ ...i, type: i.type?.startsWith('custom:') ? (customTypes.get(i.type.slice(7)) ?? i.type) : i.type }))
+    .map((i) => ({ ...i, x: Number(i.x), z: Number(i.z) }))
     .filter((i) => i.type && FURNITURE[i.type] && Number.isFinite(i.x) && Number.isFinite(i.z))
     .map((i) => ({
       label: String(i.label ?? FURNITURE[i.type!]!.name).slice(0, 60),
@@ -412,7 +421,7 @@ Otherwise reply {"items": [{"label": what it is, "type", "x", "z", "rot"}], "cus
         type: i.type!,
         x: i.x!,
         z: i.z!,
-        rot: (((Math.round((i.rot ?? 0) / 90) * 90) % 360) + 360) % 360,
+        rot: quarterTurn(i.rot),
       },
     }));
   return { questions: [], found, notes: typeof out.notes === 'string' ? out.notes : '' };

@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "tests/e2e/smoke.spec.ts": {
-    "mtime": 1795144378.2974563,
-    "seen": 1795144665.4394581,
-    "ast_hash": "6c6bdb7c8dcac429dae7945c9e4cafa7",
+    "mtime": 1795145321.1330287,
+    "seen": 1795145691.474108,
+    "ast_hash": "ef4779629312a819f87b8d9f796dc8c4",
     "semantic_hash": ""
   },
   "apps/store/README.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/app.ts": {
-    "mtime": 1795144147.6699917,
-    "seen": 1795144665.439421,
-    "ast_hash": "7a495c1648e5ae3b6a6d4c4b40cf94cc",
+    "mtime": 1795145421.6315029,
+    "seen": 1795145691.47407,
+    "ast_hash": "b63d577fdd7f0006928cef1e0e54a483",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/catalog.ts": {
@@ -570,15 +570,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/furniture.ts": {
-    "mtime": 1795067359.9484866,
-    "seen": 1795067697.939648,
-    "ast_hash": "9fdcf776a1a2605ec24842c4abf8803d",
+    "mtime": 1795145421.6326144,
+    "seen": 1795145691.4740732,
+    "ast_hash": "32e2afc4eeac078793a568c8f85137fb",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
-    "mtime": 1795064826.1480634,
-    "seen": 1795065164.012178,
-    "ast_hash": "862021207bf57898faccfca1d2e9a312",
+    "mtime": 1795145421.6329577,
+    "seen": 1795145691.4740741,
+    "ast_hash": "5cfa2477aabce0f41f6609340e0b6354",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/plan.ts": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/ai.ts": {
-    "mtime": 1795143951.7722418,
-    "seen": 1795144665.43942,
-    "ast_hash": "3de1987c7989babf1c9df7d2a0ac24fc",
+    "mtime": 1795145421.6309836,
+    "seen": 1795145691.4740689,
+    "ast_hash": "7b21eb8215e37eafac5b5a1c24eec9e2",
     "semantic_hash": ""
   },
   "apps/web/src/components/RoomWorkspace.astro": {
@@ -744,9 +744,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/custom.ts": {
-    "mtime": 1795066997.1244245,
-    "seen": 1795067697.9396448,
-    "ast_hash": "5d3c62ea75d8e397cccd7947001f196e",
+    "mtime": 1795145421.632271,
+    "seen": 1795145691.474071,
+    "ast_hash": "59fc2aeb0f0369edc79a238be526a8b7",
     "semantic_hash": ""
   },
   "reports/\u0110\u1ecdc b\u1ea3n v\u1ebd m\u1eb7t b\u1eb1ng nh\u00e0.md": {

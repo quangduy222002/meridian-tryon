@@ -273,6 +273,40 @@ test('room planner sets each floor height from the section', async ({ page }) =>
   expect(errors).toEqual([]);
 });
 
+test('room planner keeps its 3D view when a saved piece is broken', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('room/');
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  // Save the plan once, then break it the way a bad AI answer or a hand-edited link could.
+  await page.locator('#storeys [data-act="floor"]').click();
+  await page.locator('#storeys [data-storey="0"]').click();
+  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('roomcraft.plan'))).toBe(true);
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('roomcraft.plan')!);
+    p.customs = {
+      junk: { name: 'Junk', parts: 'not a list' },
+      weird: {
+        name: 'Weird',
+        w: 'big',
+        parts: [{ shape: 'box', w: 'x', x: 'left', y: 1e9, material: 'lava', repeat: { count: 99999 } }],
+      },
+    };
+    const [x, z] = [2, 2];
+    p.items.push(
+      { id: 'b1', type: 'custom:junk', x, z, rot: 'east' },
+      { id: 'b2', type: 'custom:weird', x, z, rot: 90 },
+      { id: 'b3', type: 'sofa', x: null, z: 'here', rot: 0 },
+      { id: 'b4', type: 'nonexistent', x, z, rot: 0 },
+    );
+    p.style = 'photo-gone';
+    localStorage.setItem('roomcraft.plan', JSON.stringify(p));
+  });
+  await page.reload();
+  // The 3D view still starts: broken pieces are left out or shown as a block.
+  await expect(page.locator('#viewer.ready')).toBeAttached({ timeout: 60_000 });
+  expect(errors).toEqual([]);
+});
+
 test('room planner furnishes a room with AI', async ({ page }) => {
   const errors = watchErrors(page);
   // Stand-in for the Anthropic API, which the page calls from the browser with the visitor's key.

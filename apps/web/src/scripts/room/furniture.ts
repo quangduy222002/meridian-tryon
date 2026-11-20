@@ -715,10 +715,28 @@ function shelves(add: Add, m: Material, w: number, d: number, h: number, n: numb
 }
 
 /** Builds one piece of furniture in a design style. Unknown types become a box so a bad save never breaks the scene. */
-export function buildFurniture(type: string, color?: string, styleId?: string) {
+/**
+ * Builds a piece of furniture. A piece that cannot be built (a broken definition from the AI or a shared link) comes
+ * back as a plain block instead of throwing, so one bad piece never takes the 3D view down.
+ */
+export function buildFurniture(type: string, color?: string, styleId?: string): Group {
+  try {
+    return buildPiece(type, color, styleId);
+  } catch (err) {
+    console.warn(`Could not build ${type}; showing a block instead.`, err);
+    soft = 1;
+    const g = new Group();
+    const block = new Mesh(rbox(0.5, 0.5, 0.5), mainMat('#cccccc', 'block'));
+    block.position.y = 0.25;
+    g.add(block);
+    return g;
+  }
+}
+
+function buildPiece(type: string, color?: string, styleId?: string) {
   const def = FURNITURE[type];
   const style = styleOf(styleId);
-  soft = style.round;
+  soft = Number.isFinite(style.round) ? style.round : 1;
   const g = new Group();
   const m = mainMat(color ?? def?.colors[0] ?? '#cccccc', type);
   const add: Add = (geo, mat, x, y, z) => {
@@ -832,6 +850,9 @@ function buildCustom(parts: CustomPart[], add: Add) {
             : p.shape === 'sphere'
               ? (sphereGeo(p.r ?? 0.1) as BufferGeometry)
               : ring(p.r ?? 0.1, p.tube ?? 0.02);
+    // A part whose geometry came out with holes in its numbers would poison the whole frame (ambient occlusion
+    // spreads a NaN across the screen): leave it out.
+    if (!finiteGeometry(geo)) continue;
     const mat = customMat(p.material ?? 'plastic', p.color ?? '#d9d6cf');
     const n = p.repeat?.count ?? 1;
     const [px, pz] = p.repeat?.pivot ?? [0, 0];
@@ -843,10 +864,23 @@ function buildCustom(parts: CustomPart[], add: Add) {
       const x = px + ox * Math.cos(a) + oz * Math.sin(a) + (p.repeat?.dx ?? 0) * i;
       const z = pz - ox * Math.sin(a) + oz * Math.cos(a) + (p.repeat?.dz ?? 0) * i;
       const y = p.y + (p.repeat?.dy ?? 0) * i;
+      if (![x, y, z, a].every(Number.isFinite)) continue;
       const mesh = add(geo, mat, x, y, z);
       mesh.rotation.set((p.rx ?? 0) * DEG, (p.ry ?? 0) * DEG + a, (p.rz ?? 0) * DEG);
     }
   }
+}
+
+const finiteChecked = new WeakMap<BufferGeometry, boolean>();
+function finiteGeometry(g: BufferGeometry) {
+  let ok = finiteChecked.get(g);
+  if (ok === undefined) {
+    const a = g.getAttribute('position')?.array ?? [];
+    ok = a.length > 0;
+    for (let i = 0; ok && i < a.length; i++) ok = Number.isFinite(a[i]!);
+    finiteChecked.set(g, ok);
+  }
+  return ok;
 }
 
 const sphereGeos = new Map<number, SphereGeometry>();

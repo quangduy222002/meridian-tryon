@@ -121,7 +121,9 @@ export function sanitizeCustom(raw: unknown): CustomDef | null {
 
 /** Makes a plan's custom objects available as furniture types (`custom:<id>`), wherever FURNITURE is read. */
 export function registerCustoms(customs: Record<string, CustomDef> | undefined) {
-  for (const [id, def] of Object.entries(customs ?? {})) {
+  for (const [id, raw] of Object.entries(customs ?? {})) {
+    const def = sanitizeCustom(raw);
+    if (!def) continue;
     const type = `custom:${id}`;
     CUSTOM_PARTS.set(type, def.parts);
     const colors = [...new Set(def.parts.map((p) => p.color ?? '#d9d6cf'))].slice(0, 4);

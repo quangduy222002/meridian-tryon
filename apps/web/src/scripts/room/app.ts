@@ -1210,6 +1210,7 @@ async function setupThree(
   /** Frames the whole building, whatever the pane's shape. */
   const frame = () => {
     const { cx, cz, r } = house.bounds;
+    if (![cx, cz, r].every(Number.isFinite)) return;
     const v = (camera.fov * DEG) / 2;
     const hz = Math.atan(Math.tan(v) * camera.aspect);
     const dist = (r * 1.05) / Math.sin(Math.min(v, hz));
@@ -1387,12 +1388,22 @@ async function setupThree(
       const moving = mode === 'walk' ? walker.update(dt) : controls.update(dt);
       if (mode === 'walk' && (moving || walkerMoved)) redraw2d();
       walkerMoved = false;
-      look.render();
+      try {
+        look.render();
+      } catch (err) {
+        console.error('3D frame failed', err);
+      }
       return cutting || moving;
     },
     { target: viewer, demand: true },
   );
   controls.addEventListener('change', () => loop.invalidate());
+  // The GPU can drop the 3D view (memory pressure, a driver reset): say so rather than leave a blank panel.
+  renderer.domElement.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    toast('The 3D view lost its graphics context. Reload the page to bring it back.', 8000);
+  });
+  renderer.domElement.addEventListener('webglcontextrestored', () => loop.invalidate());
   let touched = false; // stop re-framing on resize once the visitor has moved the camera
   controls.addEventListener('start', () => (touched = true));
   const resize = () => {
@@ -1441,8 +1452,13 @@ async function setupThree(
       // top floor.
       house.wallHeight = storeyHeight(p, here);
       const rebuilt = house.syncStructure(p, getRooms(), floorOpenings(floors, here), ceilingOpenings(floors, here));
-      house.syncItems(p);
-      syncStoreys(p);
+      // Furniture and the other floors are drawn on their own: a failure there leaves the walls and floors standing.
+      try {
+        house.syncItems(p);
+        syncStoreys(p);
+      } catch (err) {
+        console.error('3D furniture or floors failed', err);
+      }
       if (rebuilt && !framed && house.walls.length) {
         frame();
         framed = true;

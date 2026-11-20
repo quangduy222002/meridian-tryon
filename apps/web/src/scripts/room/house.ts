@@ -466,8 +466,10 @@ export class House {
         this.lightsDirty = true;
         this.items.set(it.id, entry);
       }
-      entry.group.position.set(it.x, 0, it.z);
-      entry.group.rotation.y = -it.rot * DEG;
+      const ok = Number.isFinite(it.x) && Number.isFinite(it.z);
+      entry.group.visible = ok;
+      if (ok) entry.group.position.set(it.x, 0, it.z);
+      entry.group.rotation.y = Number.isFinite(it.rot) ? -it.rot * DEG : 0;
     }
     for (const [id, e] of this.items)
       if (!seen.has(id)) {
