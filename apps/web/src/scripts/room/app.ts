@@ -31,7 +31,7 @@ import {
 } from '@meridian/three-core';
 import { $, toast } from '../../lib/dom/chrome';
 import { FLOORS, FURNITURE, GROUPS, WALLS } from './catalog';
-import { PHOTO_PREFIX, STYLES, registerPhotoStyle, styleColor, styleOf, styleSwatches } from './styles';
+import { PHOTO_PREFIX, STYLES, STYLE_MODELS, registerPhotoStyle, styleColor, styleOf, styleSwatches } from './styles';
 import { customId, registerCustoms } from './custom';
 import type { AiQuestion, Brain, DrawingReading, FloorReview } from './ai';
 import { PlanEditor, type EditorHost, type Selection, type Tool } from './editor2d';
@@ -582,6 +582,16 @@ ${
       delete r.wall;
     }
     for (const it of plan.items) {
+      // The style's own model for this piece, or back to the planner's when the new style has none.
+      const base = it.base ?? it.type;
+      const model = STYLE_MODELS[id]?.[base];
+      if (model && FURNITURE[model]) {
+        it.type = model;
+        it.base = base;
+      } else {
+        it.type = base;
+        delete it.base;
+      }
       const def = FURNITURE[it.type];
       if (def) it.color = styleColor(st, it.type, def.role, it.color ?? def.colors[0]!);
     }

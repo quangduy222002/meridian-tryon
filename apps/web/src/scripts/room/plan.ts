@@ -53,6 +53,8 @@ export interface Item {
   color?: string;
   /** Placed by "Design the lighting" (and replaced when it runs again). */
   auto?: boolean;
+  /** The built-in piece this one stands in for while a design style shows it as another model (styles.ts). */
+  base?: string;
 }
 
 export interface RoomStyle {

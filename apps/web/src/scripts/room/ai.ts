@@ -6,7 +6,7 @@
 import { hostFailure, type HostSample } from '../../lib/claude-host';
 import { FLOORS, FURNITURE, WALLS } from './catalog';
 import { CUSTOM_FORMAT, customId, registerCustoms, sanitizeCustom, type CustomDef } from './custom';
-import { STYLES, type DesignStyle, type Legs } from './styles';
+import { STYLES, STYLE_MODELS, type DesignStyle, type Legs } from './styles';
 import { nodeMap, pointInPoly, roomName, type Item, type Plan, type Room, type Vec2 } from './plan';
 
 export interface AiItem {
@@ -101,7 +101,15 @@ ${
     ? `
 Design style: ${st.name} (${st.vi}). ${st.brief}
 Palette (hex, use these for the items' colours): timber ${st.wood}; upholstery ${st.fabric.join(' ')}; cabinetry ${st.cases.join(' ')}; accents ${st.accent.join(' ')}.
-Pieces that make this style read, to reach for first where the room and the request allow: ${st.signature.map((t) => FURNITURE[t]?.name ?? t).join(', ')}.`
+Pieces that make this style read, to reach for first where the room and the request allow: ${st.signature.map((t) => FURNITURE[t]?.name ?? t).join(', ')}.${
+        STYLE_MODELS[styleId!]
+          ? `\nThis style's own models (use these types rather than the built-in piece they replace): ${Object.entries(
+              STYLE_MODELS[styleId!]!,
+            )
+              .map(([b, t]) => `${t} for ${b}`)
+              .join(', ')}.`
+          : ''
+      }`
     : ''
 }
 ${(() => {

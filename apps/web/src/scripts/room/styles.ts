@@ -215,6 +215,46 @@ export const STYLES: Record<string, DesignStyle> = {
 
 export const DEFAULT_STYLE_ID = 'scandinavian';
 
+/**
+ * The model each style uses for a built-in piece (library.ts): a style changes the furniture's forms, not only its
+ * colours. Pieces a style doesn't list keep the planner's own model, shaped by the style's legs, palette and edges.
+ */
+export const STYLE_MODELS: Record<string, Record<string, string>> = {
+  modern: {
+    sofa: 'ph:sofa_02',
+    sofa2: 'ph:sofa_02',
+    armchair: 'ph:modern_arm_chair_01',
+    armchairWing: 'ph:modern_arm_chair_01',
+    ottoman: 'ph:Ottoman_01',
+    coffee: 'ph:modern_coffee_table_01',
+    coffeeRound: 'ph:coffee_table_round_01',
+    tv: 'ph:modern_wooden_cabinet',
+    sideboard: 'ph:modern_wooden_cabinet',
+  },
+  classic: {
+    sofa: 'ph:Sofa_01',
+    sofa2: 'ph:Sofa_01',
+    armchair: 'ph:ArmChair_01',
+    armchairWing: 'ph:ArmChair_01',
+    ottoman: 'ph:Ottoman_01',
+    coffee: 'ph:CoffeeTable_01',
+    nightstand: 'ph:ClassicNightstand_01',
+  },
+  scandinavian: {
+    armchair: 'ph:mid_century_lounge_chair',
+    coffeeRound: 'ph:coffee_table_round_01',
+    sideTable: 'ph:side_table_01',
+  },
+  japandi: {
+    armchair: 'ph:mid_century_lounge_chair',
+    sideTable: 'ph:side_table_01',
+  },
+  minimalist: {
+    sofa: 'k:loungeDesignSofa',
+    armchair: 'k:loungeDesignChair',
+  },
+};
+
 /** Ids of styles read from a client's reference photo start with this; one per home (plan.photoStyle). */
 export const PHOTO_PREFIX = 'photo-';
 

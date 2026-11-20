@@ -4,8 +4,9 @@ import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 
-const ROOT = 'apps/web/dist';
-const BASE = '/meridian-tryon/';
+// ROOT and BASE can be overridden, e.g. to serve the Artifact build: ROOT=apps/web/dist-artifact/publish BASE=/a/
+const ROOT = process.env.ROOT ?? 'apps/web/dist';
+const BASE = process.env.BASE ?? '/meridian-tryon/';
 const PORT = Number(process.env.PORT ?? 4321);
 const TYPES = {
   '.html': 'text/html; charset=utf-8',

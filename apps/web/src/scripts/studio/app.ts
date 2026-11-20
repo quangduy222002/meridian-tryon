@@ -4,6 +4,7 @@
  */
 import { $, toast } from '../../lib/dom/chrome';
 import { startRoomcraft, type DrawingShot, type RoomcraftApi, type RoomcraftOptions } from '../room/app';
+import type { SheetFloor } from '../room/ai';
 import { findRooms, type Plan, type Room } from '../room/plan';
 import { inRegion, scaleFromDimensions, type Drawing, type Region } from './drawing';
 import { detectWalls } from './detect';
@@ -692,16 +693,28 @@ export async function startStudio(gl: boolean) {
     const log: string[] = [];
     try {
       const { analyseSheet, reviewFloor } = await import('../room/ai');
-      status.textContent = 'Claude is reading the sheet…';
-      const shot = await sheetShot();
-      if (!shot.image) throw new Error('The sheet could not be drawn.');
-      const reading = await analyseSheet(brain, shot.image, shot.size, shot.boxes);
-      if (!reading.floors.length) throw new Error('Claude found no floor plan on this sheet. Select one by hand.');
-      const floors = reading.floors.map((f) => ({
-        ...f,
-        region: f.view !== undefined ? { ...views[f.view]!.region } : shot.toRegion(f.box!),
-      }));
+      // Every sheet of the file is read (a villa's floors are often one per sheet), in order.
+      const sheets = openSheet && sheetCount > 1 ? Array.from({ length: sheetCount }, (_, i) => i + 1) : [sheetNow];
+      const floors: (SheetFloor & { sheet: number; region: Region })[] = [];
+      const reports: string[] = [];
+      for (const n of sheets) {
+        if (n !== sheetNow) await openSheet!(n);
+        status.textContent = `Claude is reading ${sheets.length > 1 ? `sheet ${n} of ${sheets.length}` : 'the sheet'}…`;
+        const shot = await sheetShot();
+        if (!shot.image) continue;
+        const reading = await analyseSheet(brain, shot.image, shot.size, shot.boxes);
+        if (reading.report) reports.push(sheets.length > 1 ? `## Sheet ${n}\n${reading.report}` : reading.report);
+        for (const f of reading.floors)
+          floors.push({
+            ...f,
+            sheet: n,
+            region: f.view !== undefined ? { ...views[f.view]!.region } : shot.toRegion(f.box!),
+          });
+      }
+      if (!floors.length) throw new Error('Claude found no floor plan in this file. Select one by hand.');
+      const reading = { report: reports.join('\n\n') };
       for (const [i, f] of floors.entries()) {
+        if (f.sheet !== sheetNow) await openSheet!(f.sheet);
         status.textContent = `Building ${f.name} (${i + 1} of ${floors.length})…`;
         if (i) startAddingFloor();
         sheetHost.setRegion(f.region);

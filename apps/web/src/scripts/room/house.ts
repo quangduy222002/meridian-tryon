@@ -436,11 +436,12 @@ export class House {
     const seen = new Set<string>();
     for (const it of p.items) {
       seen.add(it.id);
-      const sig = `${it.type}:${it.color ?? ''}:${p.style ?? ''}`;
+      const rise = FURNITURE[it.type]?.opensAbove ? this.wallHeight : undefined;
+      const sig = `${it.type}:${it.color ?? ''}:${p.style ?? ''}:${rise ?? ''}`;
       let entry = this.items.get(it.id);
       if (!entry || entry.sig !== sig) {
         if (entry) this.furniture.remove(entry.group);
-        const group = buildFurniture(it.type, it.color, p.style);
+        const group = buildFurniture(it.type, it.color, p.style, rise);
         group.userData.item = it.id;
         group.traverse((o) => (o.userData.item = it.id));
         this.furniture.add(group);

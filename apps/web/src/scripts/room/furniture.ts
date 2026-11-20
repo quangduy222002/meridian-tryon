@@ -723,9 +723,9 @@ function shelves(add: Add, m: Material, w: number, d: number, h: number, n: numb
  * Builds a piece of furniture. A piece that cannot be built (a broken definition from the AI or a shared link) comes
  * back as a plain block instead of throwing, so one bad piece never takes the 3D view down.
  */
-export function buildFurniture(type: string, color?: string, styleId?: string): Group {
+export function buildFurniture(type: string, color?: string, styleId?: string, rise?: number): Group {
   try {
-    return buildPiece(type, color, styleId);
+    return buildPiece(type, color, styleId, rise);
   } catch (err) {
     console.warn(`Could not build ${type}; showing a block instead.`, err);
     soft = 1;
@@ -835,7 +835,8 @@ function buildModel(type: string) {
   return g;
 }
 
-function buildPiece(type: string, color?: string, styleId?: string) {
+/** `rise`: the floor-to-floor height a stair (or anything opening the floor above) climbs, when known. */
+function buildPiece(type: string, color?: string, styleId?: string, rise?: number) {
   if (LIBRARY[type]) return buildModel(type);
   const def = FURNITURE[type];
   const style = styleOf(styleId);
@@ -904,8 +905,12 @@ function buildPiece(type: string, color?: string, styleId?: string) {
   };
   const build = builders[type];
   const parts = CUSTOM_PARTS.get(type);
-  if (parts) buildCustom(parts, look.sub(0, 0, 0));
-  else if (def && build) build(add, m, def.w, def.d, def.h, look);
+  // A stair climbs to the floor above, whatever height that floor is at (2.6 m for a mezzanine, 4.2 m in a villa).
+  const climbs = !!def?.opensAbove && !!rise && Number.isFinite(rise) && rise > 1.5;
+  if (parts) {
+    buildCustom(parts, look.sub(0, 0, 0));
+    if (climbs) g.scale.y = rise! / def!.h;
+  } else if (def && build) build(add, m, def.w, def.d, climbs ? rise! : def.h, look);
   else add(rbox(0.5, 0.5, 0.5), m, 0, 0.25, 0); // unknown type: a plain block
   if (def?.mount) g.userData.mount = def.mount;
   soft = 1;
