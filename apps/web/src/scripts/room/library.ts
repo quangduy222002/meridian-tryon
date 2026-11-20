@@ -1,10 +1,12 @@
 /**
- * Ready-made furniture models (Poly Haven, CC0): real scanned pieces shipped as glTF under /models, loaded the first
- * time one is placed. Each joins the catalogue as `ph:<id>` beside the pieces built in code, so the 2D plan, the
+ * Ready-made furniture models, all CC0, shipped under /models and loaded the first time one is placed: Poly Haven's
+ * scanned pieces (glTF, `ph:`), Kenney's Furniture Kit (GLB, `k:`) and Quaternius' Ultimate House Interior (OBJ + MTL,
+ * `q:`); the last two come from scripts/import-packs.mjs (library-packs.json). Each joins the catalogue as `ph:<id>` beside the pieces built in code, so the 2D plan, the
  * AI's catalogue and the inspector treat it like any other piece; the 3D view swaps a placeholder for the model once
  * it has loaded. Sizes are the models' own (measured from their glTF), in metres.
  */
 import type { FurnitureDef } from './catalog';
+import packs from './library-packs.json';
 
 export interface LibraryModel {
   /** Path under models/, relative to the site root. */
@@ -12,6 +14,8 @@ export interface LibraryModel {
   def: Omit<FurnitureDef, 'colors' | 'role'> & Partial<Pick<FurnitureDef, 'colors' | 'role'>>;
   /** Degrees to turn the model so its front faces +z (the catalogue's convention). */
   turn?: number;
+  /** Factor that brings the file to real size (packs model at their own scale). */
+  scale?: number;
   credit: string;
 }
 
@@ -23,7 +27,7 @@ const ph = (id: string, def: LibraryModel['def'], turn = 0): LibraryModel => ({
   credit: PH,
 });
 
-export const LIBRARY: Record<string, LibraryModel> = {
+const POLY_HAVEN: Record<string, LibraryModel> = {
   'ph:Sofa_01': ph('Sofa_01', {
     name: 'Fabric sofa, tufted',
     w: 1.57,
@@ -138,6 +142,11 @@ export const LIBRARY: Record<string, LibraryModel> = {
   }),
 };
 
+export const LIBRARY: Record<string, LibraryModel> = {
+  ...POLY_HAVEN,
+  ...(packs as Record<string, LibraryModel>),
+};
+
 /** The library as catalogue entries: textured models keep their own colours, so styles leave them as they are. */
 export function libraryDefs(): Record<string, FurnitureDef> {
   return Object.fromEntries(
@@ -145,11 +154,35 @@ export function libraryDefs(): Record<string, FurnitureDef> {
   );
 }
 
+/** The Artifact build serves files beside the page and gathers each pack into one bundle (scripts/artifact.mjs). */
+export const inArtifact = () => import.meta.env.BASE_URL === '/' || import.meta.env.BASE_URL === './';
+
+const bundles = new Map<string, Promise<Record<string, string>>>();
+/**
+ * In the Artifact, a pack's file (kenney/…glb, quaternius/…obj or .mtl) as text from the pack's bundle (a GLB as
+ * glTF JSON); null where files are served one by one.
+ */
+export async function bundled(src: string): Promise<string | null> {
+  const pack = src.split('/')[0]!;
+  if (!inArtifact() || pack === 'ph') return null;
+  let b = bundles.get(pack);
+  if (!b) {
+    b = fetch(new URL(`models/${pack}.json`, location.href.replace(/[^/]*$/, '')).href).then((r) => {
+      if (!r.ok) throw new Error(`models/${pack}.json: ${r.status}`);
+      return r.json() as Promise<Record<string, string>>;
+    });
+    bundles.set(pack, b);
+  }
+  const text = (await b)[src];
+  if (text === undefined) throw new Error(`${src} is not in models/${pack}.json`);
+  return text;
+}
+
 /** Where the models are served: beside the page in the Artifact build, under the site's base path otherwise. */
 export function modelUrl(src: string) {
   const base = import.meta.env.BASE_URL;
   // The Artifact build packs each model as one .json (scripts/artifact.mjs): it serves no .gltf or .bin files.
-  if (base === '/' || base === './')
+  if (inArtifact())
     return new URL(`models/${src.replace(/\.gltf$/, '.json')}`, location.href.replace(/[^/]*$/, '')).href;
   return `${base.replace(/\/$/, '')}/models/${src}`;
 }

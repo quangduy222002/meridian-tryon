@@ -1,0 +1,2422 @@
+{
+  "k:bathroomCabinet": {
+    "src": "kenney/bathroomCabinet.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathroom cabinet",
+      "w": 0.44,
+      "d": 0.25,
+      "h": 0.74,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:bathroomCabinetDrawer": {
+    "src": "kenney/bathroomCabinetDrawer.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathroom cabinet drawer",
+      "w": 0.82,
+      "d": 0.61,
+      "h": 0.9,
+      "group": "Storage"
+    }
+  },
+  "k:bathroomMirror": {
+    "src": "kenney/bathroomMirror.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathroom mirror",
+      "w": 0.57,
+      "d": 0.27,
+      "h": 0.83,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:bathroomSink": {
+    "src": "kenney/bathroomSink.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathroom sink",
+      "w": 0.65,
+      "d": 0.55,
+      "h": 1.06,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:bathroomSinkSquare": {
+    "src": "kenney/bathroomSinkSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathroom sink square",
+      "w": 0.82,
+      "d": 0.57,
+      "h": 1.1,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:bathtub": {
+    "src": "kenney/bathtub.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bathtub",
+      "w": 2.26,
+      "d": 1.06,
+      "h": 0.8,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:bedBunk": {
+    "src": "kenney/bedBunk.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bed bunk",
+      "w": 1.08,
+      "d": 2.08,
+      "h": 1.61,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "k:bedDouble": {
+    "src": "kenney/bedDouble.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bed double",
+      "w": 1.82,
+      "d": 2.14,
+      "h": 0.71,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "k:bedSingle": {
+    "src": "kenney/bedSingle.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bed single",
+      "w": 1.08,
+      "d": 2.14,
+      "h": 0.71,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "k:bench": {
+    "src": "kenney/bench.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bench",
+      "w": 0.76,
+      "d": 0.38,
+      "h": 0.89,
+      "group": "Benches"
+    }
+  },
+  "k:benchCushion": {
+    "src": "kenney/benchCushion.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bench cushion",
+      "w": 0.76,
+      "d": 0.38,
+      "h": 0.87,
+      "group": "Benches"
+    }
+  },
+  "k:benchCushionLow": {
+    "src": "kenney/benchCushionLow.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bench cushion low",
+      "w": 0.8,
+      "d": 0.42,
+      "h": 0.38,
+      "group": "Benches"
+    }
+  },
+  "k:bookcaseClosed": {
+    "src": "kenney/bookcaseClosed.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bookcase closed",
+      "w": 0.76,
+      "d": 0.48,
+      "h": 1.61,
+      "group": "Storage"
+    }
+  },
+  "k:bookcaseClosedDoors": {
+    "src": "kenney/bookcaseClosedDoors.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bookcase closed doors",
+      "w": 0.76,
+      "d": 0.48,
+      "h": 1.61,
+      "group": "Storage"
+    }
+  },
+  "k:bookcaseClosedWide": {
+    "src": "kenney/bookcaseClosedWide.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bookcase closed wide",
+      "w": 1.52,
+      "d": 0.48,
+      "h": 1.5,
+      "group": "Storage"
+    }
+  },
+  "k:bookcaseOpen": {
+    "src": "kenney/bookcaseOpen.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bookcase open",
+      "w": 0.76,
+      "d": 0.48,
+      "h": 1.67,
+      "group": "Storage"
+    }
+  },
+  "k:bookcaseOpenLow": {
+    "src": "kenney/bookcaseOpenLow.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Bookcase open low",
+      "w": 0.76,
+      "d": 0.48,
+      "h": 0.76,
+      "group": "Storage"
+    }
+  },
+  "k:cabinetBed": {
+    "src": "kenney/cabinetBed.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Cabinet bed",
+      "w": 0.51,
+      "d": 0.41,
+      "h": 0.44,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "k:cabinetBedDrawer": {
+    "src": "kenney/cabinetBedDrawer.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Cabinet bed drawer",
+      "w": 0.51,
+      "d": 0.41,
+      "h": 0.5,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "k:cabinetBedDrawerTable": {
+    "src": "kenney/cabinetBedDrawerTable.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Cabinet bed drawer table",
+      "w": 0.51,
+      "d": 0.41,
+      "h": 0.5,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:cabinetTelevision": {
+    "src": "kenney/cabinetTelevision.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Cabinet television",
+      "w": 1.52,
+      "d": 0.48,
+      "h": 0.59,
+      "group": "Decor",
+      "room": "Living"
+    }
+  },
+  "k:cabinetTelevisionDoors": {
+    "src": "kenney/cabinetTelevisionDoors.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Cabinet television doors",
+      "w": 1.52,
+      "d": 0.49,
+      "h": 0.59,
+      "group": "Decor",
+      "room": "Living"
+    }
+  },
+  "k:ceilingFan": {
+    "src": "kenney/ceilingFan.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Ceiling fan",
+      "w": 0.86,
+      "d": 1,
+      "h": 0.25,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "k:chair": {
+    "src": "kenney/chair.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.89,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:chairCushion": {
+    "src": "kenney/chairCushion.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair cushion",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.87,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:chairDesk": {
+    "src": "kenney/chairDesk.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair desk",
+      "w": 0.64,
+      "d": 0.6,
+      "h": 1.15,
+      "group": "Desks",
+      "room": "Study"
+    }
+  },
+  "k:chairModernCushion": {
+    "src": "kenney/chairModernCushion.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair modern cushion",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.87,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:chairModernFrameCushion": {
+    "src": "kenney/chairModernFrameCushion.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair modern frame cushion",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.87,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:chairRounded": {
+    "src": "kenney/chairRounded.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Chair rounded",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.86,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:coatRack": {
+    "src": "kenney/coatRack.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Coat rack",
+      "w": 0.85,
+      "d": 0.26,
+      "h": 0.53,
+      "group": "Decor"
+    }
+  },
+  "k:coatRackStanding": {
+    "src": "kenney/coatRackStanding.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Coat rack standing",
+      "w": 0.52,
+      "d": 0.52,
+      "h": 1.46,
+      "group": "Decor"
+    }
+  },
+  "k:desk": {
+    "src": "kenney/desk.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Desk",
+      "w": 1.4,
+      "d": 0.75,
+      "h": 0.73,
+      "group": "Desks",
+      "room": "Study"
+    }
+  },
+  "k:deskCorner": {
+    "src": "kenney/deskCorner.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Desk corner",
+      "w": 1.85,
+      "d": 1.85,
+      "h": 0.73,
+      "group": "Desks",
+      "room": "Study"
+    }
+  },
+  "k:dryer": {
+    "src": "kenney/dryer.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Dryer",
+      "w": 0.74,
+      "d": 0.72,
+      "h": 0.89,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:hoodLarge": {
+    "src": "kenney/hoodLarge.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Hood large",
+      "w": 0.82,
+      "d": 0.54,
+      "h": 0.7,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:hoodModern": {
+    "src": "kenney/hoodModern.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Hood modern",
+      "w": 0.82,
+      "d": 0.54,
+      "h": 0.76,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenBar": {
+    "src": "kenney/kitchenBar.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen bar",
+      "w": 0.82,
+      "d": 0.4,
+      "h": 0.8,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenBarEnd": {
+    "src": "kenney/kitchenBarEnd.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen bar end",
+      "w": 0.19,
+      "d": 0.4,
+      "h": 0.8,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinet": {
+    "src": "kenney/kitchenCabinet.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 0.86,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetCornerInner": {
+    "src": "kenney/kitchenCabinetCornerInner.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet corner inner",
+      "w": 0.87,
+      "d": 0.87,
+      "h": 0.86,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetCornerRound": {
+    "src": "kenney/kitchenCabinetCornerRound.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet corner round",
+      "w": 0.86,
+      "d": 0.86,
+      "h": 0.86,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetDrawer": {
+    "src": "kenney/kitchenCabinetDrawer.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet drawer",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 0.86,
+      "group": "Storage"
+    }
+  },
+  "k:kitchenCabinetUpper": {
+    "src": "kenney/kitchenCabinetUpper.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet upper",
+      "w": 0.82,
+      "d": 0.42,
+      "h": 0.74,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetUpperCorner": {
+    "src": "kenney/kitchenCabinetUpperCorner.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet upper corner",
+      "w": 0.41,
+      "d": 0.4,
+      "h": 0.74,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetUpperDouble": {
+    "src": "kenney/kitchenCabinetUpperDouble.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet upper double",
+      "w": 0.82,
+      "d": 0.42,
+      "h": 0.74,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenCabinetUpperLow": {
+    "src": "kenney/kitchenCabinetUpperLow.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen cabinet upper low",
+      "w": 0.82,
+      "d": 0.42,
+      "h": 0.37,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenFridge": {
+    "src": "kenney/kitchenFridge.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen fridge",
+      "w": 0.82,
+      "d": 0.55,
+      "h": 1.75,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenFridgeBuiltIn": {
+    "src": "kenney/kitchenFridgeBuiltIn.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen fridge built in",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 1.65,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenFridgeLarge": {
+    "src": "kenney/kitchenFridgeLarge.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen fridge large",
+      "w": 0.99,
+      "d": 0.77,
+      "h": 1.75,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenFridgeSmall": {
+    "src": "kenney/kitchenFridgeSmall.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen fridge small",
+      "w": 0.82,
+      "d": 0.55,
+      "h": 1.14,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenMicrowave": {
+    "src": "kenney/kitchenMicrowave.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen microwave",
+      "w": 0.55,
+      "d": 0.44,
+      "h": 0.34,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenSink": {
+    "src": "kenney/kitchenSink.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen sink",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 0.93,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenStove": {
+    "src": "kenney/kitchenStove.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen stove",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 0.86,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:kitchenStoveElectric": {
+    "src": "kenney/kitchenStoveElectric.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Kitchen stove electric",
+      "w": 0.82,
+      "d": 0.86,
+      "h": 0.86,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "k:lampRoundFloor": {
+    "src": "kenney/lampRoundFloor.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp round floor",
+      "w": 0.29,
+      "d": 0.33,
+      "h": 1.63,
+      "group": "Lighting"
+    }
+  },
+  "k:lampRoundTable": {
+    "src": "kenney/lampRoundTable.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp round table",
+      "w": 0.29,
+      "d": 0.33,
+      "h": 0.6,
+      "group": "Lighting"
+    }
+  },
+  "k:lampSquareCeiling": {
+    "src": "kenney/lampSquareCeiling.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp square ceiling",
+      "w": 0.23,
+      "d": 0.23,
+      "h": 0.44,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "k:lampSquareFloor": {
+    "src": "kenney/lampSquareFloor.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp square floor",
+      "w": 0.23,
+      "d": 0.23,
+      "h": 1.63,
+      "group": "Lighting"
+    }
+  },
+  "k:lampSquareTable": {
+    "src": "kenney/lampSquareTable.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp square table",
+      "w": 0.23,
+      "d": 0.23,
+      "h": 0.55,
+      "group": "Lighting"
+    }
+  },
+  "k:lampWall": {
+    "src": "kenney/lampWall.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lamp wall",
+      "w": 0.43,
+      "d": 0.29,
+      "h": 0.18,
+      "group": "Lighting"
+    }
+  },
+  "k:loungeChair": {
+    "src": "kenney/loungeChair.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge chair",
+      "w": 0.93,
+      "d": 0.78,
+      "h": 0.87,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:loungeChairRelax": {
+    "src": "kenney/loungeChairRelax.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge chair relax",
+      "w": 0.93,
+      "d": 1.28,
+      "h": 1.2,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:loungeDesignChair": {
+    "src": "kenney/loungeDesignChair.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge design chair",
+      "w": 1.39,
+      "d": 0.78,
+      "h": 0.76,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:loungeDesignSofa": {
+    "src": "kenney/loungeDesignSofa.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge design sofa",
+      "w": 2.13,
+      "d": 0.78,
+      "h": 0.76,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:loungeDesignSofaCorner": {
+    "src": "kenney/loungeDesignSofaCorner.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge design sofa corner",
+      "w": 2.56,
+      "d": 2.56,
+      "h": 0.76,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:loungeSofa": {
+    "src": "kenney/loungeSofa.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge sofa",
+      "w": 1.86,
+      "d": 0.78,
+      "h": 0.87,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:loungeSofaCorner": {
+    "src": "kenney/loungeSofaCorner.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge sofa corner",
+      "w": 1.86,
+      "d": 1.86,
+      "h": 0.87,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:loungeSofaLong": {
+    "src": "kenney/loungeSofaLong.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge sofa long",
+      "w": 1.86,
+      "d": 1.56,
+      "h": 0.87,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:loungeSofaOttoman": {
+    "src": "kenney/loungeSofaOttoman.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Lounge sofa ottoman",
+      "w": 0.84,
+      "d": 0.86,
+      "h": 0.44,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "k:plantSmall1": {
+    "src": "kenney/plantSmall1.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Plant small 1",
+      "w": 0.18,
+      "d": 0.18,
+      "h": 0.27,
+      "group": "Plants"
+    }
+  },
+  "k:plantSmall2": {
+    "src": "kenney/plantSmall2.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Plant small 2",
+      "w": 0.18,
+      "d": 0.18,
+      "h": 0.27,
+      "group": "Plants"
+    }
+  },
+  "k:plantSmall3": {
+    "src": "kenney/plantSmall3.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Plant small 3",
+      "w": 0.19,
+      "d": 0.16,
+      "h": 0.28,
+      "group": "Plants"
+    }
+  },
+  "k:pottedPlant": {
+    "src": "kenney/pottedPlant.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Potted plant",
+      "w": 0.4,
+      "d": 0.46,
+      "h": 1.24,
+      "group": "Plants"
+    }
+  },
+  "k:rugDoormat": {
+    "src": "kenney/rugDoormat.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Rug doormat",
+      "w": 0.82,
+      "d": 0.45,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "k:rugRectangle": {
+    "src": "kenney/rugRectangle.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Rug rectangle",
+      "w": 2.98,
+      "d": 1.75,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "k:rugRound": {
+    "src": "kenney/rugRound.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Rug round",
+      "w": 1.75,
+      "d": 1.75,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "k:rugRounded": {
+    "src": "kenney/rugRounded.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Rug rounded",
+      "w": 2.98,
+      "d": 1.75,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "k:rugSquare": {
+    "src": "kenney/rugSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Rug square",
+      "w": 1.72,
+      "d": 1.75,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "k:shower": {
+    "src": "kenney/shower.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Shower",
+      "w": 1.07,
+      "d": 1.11,
+      "h": 2.08,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:showerRound": {
+    "src": "kenney/showerRound.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Shower round",
+      "w": 1.07,
+      "d": 1.07,
+      "h": 2.08,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:sideTable": {
+    "src": "kenney/sideTable.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Side table",
+      "w": 1.02,
+      "d": 0.42,
+      "h": 0.73,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:sideTableDrawers": {
+    "src": "kenney/sideTableDrawers.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Side table drawers",
+      "w": 1.02,
+      "d": 0.42,
+      "h": 0.73,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:stoolBar": {
+    "src": "kenney/stoolBar.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Stool bar",
+      "w": 0.5,
+      "d": 0.44,
+      "h": 0.83,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:stoolBarSquare": {
+    "src": "kenney/stoolBarSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Stool bar square",
+      "w": 0.29,
+      "d": 0.28,
+      "h": 0.77,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:table": {
+    "src": "kenney/table.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table",
+      "w": 1.6,
+      "d": 0.85,
+      "h": 0.62,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCloth": {
+    "src": "kenney/tableCloth.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table cloth",
+      "w": 1.6,
+      "d": 0.85,
+      "h": 0.62,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCoffee": {
+    "src": "kenney/tableCoffee.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table coffee",
+      "w": 1.26,
+      "d": 0.76,
+      "h": 0.44,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCoffeeGlass": {
+    "src": "kenney/tableCoffeeGlass.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table coffee glass",
+      "w": 1.26,
+      "d": 0.76,
+      "h": 0.44,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCoffeeGlassSquare": {
+    "src": "kenney/tableCoffeeGlassSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table coffee glass square",
+      "w": 0.76,
+      "d": 0.76,
+      "h": 0.44,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCoffeeSquare": {
+    "src": "kenney/tableCoffeeSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table coffee square",
+      "w": 0.76,
+      "d": 0.76,
+      "h": 0.44,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCross": {
+    "src": "kenney/tableCross.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table cross",
+      "w": 1.62,
+      "d": 0.85,
+      "h": 0.66,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableCrossCloth": {
+    "src": "kenney/tableCrossCloth.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table cross cloth",
+      "w": 1.62,
+      "d": 0.85,
+      "h": 0.66,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableGlass": {
+    "src": "kenney/tableGlass.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table glass",
+      "w": 1.6,
+      "d": 0.85,
+      "h": 0.62,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:tableRound": {
+    "src": "kenney/tableRound.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Table round",
+      "w": 1.32,
+      "d": 1.52,
+      "h": 0.7,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "k:televisionModern": {
+    "src": "kenney/televisionModern.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Television modern",
+      "w": 1.3,
+      "d": 0.24,
+      "h": 0.86,
+      "group": "Decor",
+      "room": "Living"
+    }
+  },
+  "k:televisionVintage": {
+    "src": "kenney/televisionVintage.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Television vintage",
+      "w": 0.78,
+      "d": 0.51,
+      "h": 0.51,
+      "group": "Decor",
+      "room": "Living"
+    }
+  },
+  "k:toilet": {
+    "src": "kenney/toilet.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Toilet",
+      "w": 0.59,
+      "d": 0.91,
+      "h": 0.86,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:toiletSquare": {
+    "src": "kenney/toiletSquare.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Toilet square",
+      "w": 0.58,
+      "d": 0.74,
+      "h": 0.86,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:trashcan": {
+    "src": "kenney/trashcan.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Trashcan",
+      "w": 0.39,
+      "d": 0.44,
+      "h": 0.81,
+      "group": "Decor"
+    }
+  },
+  "k:washer": {
+    "src": "kenney/washer.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Washer",
+      "w": 0.74,
+      "d": 0.74,
+      "h": 0.89,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "k:washerDryerStacked": {
+    "src": "kenney/washerDryerStacked.glb",
+    "scale": 1.9,
+    "credit": "Kenney Furniture Kit (CC0)",
+    "def": {
+      "name": "Washer dryer stacked",
+      "w": 0.74,
+      "d": 0.74,
+      "h": 1.79,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Bathtub": {
+    "src": "quaternius/Bathroom_Bathtub.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom bathtub",
+      "w": 0.8,
+      "d": 1.95,
+      "h": 0.63,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Mirror1": {
+    "src": "quaternius/Bathroom_Mirror1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom mirror 1",
+      "w": 0.32,
+      "d": 0.05,
+      "h": 0.46,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Mirror2": {
+    "src": "quaternius/Bathroom_Mirror2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom mirror 2",
+      "w": 0.27,
+      "d": 0.02,
+      "h": 0.39,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Shower1": {
+    "src": "quaternius/Bathroom_Shower1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom shower 1",
+      "w": 0.95,
+      "d": 0.95,
+      "h": 1.77,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Sink": {
+    "src": "quaternius/Bathroom_Sink.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom sink",
+      "w": 0.69,
+      "d": 0.41,
+      "h": 0.72,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Toilet": {
+    "src": "quaternius/Bathroom_Toilet.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom toilet",
+      "w": 0.6,
+      "d": 0.85,
+      "h": 0.95,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_Toilet2": {
+    "src": "quaternius/Bathroom_Toilet2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom toilet 2",
+      "w": 0.56,
+      "d": 0.77,
+      "h": 0.5,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bathroom_WashingMachine": {
+    "src": "quaternius/Bathroom_WashingMachine.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bathroom washing machine",
+      "w": 0.65,
+      "d": 0.66,
+      "h": 0.74,
+      "group": "Bathroom",
+      "room": "Bathroom"
+    }
+  },
+  "q:Bed_Bunk": {
+    "src": "quaternius/Bed_Bunk.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bed bunk",
+      "w": 1.08,
+      "d": 2,
+      "h": 1.52,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "q:Bed_King": {
+    "src": "quaternius/Bed_King.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bed king",
+      "w": 1.53,
+      "d": 1.98,
+      "h": 0.61,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "q:Bed_Single": {
+    "src": "quaternius/Bed_Single.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bed single",
+      "w": 0.99,
+      "d": 1.97,
+      "h": 0.68,
+      "group": "Beds",
+      "room": "Bedroom"
+    }
+  },
+  "q:Bookshelf": {
+    "src": "quaternius/Bookshelf.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Bookshelf",
+      "w": 1.16,
+      "d": 0.38,
+      "h": 2.22,
+      "group": "Storage"
+    }
+  },
+  "q:Carpet_1": {
+    "src": "quaternius/Carpet_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Carpet 1",
+      "w": 1.07,
+      "d": 1.55,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "q:Carpet_2": {
+    "src": "quaternius/Carpet_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Carpet 2",
+      "w": 1.55,
+      "d": 1.59,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "q:Carpet_Round": {
+    "src": "quaternius/Carpet_Round.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Carpet round",
+      "w": 1.25,
+      "d": 1.27,
+      "h": 0.02,
+      "group": "Rugs"
+    }
+  },
+  "q:Chair_1": {
+    "src": "quaternius/Chair_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Chair 1",
+      "w": 0.38,
+      "d": 0.41,
+      "h": 0.88,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Chair_2": {
+    "src": "quaternius/Chair_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Chair 2",
+      "w": 0.38,
+      "d": 0.41,
+      "h": 0.84,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Chair_3": {
+    "src": "quaternius/Chair_3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Chair 3",
+      "w": 0.38,
+      "d": 0.42,
+      "h": 0.85,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Chair_4": {
+    "src": "quaternius/Chair_4.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Chair 4",
+      "w": 0.38,
+      "d": 0.41,
+      "h": 0.88,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Couch_L": {
+    "src": "quaternius/Couch_L.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch l",
+      "w": 2.81,
+      "d": 2.16,
+      "h": 1.13,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Large1": {
+    "src": "quaternius/Couch_Large1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch large 1",
+      "w": 2.74,
+      "d": 1,
+      "h": 1.05,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Large2": {
+    "src": "quaternius/Couch_Large2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch large 2",
+      "w": 2.6,
+      "d": 1,
+      "h": 1.05,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Large3": {
+    "src": "quaternius/Couch_Large3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch large 3",
+      "w": 3.54,
+      "d": 1.51,
+      "h": 0.54,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Medium1": {
+    "src": "quaternius/Couch_Medium1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch medium 1",
+      "w": 2.34,
+      "d": 1.1,
+      "h": 0.96,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Medium2": {
+    "src": "quaternius/Couch_Medium2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch medium 2",
+      "w": 2.26,
+      "d": 1,
+      "h": 0.98,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Small1": {
+    "src": "quaternius/Couch_Small1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch small 1",
+      "w": 1.44,
+      "d": 1.1,
+      "h": 0.96,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Couch_Small2": {
+    "src": "quaternius/Couch_Small2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Couch small 2",
+      "w": 1.06,
+      "d": 1,
+      "h": 0.63,
+      "group": "Sofas",
+      "room": "Living"
+    }
+  },
+  "q:Curtains_Double": {
+    "src": "quaternius/Curtains_Double.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Curtains double",
+      "w": 1.73,
+      "d": 0.24,
+      "h": 2.17,
+      "group": "Decor"
+    }
+  },
+  "q:Curtains_Single": {
+    "src": "quaternius/Curtains_Single.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Curtains single",
+      "w": 0.82,
+      "d": 0.24,
+      "h": 2.17,
+      "group": "Decor"
+    }
+  },
+  "q:Drawer_1": {
+    "src": "quaternius/Drawer_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Drawer 1",
+      "w": 1.4,
+      "d": 0.56,
+      "h": 0.68,
+      "group": "Storage"
+    }
+  },
+  "q:Drawer_2": {
+    "src": "quaternius/Drawer_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Drawer 2",
+      "w": 2.02,
+      "d": 0.56,
+      "h": 0.65,
+      "group": "Storage"
+    }
+  },
+  "q:Drawer_3": {
+    "src": "quaternius/Drawer_3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Drawer 3",
+      "w": 2.08,
+      "d": 0.67,
+      "h": 0.79,
+      "group": "Storage"
+    }
+  },
+  "q:Drawer_4": {
+    "src": "quaternius/Drawer_4.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Drawer 4",
+      "w": 1.4,
+      "d": 0.56,
+      "h": 1.04,
+      "group": "Storage"
+    }
+  },
+  "q:Drawer_5": {
+    "src": "quaternius/Drawer_5.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Drawer 5",
+      "w": 1.4,
+      "d": 0.58,
+      "h": 0.67,
+      "group": "Storage"
+    }
+  },
+  "q:Fireplace": {
+    "src": "quaternius/Fireplace.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Fireplace",
+      "w": 1.62,
+      "d": 0.58,
+      "h": 1.28,
+      "group": "Decor"
+    }
+  },
+  "q:Houseplant_1": {
+    "src": "quaternius/Houseplant_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 1",
+      "w": 0.38,
+      "d": 0.35,
+      "h": 0.36,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_2": {
+    "src": "quaternius/Houseplant_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 2",
+      "w": 0.13,
+      "d": 0.13,
+      "h": 0.19,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_3": {
+    "src": "quaternius/Houseplant_3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 3",
+      "w": 0.17,
+      "d": 0.17,
+      "h": 0.42,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_4": {
+    "src": "quaternius/Houseplant_4.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 4",
+      "w": 0.17,
+      "d": 0.17,
+      "h": 0.46,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_5": {
+    "src": "quaternius/Houseplant_5.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 5",
+      "w": 0.26,
+      "d": 0.26,
+      "h": 0.21,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_6": {
+    "src": "quaternius/Houseplant_6.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 6",
+      "w": 0.52,
+      "d": 0.53,
+      "h": 0.48,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_7": {
+    "src": "quaternius/Houseplant_7.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 7",
+      "w": 0.58,
+      "d": 0.61,
+      "h": 0.44,
+      "group": "Plants"
+    }
+  },
+  "q:Houseplant_8": {
+    "src": "quaternius/Houseplant_8.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Houseplant 8",
+      "w": 0.26,
+      "d": 0.26,
+      "h": 0.78,
+      "group": "Plants"
+    }
+  },
+  "q:Kitchen_1Drawers": {
+    "src": "quaternius/Kitchen_1Drawers.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen 1drawers",
+      "w": 0.51,
+      "d": 0.56,
+      "h": 0.81,
+      "group": "Storage"
+    }
+  },
+  "q:Kitchen_2Drawers": {
+    "src": "quaternius/Kitchen_2Drawers.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen 2drawers",
+      "w": 0.51,
+      "d": 0.56,
+      "h": 0.81,
+      "group": "Storage"
+    }
+  },
+  "q:Kitchen_3Drawers": {
+    "src": "quaternius/Kitchen_3Drawers.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen 3drawers",
+      "w": 0.51,
+      "d": 0.56,
+      "h": 0.81,
+      "group": "Storage"
+    }
+  },
+  "q:Kitchen_Cabinet1": {
+    "src": "quaternius/Kitchen_Cabinet1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen cabinet 1",
+      "w": 0.51,
+      "d": 0.54,
+      "h": 0.78,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_Cabinet2": {
+    "src": "quaternius/Kitchen_Cabinet2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen cabinet 2",
+      "w": 0.51,
+      "d": 0.54,
+      "h": 0.78,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_CabinetSmall": {
+    "src": "quaternius/Kitchen_CabinetSmall.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen cabinet small",
+      "w": 0.43,
+      "d": 0.54,
+      "h": 0.47,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_Fridge": {
+    "src": "quaternius/Kitchen_Fridge.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen fridge",
+      "w": 0.65,
+      "d": 0.65,
+      "h": 1.65,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_Oven": {
+    "src": "quaternius/Kitchen_Oven.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen oven",
+      "w": 0.51,
+      "d": 0.56,
+      "h": 0.81,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_Oven_Large": {
+    "src": "quaternius/Kitchen_Oven_Large.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen oven large",
+      "w": 0.59,
+      "d": 0.54,
+      "h": 0.8,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Kitchen_Sink": {
+    "src": "quaternius/Kitchen_Sink.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Kitchen sink",
+      "w": 0.51,
+      "d": 0.56,
+      "h": 0.96,
+      "group": "Kitchen",
+      "room": "Kitchen"
+    }
+  },
+  "q:Light_Ceiling1": {
+    "src": "quaternius/Light_Ceiling1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 1",
+      "w": 0.22,
+      "d": 0.22,
+      "h": 0.41,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Ceiling2": {
+    "src": "quaternius/Light_Ceiling2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 2",
+      "w": 0.18,
+      "d": 0.18,
+      "h": 0.51,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Ceiling3": {
+    "src": "quaternius/Light_Ceiling3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 3",
+      "w": 0.27,
+      "d": 0.27,
+      "h": 0.34,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Ceiling4": {
+    "src": "quaternius/Light_Ceiling4.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 4",
+      "w": 0.39,
+      "d": 0.39,
+      "h": 0.65,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Ceiling5": {
+    "src": "quaternius/Light_Ceiling5.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 5",
+      "w": 0.27,
+      "d": 0.28,
+      "h": 0.07,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Ceiling6": {
+    "src": "quaternius/Light_Ceiling6.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling 6",
+      "w": 0.27,
+      "d": 0.28,
+      "h": 0.06,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_CeilingSingle": {
+    "src": "quaternius/Light_CeilingSingle.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light ceiling single",
+      "w": 0.13,
+      "d": 0.14,
+      "h": 0.24,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Chandelier": {
+    "src": "quaternius/Light_Chandelier.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light chandelier",
+      "w": 0.41,
+      "d": 0.41,
+      "h": 0.26,
+      "group": "Lighting",
+      "mount": "ceiling"
+    }
+  },
+  "q:Light_Cube": {
+    "src": "quaternius/Light_Cube.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light cube",
+      "w": 0.28,
+      "d": 0.28,
+      "h": 0.52,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Cube2": {
+    "src": "quaternius/Light_Cube2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light cube 2",
+      "w": 0.28,
+      "d": 0.32,
+      "h": 0.46,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Desk": {
+    "src": "quaternius/Light_Desk.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light desk",
+      "w": 0.13,
+      "d": 0.23,
+      "h": 0.29,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Floor1": {
+    "src": "quaternius/Light_Floor1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light floor 1",
+      "w": 0.14,
+      "d": 0.15,
+      "h": 0.8,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Floor2": {
+    "src": "quaternius/Light_Floor2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light floor 2",
+      "w": 0.16,
+      "d": 0.16,
+      "h": 0.38,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Floor3": {
+    "src": "quaternius/Light_Floor3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light floor 3",
+      "w": 0.2,
+      "d": 0.21,
+      "h": 0.45,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Floor4": {
+    "src": "quaternius/Light_Floor4.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light floor 4",
+      "w": 0.18,
+      "d": 0.18,
+      "h": 0.38,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Icosahedron": {
+    "src": "quaternius/Light_Icosahedron.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light icosahedron",
+      "w": 0.25,
+      "d": 0.24,
+      "h": 0.44,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Icosahedron2": {
+    "src": "quaternius/Light_Icosahedron2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light icosahedron 2",
+      "w": 0.81,
+      "d": 0.25,
+      "h": 0.44,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Small": {
+    "src": "quaternius/Light_Small.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light small",
+      "w": 0.08,
+      "d": 0.08,
+      "h": 0.05,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Stand1": {
+    "src": "quaternius/Light_Stand1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light stand 1",
+      "w": 0.39,
+      "d": 0.41,
+      "h": 1.5,
+      "group": "Lighting"
+    }
+  },
+  "q:Light_Stand2": {
+    "src": "quaternius/Light_Stand2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Light stand 2",
+      "w": 0.34,
+      "d": 0.34,
+      "h": 1.47,
+      "group": "Lighting"
+    }
+  },
+  "q:NightStand_1": {
+    "src": "quaternius/NightStand_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Night stand 1",
+      "w": 0.48,
+      "d": 0.48,
+      "h": 0.41,
+      "group": "Decor"
+    }
+  },
+  "q:NightStand_2": {
+    "src": "quaternius/NightStand_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Night stand 2",
+      "w": 0.48,
+      "d": 0.48,
+      "h": 0.47,
+      "group": "Decor"
+    }
+  },
+  "q:NightStand_3": {
+    "src": "quaternius/NightStand_3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Night stand 3",
+      "w": 0.48,
+      "d": 0.48,
+      "h": 0.41,
+      "group": "Decor"
+    }
+  },
+  "q:Shelf_1": {
+    "src": "quaternius/Shelf_1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf 1",
+      "w": 0.35,
+      "d": 0.33,
+      "h": 1.58,
+      "group": "Storage"
+    }
+  },
+  "q:Shelf_2": {
+    "src": "quaternius/Shelf_2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf 2",
+      "w": 0.56,
+      "d": 0.38,
+      "h": 2.22,
+      "group": "Storage"
+    }
+  },
+  "q:Shelf_Large": {
+    "src": "quaternius/Shelf_Large.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf large",
+      "w": 1.69,
+      "d": 0.38,
+      "h": 2.22,
+      "group": "Storage"
+    }
+  },
+  "q:Shelf_Small1": {
+    "src": "quaternius/Shelf_Small1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf small 1",
+      "w": 0.97,
+      "d": 0.28,
+      "h": 0.29,
+      "group": "Storage"
+    }
+  },
+  "q:Shelf_Small2": {
+    "src": "quaternius/Shelf_Small2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf small 2",
+      "w": 0.52,
+      "d": 0.28,
+      "h": 0.19,
+      "group": "Storage"
+    }
+  },
+  "q:Shelf_Small3": {
+    "src": "quaternius/Shelf_Small3.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Shelf small 3",
+      "w": 0.52,
+      "d": 0.28,
+      "h": 0.19,
+      "group": "Storage"
+    }
+  },
+  "q:Stool": {
+    "src": "quaternius/Stool.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Stool",
+      "w": 0.34,
+      "d": 0.36,
+      "h": 0.69,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Table_RoundLarge": {
+    "src": "quaternius/Table_RoundLarge.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Table round large",
+      "w": 1.86,
+      "d": 0.97,
+      "h": 0.56,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Table_RoundSmall": {
+    "src": "quaternius/Table_RoundSmall.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Table round small",
+      "w": 0.97,
+      "d": 0.97,
+      "h": 0.57,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Table_RoundSmall2": {
+    "src": "quaternius/Table_RoundSmall2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Table round small 2",
+      "w": 0.97,
+      "d": 0.97,
+      "h": 0.6,
+      "group": "Dining",
+      "room": "Dining"
+    }
+  },
+  "q:Trashcan_Cylindric": {
+    "src": "quaternius/Trashcan_Cylindric.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Trashcan cylindric",
+      "w": 0.38,
+      "d": 0.38,
+      "h": 0.54,
+      "group": "Decor"
+    }
+  },
+  "q:Trashcan_Green": {
+    "src": "quaternius/Trashcan_Green.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Trashcan green",
+      "w": 0.61,
+      "d": 0.8,
+      "h": 1.11,
+      "group": "Decor"
+    }
+  },
+  "q:Trashcan_Large": {
+    "src": "quaternius/Trashcan_Large.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Trashcan large",
+      "w": 0.61,
+      "d": 0.61,
+      "h": 0.92,
+      "group": "Decor"
+    }
+  },
+  "q:Trashcan_Small1": {
+    "src": "quaternius/Trashcan_Small1.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Trashcan small 1",
+      "w": 0.25,
+      "d": 0.15,
+      "h": 0.36,
+      "group": "Decor"
+    }
+  },
+  "q:Trashcan_Small2": {
+    "src": "quaternius/Trashcan_Small2.obj",
+    "scale": 0.5,
+    "credit": "Quaternius Ultimate House Interior (CC0)",
+    "def": {
+      "name": "Trashcan small 2",
+      "w": 0.23,
+      "d": 0.21,
+      "h": 0.28,
+      "group": "Decor"
+    }
+  }
+}

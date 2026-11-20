@@ -15,11 +15,12 @@ import {
   TorusGeometry,
   Vector3,
   type BufferGeometry,
+  type Object3D,
   type Material,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { FURNITURE } from './catalog';
-import { LIBRARY, modelUrl } from './library';
+import { LIBRARY, bundled, modelUrl } from './library';
 import { CUSTOM_PARTS, type CustomPart } from './custom';
 import { styleOf, type DesignStyle } from './styles';
 
@@ -738,6 +739,9 @@ export function buildFurniture(type: string, color?: string, styleId?: string): 
 
 /* ---------- Library models (library.ts) ---------- */
 
+/** Ceiling height the light fittings are modelled at. */
+const CEILING = 2.7;
+
 const models = new Map<string, Promise<Group>>();
 let modelLoaded: () => void = () => {};
 /** Called whenever a library model arrives and has replaced its placeholder (to redraw and refresh shadows). */
@@ -745,35 +749,64 @@ export function onModelLoaded(f: () => void) {
   modelLoaded = f;
 }
 
+/** A model file as a scene: glTF/GLB, or OBJ with its MTL (flat colours, given the planner's standard material). */
+async function readModel(src: string): Promise<Object3D> {
+  if (src.endsWith('.obj')) {
+    const [{ OBJLoader }, { MTLLoader }] = await Promise.all([
+      import('three/addons/loaders/OBJLoader.js'),
+      import('three/addons/loaders/MTLLoader.js'),
+    ]);
+    const mtlSrc = src.replace(/\.obj$/, '.mtl');
+    const [mtlText, objText] = await Promise.all([bundled(mtlSrc), bundled(src)]);
+    const mtl =
+      mtlText !== null ? new MTLLoader().parse(mtlText, '') : await new MTLLoader().loadAsync(modelUrl(mtlSrc));
+    mtl.preload();
+    const loader = new OBJLoader().setMaterials(mtl);
+    const obj = objText !== null ? loader.parse(objText) : await loader.loadAsync(modelUrl(src));
+    obj.traverse((o) => {
+      const mesh = o as Mesh;
+      if (!mesh.isMesh) return;
+      const swap = (mat: Material) => {
+        const c = (mat as Material & { color?: Color }).color;
+        return std(c ? `#${c.getHexString()}` : '#cccccc', 0.65);
+      };
+      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
+    });
+    return obj;
+  }
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const text = await bundled(src);
+  return (text !== null ? await new GLTFLoader().parseAsync(text, '') : await new GLTFLoader().loadAsync(modelUrl(src)))
+    .scene;
+}
+
 /** Loads a library model once: centred on its footprint, standing on the floor, front towards +z. */
 function loadModel(type: string): Promise<Group> {
   let p = models.get(type);
   if (!p) {
     const m = LIBRARY[type]!;
-    p = import('three/addons/loaders/GLTFLoader.js')
-      .then(({ GLTFLoader }) => new GLTFLoader().loadAsync(modelUrl(m.src)))
-      .then((gltf) => {
-        const inner = gltf.scene;
-        inner.rotation.y = ((m.turn ?? 0) * Math.PI) / 180;
-        const outer = new Group();
-        outer.add(inner);
-        // A file at the wrong scale is fitted to the catalogue size; one at its real size is left as it is.
-        let box = new Box3().setFromObject(outer);
-        const size = box.getSize(new Vector3());
-        const ratios = [m.def.w / size.x, m.def.h / size.y, m.def.d / size.z].filter(Number.isFinite);
-        if (ratios.some((r) => r < 0.7 || r > 1.4)) inner.scale.multiplyScalar(Math.min(...ratios));
-        box = new Box3().setFromObject(outer);
-        const c = box.getCenter(new Vector3());
-        inner.position.set(inner.position.x - c.x, inner.position.y - box.min.y, inner.position.z - c.z);
-        outer.traverse((o) => {
-          const mesh = o as Mesh;
-          if (mesh.isMesh) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-          }
-        });
-        return outer;
+    p = readModel(m.src).then((inner) => {
+      inner.scale.setScalar(m.scale ?? 1);
+      inner.rotation.y = ((m.turn ?? 0) * Math.PI) / 180;
+      const outer = new Group();
+      outer.add(inner);
+      // A file at the wrong scale is fitted to the catalogue size; one at its real size is left as it is.
+      let box = new Box3().setFromObject(outer);
+      const size = box.getSize(new Vector3());
+      const ratios = [m.def.w / size.x, m.def.h / size.y, m.def.d / size.z].filter(Number.isFinite);
+      if (ratios.some((r) => r < 0.7 || r > 1.4)) inner.scale.multiplyScalar(Math.min(...ratios));
+      box = new Box3().setFromObject(outer);
+      const c = box.getCenter(new Vector3());
+      inner.position.set(inner.position.x - c.x, inner.position.y - box.min.y, inner.position.z - c.z);
+      outer.traverse((o) => {
+        const mesh = o as Mesh;
+        if (mesh.isMesh) {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+        }
       });
+      return outer;
+    });
     models.set(type, p);
   }
   return p;
@@ -784,11 +817,14 @@ function buildModel(type: string) {
   const def = FURNITURE[type]!;
   const g = new Group();
   const block = new Mesh(rbox(def.w, def.h, def.d, 0.02), mainMat('#d9d6cf', 'block'));
-  block.position.y = def.h / 2;
+  block.position.y = def.mount === 'ceiling' ? CEILING - def.h / 2 : def.mount === 'wall' ? 1.6 : def.h / 2;
   g.add(block);
   loadModel(type)
     .then((model) => {
       const copy = model.clone(true);
+      // Fittings hang from the ceiling or sit on the wall at lamp height.
+      if (def.mount === 'ceiling') copy.position.y = CEILING - def.h;
+      else if (def.mount === 'wall') copy.position.y = 1.6 - def.h / 2;
       const item = g.userData.item as string | undefined;
       copy.traverse((o) => (o.userData.item = item));
       g.remove(block);

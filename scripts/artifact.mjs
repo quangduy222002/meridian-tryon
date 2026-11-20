@@ -93,6 +93,11 @@ if (existsSync(modelsDir)) {
   cpSync(modelsDir, join(out, 'models'), { recursive: true });
   // The Artifact serves neither .gltf nor .bin: each model becomes one .json (its buffers inlined as data URIs;
   // textures stay beside it as .jpg/.png), which room/library.ts asks for in this build.
+  /** models/<pack>.json: each file of a pack by its path under models/ (room/library.ts reads them there). */
+  const bundles = {};
+  const bundle = (rel, r, text) => {
+    (bundles[rel] ??= {})[r.slice('models/'.length)] = text;
+  };
   const walk = (dir, rel) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const r = `${rel}/${entry.name}`;
@@ -111,10 +116,33 @@ if (existsSync(modelsDir)) {
         writeFileSync(json, JSON.stringify(gltf));
         rmSync(path);
         files[r.replace(/\.gltf$/, '.json')] = json;
+      } else if (entry.name.endsWith('.glb')) {
+        // A GLB is a JSON chunk and a binary chunk: the same model as one glTF JSON with the binary inlined, gathered
+        // into its pack's bundle (an Artifact takes a few hundred files at most).
+        const buf = readFileSync(path);
+        const jsonLen = buf.readUInt32LE(12);
+        const gltf = JSON.parse(buf.subarray(20, 20 + jsonLen).toString());
+        const binStart = 20 + jsonLen;
+        if (gltf.buffers?.[0] && binStart + 8 <= buf.length) {
+          const binLen = buf.readUInt32LE(binStart);
+          const bin = buf.subarray(binStart + 8, binStart + 8 + binLen);
+          gltf.buffers[0].uri = `data:application/octet-stream;base64,${bin.toString('base64')}`;
+        }
+        bundle(rel, r, JSON.stringify(gltf));
+        rmSync(path);
+      } else if (/\.(obj|mtl)$/.test(entry.name)) {
+        // OBJ and MTL are text: gathered into the pack's bundle as they are.
+        bundle(rel, r, readFileSync(path, 'utf8'));
+        rmSync(path);
       } else if (!entry.name.endsWith('.bin')) files[r] = path;
     }
   };
   walk(join(out, 'models'), 'models');
+  for (const [name, entries] of Object.entries(bundles)) {
+    const to = join(out, `${name}.json`);
+    writeFileSync(to, JSON.stringify(entries));
+    files[`${name}.json`] = to;
+  }
 }
 writeFileSync(join(out, 'files.json'), JSON.stringify(files, null, 2));
 const bytes = Object.values(files).reduce((s, f) => s + readFileSync(f).length, 0);

@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/furniture.ts": {
-    "mtime": 1795165539.525438,
-    "seen": 1795166619.308865,
-    "ast_hash": "eb6fae775256c8897b78193e40e7dd00",
+    "mtime": 1795167137.3293264,
+    "seen": 1795167448.53902,
+    "ast_hash": "e1899d5b934b2633b843556ff56e9b01",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/house.ts": {
@@ -666,9 +666,9 @@
     "semantic_hash": ""
   },
   ".claude/launch.json": {
-    "mtime": 1794907431.403466,
-    "seen": 1794908699.195265,
-    "ast_hash": "d7fa5d684c97f05d1f2a76838dd5b243",
+    "mtime": 1795166798.292377,
+    "seen": 1795167448.538961,
+    "ast_hash": "02c8b5fc87784c8bff821fca9f1e7da0",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/studio/rooms.ts": {
@@ -690,9 +690,9 @@
     "semantic_hash": ""
   },
   "scripts/artifact.mjs": {
-    "mtime": 1795165620.5913262,
-    "seen": 1795166619.308898,
-    "ast_hash": "f97acad37afdaf7f20edba4095411c3d",
+    "mtime": 1795167137.3289335,
+    "seen": 1795167448.539053,
+    "ast_hash": "ae3a1f1c52060c03cd53cb43fd5674de",
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/export.ts": {
@@ -786,15 +786,33 @@
     "semantic_hash": ""
   },
   "apps/web/src/scripts/room/library.ts": {
-    "mtime": 1795165987.3479366,
-    "seen": 1795166619.308867,
-    "ast_hash": "25d5ef57d36b1d921d8cfd8dd00465da",
+    "mtime": 1795167137.3291154,
+    "seen": 1795167448.539022,
+    "ast_hash": "ae9f190ef1d555cff6866f1bd105c056",
     "semantic_hash": ""
   },
   "apps/web/public/models/ph/LICENSE.md": {
     "mtime": 1795165620.6141918,
     "seen": 1795166619.308905,
     "ast_hash": "48e4c1008e45de35298fd42c05627689",
+    "semantic_hash": ""
+  },
+  "apps/web/src/scripts/room/library-packs.json": {
+    "mtime": 1795167080.8856616,
+    "seen": 1795167448.539022,
+    "ast_hash": "a53f96ce555a56e163b5bf66af1fce61",
+    "semantic_hash": ""
+  },
+  "scripts/import-packs.mjs": {
+    "mtime": 1795167079.9613836,
+    "seen": 1795167448.539055,
+    "ast_hash": "b9ca7ae270d6d6e3b4df14e87400196b",
+    "semantic_hash": ""
+  },
+  "apps/web/public/models/LICENSES.md": {
+    "mtime": 1795166978.578849,
+    "seen": 1795167448.5390599,
+    "ast_hash": "66ec6a72ac1d64c8a304f00846396ef9",
     "semantic_hash": ""
   },
   "package-lock.json": {
